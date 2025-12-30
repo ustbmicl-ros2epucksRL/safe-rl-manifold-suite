@@ -1,0 +1,12 @@
+[submodule "paper/safe-rl-manifold-constraints"]
+	path = paper/safe-rl-manifold-constraints
+	url = git@github.com:chengzizhuo/safe-rl-manifold-constraints.git
+[submodule "envs/safety-gymnasium"]
+	path = envs/safety-gymnasium
+	url = git@github.com:chengzizhuo/safe-gym.git
+[submodule "algorithms/multi-robot-rmpflow"]
+	path = algorithms/multi-robot-rmpflow
+	url = git@github.com:chengzizhuo/multi-robot-rmpflow.git
+[submodule "algorithms/safe-po"]
+	path = algorithms/safe-po
+	url = git@github.com:chengzizhuo/safe-po.git
