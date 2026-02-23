@@ -19,16 +19,16 @@ class EnvConfig:
 
 @dataclass
 class SafetyConfig:
-    safety_radius: float = 0.4
-    K_c: float = 100.0
+    safety_radius: float = 0.5  # increased for better safety margin
+    K_c: float = 50.0  # reduced for smoother constraint satisfaction
     slack_type: str = "softcorner"
-    slack_beta: float = 30.0
+    slack_beta: float = 20.0  # reduced for smoother slack
     slack_beta_formation: float = 10.0
-    slack_threshold: float = 1e-3
+    slack_threshold: float = 0.01  # increased threshold for stability
     rmp_formation_blend: float = 0.3
-    dq_max: float = 1.0
+    dq_max: float = 0.8  # reduced max velocity for better control
     boundary_margin: float = 0.5
-    eps_pinv: float = 1e-6
+    eps_pinv: float = 1e-4  # increased for numerical stability
 
 
 @dataclass

@@ -51,7 +51,7 @@ def evaluate_episode(env, mappo, atacom, cfg, seed=0):
 
     for step in range(cfg.env.max_steps):
         alphas, _ = mappo.get_actions(obs_all, deterministic=True)
-        safe_actions = atacom.project(alphas, env.positions, env.velocities)
+        safe_actions = atacom.project(alphas, env.positions, env.velocities, dt=cfg.env.dt)
         next_obs, next_share_obs, rewards, costs, dones, infos, _ = env.step(safe_actions)
 
         trajectory.append(env.positions.copy())

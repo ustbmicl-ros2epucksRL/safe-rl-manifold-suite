@@ -253,7 +253,9 @@ class FormationNavEnv(gym.Env):
 
     def _count_collisions(self) -> int:
         count = 0
-        safety_r = 0.3  # collision detection radius
+        # Use half the ATACOM safety radius for collision detection
+        # ATACOM keeps agents at safety_radius=0.4 apart, collision is at 0.2
+        safety_r = 0.2  # collision detection radius (physical collision)
         # Agent-agent
         for i in range(self.num_agents):
             for j in range(i + 1, self.num_agents):

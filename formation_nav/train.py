@@ -148,7 +148,7 @@ def train(cfg: Config):
 
             # Safety projection
             safe_actions = atacom.project(
-                alphas, env.positions, env.velocities)
+                alphas, env.positions, env.velocities, dt=cfg.env.dt)
 
             # Environment step
             next_obs, next_share_obs, rewards, costs, dones, infos, _ = env.step(safe_actions)
