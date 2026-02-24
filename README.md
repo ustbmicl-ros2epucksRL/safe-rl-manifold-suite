@@ -4,7 +4,7 @@
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ustbmicl-ros2epucksRL/safe-rl-manifold-suite/blob/master/examples/Epuck_Colab_Demo.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ustbmicl-ros2epucksRL/safe-rl-manifold-suite/blob/master/cosmos/examples/Epuck_Colab_Demo.ipynb)
 
 ---
 
@@ -60,59 +60,27 @@ safe-rl-manifold-suite/
 │   ├── registry.py              # 组件注册器
 │   │
 │   ├── configs/                 # Hydra 配置
-│   │   ├── config.yaml          # 主配置
-│   │   ├── env/                 # 环境配置
-│   │   ├── algo/                # 算法配置
-│   │   └── safety/              # 安全滤波配置
-│   │
-│   ├── envs/                    # 环境层
-│   │   ├── base.py              # BaseMultiAgentEnv 基类
-│   │   ├── formation_nav.py     # 编队导航环境
-│   │   ├── formations.py        # 编队形状与拓扑
-│   │   ├── webots_wrapper.py    # E-puck 仿真
-│   │   ├── epuck_visualizer.py  # E-puck 可视化
-│   │   ├── safety_gym_wrapper.py
-│   │   ├── mujoco_wrapper.py
-│   │   └── vmas_wrapper.py
-│   │
-│   ├── algos/                   # 算法层
-│   │   ├── base.py              # BaseMARLAlgo 基类
-│   │   ├── mappo.py             # MAPPO
-│   │   ├── qmix.py              # QMIX
-│   │   └── maddpg.py            # MADDPG
-│   │
-│   ├── safety/                  # 安全层
-│   │   ├── base.py              # BaseSafetyFilter 基类
-│   │   ├── cosmos_filter.py     # CBF 滤波器
-│   │   ├── atacom.py            # ATACOM 流形投影
-│   │   ├── constraints.py       # 约束定义
-│   │   ├── rmp_tree.py          # RMPflow 树
-│   │   └── rmp_policies.py      # RMP 策略
-│   │
-│   ├── buffers/                 # 缓冲区
-│   │   ├── rollout_buffer.py    # On-policy
-│   │   └── replay_buffer.py     # Off-policy
-│   │
+│   ├── envs/                    # 环境层 (formation_nav, epuck, safety_gym, ...)
+│   ├── algos/                   # 算法层 (mappo, qmix, maddpg)
+│   ├── safety/                  # 安全层 (cbf, atacom, rmpflow)
+│   ├── buffers/                 # 缓冲区 (rollout, replay)
 │   ├── runners/                 # 运行器
+│   ├── utils/                   # 工具函数
 │   │
-│   └── apps/                    # 应用层
-│       └── formation_nav/       # 编队导航应用
-│           ├── config.py        # 应用配置
-│           ├── demo.py          # 演示脚本
-│           ├── benchmark.py     # 基准测试
-│           └── docs/            # 理论文档
+│   ├── apps/                    # 应用层
+│   │   └── formation_nav/       # 编队导航应用 (demo, benchmark)
+│   │
+│   ├── tests/                   # ✅ 测试套件
+│   ├── examples/                # 📚 示例 (Jupyter Notebook)
+│   ├── scripts/                 # 🔧 工具脚本
+│   ├── docs/                    # 📖 文档
+│   └── ros2/                    # 🤖 ROS2 E-puck 部署
 │
-├── tests/                       # ✅ 测试
-│   └── test_all_envs.py
+├── refs/                        # 📑 参考文献 (PDF, 笔记)
+├── paper/                       # 📄 论文资料
 │
-├── examples/                    # 📚 示例
-│   └── Epuck_Colab_Demo.ipynb
-│
-├── ros2_ws/                     # 🤖 ROS2 部署
-│
-├── scripts/                     # 🔧 工具
-├── docs/                        # 📖 文档
-├── refs/                        # 📑 参考
+├── algorithms/                  # Git 子模块 (外部参考)
+├── envs/                        # Git 子模块 (外部参考)
 │
 ├── setup.py                     # pip 安装
 ├── setup.sh                     # 环境安装
@@ -205,7 +173,7 @@ pip install safety-gymnasium mujoco vmas
 ### 验证安装
 
 ```bash
-python tests/test_all_envs.py
+python -m cosmos.tests.test_all_envs
 ```
 
 ### 运行训练
@@ -225,20 +193,20 @@ python -m cosmos.train env=formation_nav algo=mappo safety=cbf \
     env.num_agents=6 \
     experiment.num_episodes=500
 
-# 使用 formation_nav 独立脚本
-python formation_nav/train.py --num_agents 4 --episodes 200
+# 使用 formation_nav 应用演示
+python -m cosmos.apps.formation_nav.demo
 ```
 
 ### Google Colab
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ustbmicl-ros2epucksRL/safe-rl-manifold-suite/blob/master/examples/Epuck_Colab_Demo.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ustbmicl-ros2epucksRL/safe-rl-manifold-suite/blob/master/cosmos/examples/Epuck_Colab_Demo.ipynb)
 
 ```python
 !pip install torch numpy matplotlib gymnasium -q
 !git clone https://github.com/ustbmicl-ros2epucksRL/safe-rl-manifold-suite.git
 %cd safe-rl-manifold-suite
 !pip install -e . -q
-!python tests/test_all_envs.py
+!python -m cosmos.tests.test_all_envs
 ```
 
 ---
@@ -271,16 +239,16 @@ cosmos/
 └── apps/      # 应用层 (formation_nav demo/benchmark)
 ```
 
-### 测试套件 (`tests/`)
+### 测试套件 (`cosmos/tests/`)
 
 ```bash
-python tests/test_all_envs.py
+python -m cosmos.tests.test_all_envs
 ```
 
-### ROS2 部署 (`ros2_ws/`)
+### ROS2 部署 (`cosmos/ros2/`)
 
 ```bash
-cd ros2_ws && colcon build
+cd cosmos/ros2 && colcon build
 ros2 launch epuck_formation epuck_formation.launch.py
 ```
 
