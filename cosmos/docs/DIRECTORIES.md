@@ -208,8 +208,14 @@ artifacts/
 | `run_experiments.sh` | 批量实验脚本 |
 | `requirements.txt` | Python 依赖 |
 | `.gitmodules` | Git 子模块配置 |
-| `ARCHITECTURE.md` | 详细架构文档 |
-| `CLAUDE.md` | Claude AI 开发指南 |
 | `README.md` | 项目说明 |
+| `CLAUDE.md` | Claude AI 开发指南 |
+
+### cosmos/docs/ - 文档
+
+| 文件 | 说明 |
+|------|------|
+| `ARCHITECTURE.md` | 详细架构文档 |
 | `DIRECTORIES.md` | 本文件 |
 | `INSTALL_ENVS.md` | 环境安装指南 |
+| `ROS2_WEBOTS_SETUP.md` | ROS2 + Webots 配置 |

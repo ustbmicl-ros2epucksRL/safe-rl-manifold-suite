@@ -114,14 +114,18 @@ safe-rl-manifold-suite/
 ├── envs/                            # Git 子模块 (外部引用)
 │   └── safety-gymnasium/            # Safety-Gym 参考
 │
+├── artifacts/                       # 生成数据 (gitignored)
+│   ├── checkpoints/                 # 模型检查点
+│   ├── demo_output/                 # 演示输出
+│   ├── outputs/                     # Hydra 输出
+│   └── results/                     # 实验结果
+│
 ├── setup.sh                         # 安装脚本 (Conda)
 ├── setup.py                         # pip 安装配置
 ├── run_experiments.sh               # 批量实验脚本
 ├── requirements.txt                 # Python 依赖
-├── ARCHITECTURE.md                  # 本文件
-├── CLAUDE.md                        # Claude AI 开发指南
-├── INSTALL_ENVS.md                  # 环境安装说明
-└── README.md                        # 项目说明
+├── README.md                        # 项目说明
+└── CLAUDE.md                        # Claude AI 开发指南
 ```
 
 ---
