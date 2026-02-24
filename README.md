@@ -54,65 +54,69 @@
 ```
 safe-rl-manifold-suite/
 │
-├── cosmos/                      # 🎯 核心框架
-│   ├── train.py                 # 统一训练入口
-│   ├── trainer.py               # 训练器
+├── cosmos/                      # 🎯 统一框架 (所有代码整合于此)
+│   ├── train.py                 # 训练入口: python -m cosmos.train
+│   ├── trainer.py               # 统一训练器
 │   ├── registry.py              # 组件注册器
+│   │
 │   ├── configs/                 # Hydra 配置
 │   │   ├── config.yaml          # 主配置
 │   │   ├── env/                 # 环境配置
 │   │   ├── algo/                # 算法配置
 │   │   └── safety/              # 安全滤波配置
-│   ├── envs/                    # 环境封装
-│   │   ├── base.py              # 基类
-│   │   ├── formation_nav.py     # 编队导航
+│   │
+│   ├── envs/                    # 环境层
+│   │   ├── base.py              # BaseMultiAgentEnv 基类
+│   │   ├── formation_nav.py     # 编队导航环境
+│   │   ├── formations.py        # 编队形状与拓扑
 │   │   ├── webots_wrapper.py    # E-puck 仿真
+│   │   ├── epuck_visualizer.py  # E-puck 可视化
 │   │   ├── safety_gym_wrapper.py
 │   │   ├── mujoco_wrapper.py
 │   │   └── vmas_wrapper.py
-│   ├── algos/                   # MARL 算法
-│   │   ├── base.py              # 基类
-│   │   ├── mappo.py             # Multi-Agent PPO
-│   │   ├── qmix.py              # Value Decomposition
-│   │   └── maddpg.py            # Multi-Agent DDPG
-│   ├── safety/                  # 安全滤波器
-│   │   ├── base.py              # 基类
-│   │   └── cosmos_filter.py     # CBF/COSMOS 实现
-│   ├── buffers/                 # 经验缓冲区
-│   └── runners/                 # 训练运行器
+│   │
+│   ├── algos/                   # 算法层
+│   │   ├── base.py              # BaseMARLAlgo 基类
+│   │   ├── mappo.py             # MAPPO
+│   │   ├── qmix.py              # QMIX
+│   │   └── maddpg.py            # MADDPG
+│   │
+│   ├── safety/                  # 安全层
+│   │   ├── base.py              # BaseSafetyFilter 基类
+│   │   ├── cosmos_filter.py     # CBF 滤波器
+│   │   ├── atacom.py            # ATACOM 流形投影
+│   │   ├── constraints.py       # 约束定义
+│   │   ├── rmp_tree.py          # RMPflow 树
+│   │   └── rmp_policies.py      # RMP 策略
+│   │
+│   ├── buffers/                 # 缓冲区
+│   │   ├── rollout_buffer.py    # On-policy
+│   │   └── replay_buffer.py     # Off-policy
+│   │
+│   ├── runners/                 # 运行器
+│   │
+│   └── apps/                    # 应用层
+│       └── formation_nav/       # 编队导航应用
+│           ├── config.py        # 应用配置
+│           ├── demo.py          # 演示脚本
+│           ├── benchmark.py     # 基准测试
+│           └── docs/            # 理论文档
 │
-├── formation_nav/               # 📐 编队导航应用
-│   ├── train.py                 # 独立训练脚本
-│   ├── demo.py                  # 可视化演示
-│   ├── benchmark.py             # 性能基准
-│   ├── algo/                    # MAPPO 实现
-│   ├── env/                     # 编队环境
-│   ├── safety/                  # ATACOM/COSMOS/RMPflow
-│   └── docs/                    # 理论文档
+├── tests/                       # ✅ 测试
+│   └── test_all_envs.py
 │
-├── examples/                    # 📚 示例与演示
-│   └── Epuck_Colab_Demo.ipynb   # Colab 演示
-│
-├── tests/                       # ✅ 测试套件
-│   └── test_all_envs.py         # 环境测试
+├── examples/                    # 📚 示例
+│   └── Epuck_Colab_Demo.ipynb
 │
 ├── ros2_ws/                     # 🤖 ROS2 部署
-│   └── src/epuck_formation/     # E-puck ROS2 包
 │
-├── scripts/                     # 🔧 工具脚本
-│   └── analyze_results.py       # 结果分析
-│
+├── scripts/                     # 🔧 工具
 ├── docs/                        # 📖 文档
-│   └── ROS2_WEBOTS_SETUP.md     # ROS2 安装指南
+├── refs/                        # 📑 参考
 │
-├── refs/                        # 📑 参考文献
-├── paper/                       # 📄 论文资料
-│
-├── setup.sh                     # 安装脚本
 ├── setup.py                     # pip 安装
-├── run_experiments.sh           # 实验脚本
-├── ARCHITECTURE.md              # 详细架构文档
-└── README.md                    # 本文件
+├── setup.sh                     # 环境安装
+└── README.md
 ```
 
 ---
@@ -241,65 +245,42 @@ python formation_nav/train.py --num_agents 4 --episodes 200
 
 ## 程序说明
 
-### 程序 1: COSMOS 框架 (`cosmos/`)
+### 主程序: COSMOS 框架 (`cosmos/`)
 
-统一的配置驱动训练框架，支持环境、算法、安全滤波器的灵活组合。
-
-```bash
-# 入口
-python -m cosmos.train [options]
-
-# 配置文件
-cosmos/configs/
-├── config.yaml          # 主配置 (defaults)
-├── env/*.yaml           # 环境配置
-├── algo/*.yaml          # 算法配置
-└── safety/*.yaml        # 安全滤波配置
-```
-
-**特点:**
-- Hydra 配置管理
-- Registry 组件注册
-- WandB 日志集成
-- 检查点保存
-
-### 程序 2: 编队导航 (`formation_nav/`)
-
-针对多机器人编队控制的完整实现，包含 ATACOM、COSMOS、RMPflow。
+统一的配置驱动训练框架，所有代码整合于此目录。
 
 ```bash
 # 训练
-python formation_nav/train.py --num_agents 4 --episodes 200
+python -m cosmos.train env=formation_nav algo=mappo safety=cbf
 
-# 演示
-python formation_nav/demo.py --mode rmp
+# 编队导航演示
+python -m cosmos.apps.formation_nav.demo
 
 # 基准测试
-python formation_nav/benchmark.py
+python -m cosmos.apps.formation_nav.benchmark
 ```
 
-**特点:**
-- MAPPO + COSMOS 安全滤波
-- RMPflow 编队控制
-- 可视化工具
+**架构层次:**
+```
+cosmos/
+├── envs/      # 环境层 (formation_nav, epuck_sim, safety_gym, ...)
+├── algos/     # 算法层 (mappo, qmix, maddpg)
+├── safety/    # 安全层 (cbf, atacom, rmpflow)
+├── buffers/   # 缓冲区 (rollout, replay)
+├── runners/   # 运行器 (episode, parallel)
+└── apps/      # 应用层 (formation_nav demo/benchmark)
+```
 
-### 程序 3: 测试套件 (`tests/`)
-
-验证所有组件正常工作。
+### 测试套件 (`tests/`)
 
 ```bash
 python tests/test_all_envs.py
 ```
 
-### 程序 4: ROS2 部署 (`ros2_ws/`)
-
-E-puck 机器人 ROS2 部署包。
+### ROS2 部署 (`ros2_ws/`)
 
 ```bash
-# 构建
 cd ros2_ws && colcon build
-
-# 运行
 ros2 launch epuck_formation epuck_formation.launch.py
 ```
 

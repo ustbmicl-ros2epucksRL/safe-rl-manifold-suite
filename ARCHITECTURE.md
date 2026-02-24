@@ -2,14 +2,15 @@
 
 ## 一、程序清单
 
-本仓库包含以下独立程序:
+所有代码已整合到 `cosmos/` 目录下:
 
-| 程序 | 目录 | 入口 | 功能 |
-|------|------|------|------|
-| **COSMOS 框架** | `cosmos/` | `python -m cosmos.train` | 统一训练框架 |
-| **编队导航** | `formation_nav/` | `python formation_nav/train.py` | 编队控制应用 |
-| **测试套件** | `tests/` | `python tests/test_all_envs.py` | 组件测试 |
-| **ROS2 部署** | `ros2_ws/` | `ros2 launch epuck_formation ...` | 机器人部署 |
+| 程序 | 入口 | 功能 |
+|------|------|------|
+| **COSMOS 训练** | `python -m cosmos.train` | 统一训练框架 |
+| **编队导航演示** | `python -m cosmos.apps.formation_nav.demo` | 可视化演示 |
+| **基准测试** | `python -m cosmos.apps.formation_nav.benchmark` | 性能对比 |
+| **测试套件** | `python tests/test_all_envs.py` | 组件测试 |
+| **ROS2 部署** | `ros2 launch epuck_formation ...` | 机器人部署 |
 
 ---
 
@@ -19,96 +20,58 @@
 safe-rl-manifold-suite/
 │
 ├── cosmos/                          # ════════════════════════════════════
-│   │                                # 程序1: COSMOS 统一训练框架
+│   │                                # 统一框架 (所有代码整合于此)
 │   │                                # ════════════════════════════════════
 │   ├── __init__.py
-│   ├── train.py                     # 📌 主入口: python -m cosmos.train
+│   ├── train.py                     # 📌 训练入口: python -m cosmos.train
 │   ├── trainer.py                   # 训练器 (训练循环、日志、检查点)
 │   ├── registry.py                  # 组件注册器 (ENV/ALGO/SAFETY_REGISTRY)
 │   │
 │   ├── configs/                     # Hydra 配置文件
 │   │   ├── config.yaml              # 主配置 (defaults 组合)
 │   │   ├── env/                     # 环境配置
-│   │   │   ├── formation_nav.yaml
-│   │   │   ├── epuck_sim.yaml
-│   │   │   ├── safety_gym.yaml
-│   │   │   ├── mujoco.yaml
-│   │   │   └── vmas.yaml
 │   │   ├── algo/                    # 算法配置
-│   │   │   ├── mappo.yaml
-│   │   │   ├── qmix.yaml
-│   │   │   └── maddpg.yaml
 │   │   └── safety/                  # 安全滤波配置
-│   │       ├── cosmos.yaml
-│   │       ├── cbf.yaml
-│   │       └── none.yaml
 │   │
-│   ├── envs/                        # 环境封装层
-│   │   ├── __init__.py
-│   │   ├── base.py                  # BaseMultiAgentEnv 抽象基类
-│   │   ├── formation_nav.py         # 编队导航环境封装
-│   │   ├── webots_wrapper.py        # Webots/E-puck 环境
-│   │   ├── epuck_visualizer.py      # E-puck matplotlib 可视化
-│   │   ├── safety_gym_wrapper.py    # Safety-Gymnasium 封装
-│   │   ├── mujoco_wrapper.py        # MuJoCo 封装
-│   │   └── vmas_wrapper.py          # VMAS 封装
+│   ├── envs/                        # 环境层
+│   │   ├── base.py                  # BaseMultiAgentEnv 基类
+│   │   ├── formation_nav.py         # 编队导航环境
+│   │   ├── formations.py            # 编队形状与拓扑
+│   │   ├── webots_wrapper.py        # Webots/E-puck
+│   │   ├── epuck_visualizer.py      # E-puck 可视化
+│   │   ├── safety_gym_wrapper.py    # Safety-Gymnasium
+│   │   ├── mujoco_wrapper.py        # MuJoCo
+│   │   └── vmas_wrapper.py          # VMAS
 │   │
-│   ├── algos/                       # MARL 算法层
-│   │   ├── __init__.py
-│   │   ├── base.py                  # BaseMARLAlgo 抽象基类
-│   │   ├── mappo.py                 # MAPPO (Multi-Agent PPO)
-│   │   ├── qmix.py                  # QMIX (Value Decomposition)
-│   │   └── maddpg.py                # MADDPG (Multi-Agent DDPG)
+│   ├── algos/                       # 算法层
+│   │   ├── base.py                  # BaseMARLAlgo 基类
+│   │   ├── mappo.py                 # MAPPO
+│   │   ├── qmix.py                  # QMIX
+│   │   └── maddpg.py                # MADDPG
 │   │
-│   ├── safety/                      # 安全滤波层
-│   │   ├── __init__.py
-│   │   ├── base.py                  # BaseSafetyFilter 抽象基类
-│   │   └── cosmos_filter.py         # CBF + COSMOS 实现
+│   ├── safety/                      # 安全层
+│   │   ├── base.py                  # BaseSafetyFilter 基类
+│   │   ├── cosmos_filter.py         # CBF 滤波器
+│   │   ├── atacom.py                # ATACOM 流形投影
+│   │   ├── constraints.py           # 约束定义
+│   │   ├── rmp_tree.py              # RMPflow 树
+│   │   └── rmp_policies.py          # RMP 策略
 │   │
-│   ├── buffers/                     # 经验缓冲区
-│   │   ├── __init__.py
+│   ├── buffers/                     # 缓冲区
 │   │   ├── rollout_buffer.py        # On-policy (GAE)
 │   │   └── replay_buffer.py         # Off-policy (PER)
 │   │
-│   ├── runners/                     # 训练运行器
-│   │   ├── __init__.py
-│   │   ├── episode_runner.py        # 单线程顺序执行
-│   │   └── parallel_runner.py       # 多进程并行执行
+│   ├── runners/                     # 运行器
+│   │   ├── episode_runner.py        # 单线程
+│   │   └── parallel_runner.py       # 并行
 │   │
-│   └── utils/
-│       └── checkpoint.py            # 检查点工具
-│
-├── formation_nav/                   # ════════════════════════════════════
-│   │                                # 程序2: 编队导航独立应用
-│   │                                # ════════════════════════════════════
-│   ├── __init__.py
-│   ├── config.py                    # 配置 (Python dataclass)
-│   ├── train.py                     # 📌 主入口: python formation_nav/train.py
-│   ├── demo.py                      # 可视化演示
-│   ├── demo_visualization.py        # 绘图工具
-│   ├── benchmark.py                 # 性能基准 (RMPflow vs MAPPO)
-│   │
-│   ├── algo/                        # MAPPO 独立实现
-│   │   ├── __init__.py
-│   │   ├── networks.py              # Actor/Critic 网络
-│   │   ├── buffer.py                # RolloutBuffer
-│   │   └── mappo.py                 # MAPPO 训练器
-│   │
-│   ├── env/                         # 编队环境
-│   │   ├── __init__.py
-│   │   ├── formation_env.py         # FormationNavEnv
-│   │   └── formations.py            # 编队形状与拓扑
-│   │
-│   ├── safety/                      # 安全模块
-│   │   ├── __init__.py
-│   │   ├── constraints.py           # StateConstraint, ConstraintsSet
-│   │   ├── atacom.py                # ATACOM 流形投影
-│   │   ├── cosmos.py                # COSMOS 安全滤波
-│   │   ├── rmp_tree.py              # RMPflow 树结构
-│   │   └── rmp_policies.py          # RMP 叶节点策略
-│   │
-│   └── docs/
-│       └── THEORY.md                # 理论文档
+│   └── apps/                        # 应用层
+│       └── formation_nav/           # 编队导航应用
+│           ├── config.py            # 应用配置
+│           ├── demo.py              # 📌 python -m cosmos.apps.formation_nav.demo
+│           ├── demo_visualization.py
+│           ├── benchmark.py         # 📌 python -m cosmos.apps.formation_nav.benchmark
+│           └── docs/                # 理论文档
 │
 ├── tests/                           # ════════════════════════════════════
 │   │                                # 程序3: 测试套件
