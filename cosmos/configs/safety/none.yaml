@@ -1,0 +1,4 @@
+# No Safety Filter Configuration
+# Use this for baseline experiments without safety filtering
+
+name: none

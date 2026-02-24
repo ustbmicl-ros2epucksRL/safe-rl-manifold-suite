@@ -1,0 +1,25 @@
+# COSMOS Safety Filter Configuration
+
+name: cosmos
+
+# Safety mode: centralized or decentralized
+mode: decentralized
+
+# Safety margins
+safety_radius: 0.5
+boundary_margin: 0.5
+obstacle_margin: 0.3
+
+# ATACOM parameters
+K_c: 50.0
+dq_max: 0.8
+eps_pinv: 1e-4
+
+# RMPflow blending
+rmp_formation_blend: 0.3
+
+# Slack variables
+slack_type: softcorner
+slack_beta: 20.0
+slack_beta_formation: 10.0
+slack_threshold: 0.01

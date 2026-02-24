@@ -1,0 +1,33 @@
+# Formation Navigation Environment Configuration
+
+name: formation_nav
+
+# Number of agents
+num_agents: 4
+
+# Formation shape: square, triangle, circle, line, hexagon
+formation_shape: square
+
+# Formation radius (scale)
+formation_radius: 1.0
+
+# Arena settings
+arena_size: 5.0
+num_obstacles: 4
+obstacle_radius: 0.5
+
+# Dynamics
+dt: 0.05
+max_velocity: 2.0
+max_acceleration: 1.0
+
+# Episode settings
+max_steps: 500
+goal_threshold: 0.5
+
+# Reward weights
+reward:
+  w_nav: 1.0
+  w_formation: 0.1
+  w_smooth: 0.01
+  goal_bonus: 10.0

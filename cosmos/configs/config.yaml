@@ -1,0 +1,38 @@
+# Main configuration file for COSMOS training
+# Usage: python -m cosmos.train [options]
+
+defaults:
+  - _self_
+  - env: formation_nav
+  - algo: mappo
+  - safety: cosmos
+
+# Experiment settings
+experiment:
+  name: cosmos_exp
+  seed: 42
+  num_episodes: 200
+  max_steps: 500
+  device: auto  # auto, cpu, or cuda
+
+# Logging
+logging:
+  log_interval: 10
+  save_interval: 20
+  use_wandb: false
+  wandb_project: cosmos-marl
+  output_dir: outputs
+
+# Checkpoint
+checkpoint:
+  save_best: true
+  save_final: true
+  resume_from: null  # Path to checkpoint to resume from
+
+# Hydra output directory
+hydra:
+  run:
+    dir: ${logging.output_dir}/${experiment.name}/${now:%Y%m%d_%H%M%S}
+  sweep:
+    dir: ${logging.output_dir}/${experiment.name}/sweeps
+    subdir: ${hydra.job.num}
