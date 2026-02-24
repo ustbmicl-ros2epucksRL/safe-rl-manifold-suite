@@ -1,54 +1,33 @@
-# COSMOS 程序架构文档
+# COSMOS 详细架构文档
 
-## 概述
+## 一、程序清单
 
-**COSMOS** (COordinated Safety On Manifold for multi-agent Systems) 是一个用于安全多智能体强化学习的统一框架，支持多种环境、算法和安全滤波器的灵活组合。
+本仓库包含以下独立程序:
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           COSMOS 架构总览                                    │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐ │
-│   │   环境层    │    │   算法层    │    │   安全层    │    │   运行层    │ │
-│   │             │    │             │    │             │    │             │ │
-│   │ FormationNav│    │   MAPPO     │    │    CBF      │    │  Trainer    │ │
-│   │ EpuckSim   │    │   QMIX      │    │   COSMOS    │    │  Runners    │ │
-│   │ SafetyGym  │    │   MADDPG    │    │   ATACOM    │    │  Buffers    │ │
-│   │ MuJoCo     │    │             │    │             │    │             │ │
-│   │ VMAS       │    │             │    │             │    │             │ │
-│   └─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘ │
-│          │                  │                  │                  │        │
-│          └──────────────────┴──────────────────┴──────────────────┘        │
-│                                    │                                        │
-│                         ┌──────────┴──────────┐                            │
-│                         │      Registry       │                            │
-│                         │   (组件注册中心)     │                            │
-│                         └──────────┬──────────┘                            │
-│                                    │                                        │
-│                         ┌──────────┴──────────┐                            │
-│                         │   Hydra Config      │                            │
-│                         │   (配置管理)         │                            │
-│                         └─────────────────────┘                            │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+| 程序 | 目录 | 入口 | 功能 |
+|------|------|------|------|
+| **COSMOS 框架** | `cosmos/` | `python -m cosmos.train` | 统一训练框架 |
+| **编队导航** | `formation_nav/` | `python formation_nav/train.py` | 编队控制应用 |
+| **测试套件** | `tests/` | `python tests/test_all_envs.py` | 组件测试 |
+| **ROS2 部署** | `ros2_ws/` | `ros2 launch epuck_formation ...` | 机器人部署 |
 
 ---
 
-## 一、目录结构
+## 二、目录结构详解
 
 ```
 safe-rl-manifold-suite/
 │
-├── cosmos/                          # 🎯 核心框架
+├── cosmos/                          # ════════════════════════════════════
+│   │                                # 程序1: COSMOS 统一训练框架
+│   │                                # ════════════════════════════════════
 │   ├── __init__.py
-│   ├── registry.py                  # 组件注册器
-│   ├── train.py                     # Hydra 训练入口
-│   ├── trainer.py                   # 统一训练器
+│   ├── train.py                     # 📌 主入口: python -m cosmos.train
+│   ├── trainer.py                   # 训练器 (训练循环、日志、检查点)
+│   ├── registry.py                  # 组件注册器 (ENV/ALGO/SAFETY_REGISTRY)
 │   │
 │   ├── configs/                     # Hydra 配置文件
-│   │   ├── config.yaml              # 主配置
+│   │   ├── config.yaml              # 主配置 (defaults 组合)
 │   │   ├── env/                     # 环境配置
 │   │   │   ├── formation_nav.yaml
 │   │   │   ├── epuck_sim.yaml
@@ -59,669 +38,490 @@ safe-rl-manifold-suite/
 │   │   │   ├── mappo.yaml
 │   │   │   ├── qmix.yaml
 │   │   │   └── maddpg.yaml
-│   │   └── safety/                  # 安全滤波器配置
+│   │   └── safety/                  # 安全滤波配置
 │   │       ├── cosmos.yaml
 │   │       ├── cbf.yaml
 │   │       └── none.yaml
 │   │
-│   ├── envs/                        # 环境封装
+│   ├── envs/                        # 环境封装层
 │   │   ├── __init__.py
-│   │   ├── base.py                  # BaseMultiAgentEnv 基类
-│   │   ├── formation_nav.py         # 编队导航环境
+│   │   ├── base.py                  # BaseMultiAgentEnv 抽象基类
+│   │   ├── formation_nav.py         # 编队导航环境封装
 │   │   ├── webots_wrapper.py        # Webots/E-puck 环境
+│   │   ├── epuck_visualizer.py      # E-puck matplotlib 可视化
 │   │   ├── safety_gym_wrapper.py    # Safety-Gymnasium 封装
 │   │   ├── mujoco_wrapper.py        # MuJoCo 封装
-│   │   ├── vmas_wrapper.py          # VMAS 封装
-│   │   └── epuck_visualizer.py      # E-puck 可视化
+│   │   └── vmas_wrapper.py          # VMAS 封装
 │   │
-│   ├── algos/                       # MARL 算法
+│   ├── algos/                       # MARL 算法层
 │   │   ├── __init__.py
-│   │   ├── base.py                  # BaseMARLAlgo 基类
-│   │   ├── mappo.py                 # MAPPO 实现
-│   │   ├── qmix.py                  # QMIX 实现
-│   │   └── maddpg.py                # MADDPG 实现
+│   │   ├── base.py                  # BaseMARLAlgo 抽象基类
+│   │   ├── mappo.py                 # MAPPO (Multi-Agent PPO)
+│   │   ├── qmix.py                  # QMIX (Value Decomposition)
+│   │   └── maddpg.py                # MADDPG (Multi-Agent DDPG)
 │   │
-│   ├── safety/                      # 安全滤波器
+│   ├── safety/                      # 安全滤波层
 │   │   ├── __init__.py
-│   │   ├── base.py                  # BaseSafetyFilter 基类
-│   │   └── cosmos_filter.py         # CBF/COSMOS 实现
+│   │   ├── base.py                  # BaseSafetyFilter 抽象基类
+│   │   └── cosmos_filter.py         # CBF + COSMOS 实现
 │   │
 │   ├── buffers/                     # 经验缓冲区
 │   │   ├── __init__.py
-│   │   ├── rollout_buffer.py        # On-policy 缓冲区
-│   │   └── replay_buffer.py         # Off-policy 缓冲区
+│   │   ├── rollout_buffer.py        # On-policy (GAE)
+│   │   └── replay_buffer.py         # Off-policy (PER)
 │   │
-│   └── runners/                     # 训练运行器
-│       ├── __init__.py
-│       ├── episode_runner.py        # 单线程运行器
-│       └── parallel_runner.py       # 并行运行器
+│   ├── runners/                     # 训练运行器
+│   │   ├── __init__.py
+│   │   ├── episode_runner.py        # 单线程顺序执行
+│   │   └── parallel_runner.py       # 多进程并行执行
+│   │
+│   └── utils/
+│       └── checkpoint.py            # 检查点工具
 │
-├── formation_nav/                   # 📐 编队导航模块
-│   ├── algo/                        # MAPPO 原始实现
+├── formation_nav/                   # ════════════════════════════════════
+│   │                                # 程序2: 编队导航独立应用
+│   │                                # ════════════════════════════════════
+│   ├── __init__.py
+│   ├── config.py                    # 配置 (Python dataclass)
+│   ├── train.py                     # 📌 主入口: python formation_nav/train.py
+│   ├── demo.py                      # 可视化演示
+│   ├── demo_visualization.py        # 绘图工具
+│   ├── benchmark.py                 # 性能基准 (RMPflow vs MAPPO)
+│   │
+│   ├── algo/                        # MAPPO 独立实现
+│   │   ├── __init__.py
+│   │   ├── networks.py              # Actor/Critic 网络
+│   │   ├── buffer.py                # RolloutBuffer
+│   │   └── mappo.py                 # MAPPO 训练器
+│   │
 │   ├── env/                         # 编队环境
-│   ├── safety/                      # ATACOM/COSMOS/RMPflow
-│   └── docs/                        # 理论文档
+│   │   ├── __init__.py
+│   │   ├── formation_env.py         # FormationNavEnv
+│   │   └── formations.py            # 编队形状与拓扑
+│   │
+│   ├── safety/                      # 安全模块
+│   │   ├── __init__.py
+│   │   ├── constraints.py           # StateConstraint, ConstraintsSet
+│   │   ├── atacom.py                # ATACOM 流形投影
+│   │   ├── cosmos.py                # COSMOS 安全滤波
+│   │   ├── rmp_tree.py              # RMPflow 树结构
+│   │   └── rmp_policies.py          # RMP 叶节点策略
+│   │
+│   └── docs/
+│       └── THEORY.md                # 理论文档
 │
-├── ros2_ws/                         # 🤖 ROS2 部署
-│   └── src/epuck_formation/         # E-puck ROS2 包
-│       ├── package.xml
+├── tests/                           # ════════════════════════════════════
+│   │                                # 程序3: 测试套件
+│   │                                # ════════════════════════════════════
+│   └── test_all_envs.py             # 📌 主入口: python tests/test_all_envs.py
+│
+├── examples/                        # ════════════════════════════════════
+│   │                                # 示例与演示
+│   │                                # ════════════════════════════════════
+│   └── Epuck_Colab_Demo.ipynb       # Google Colab 演示 Notebook
+│
+├── ros2_ws/                         # ════════════════════════════════════
+│   │                                # 程序4: ROS2 部署
+│   │                                # ════════════════════════════════════
+│   └── src/epuck_formation/
+│       ├── package.xml              # ROS2 包配置
 │       ├── CMakeLists.txt
-│       ├── launch/                  # 启动文件
-│       ├── scripts/                 # 节点脚本
-│       ├── worlds/                  # Webots 世界文件
-│       └── config/                  # 参数配置
+│       ├── launch/
+│       │   └── epuck_formation.launch.py  # 📌 ros2 launch ...
+│       ├── scripts/
+│       │   └── formation_controller.py   # 编队控制节点
+│       ├── worlds/
+│       │   └── epuck_arena.wbt      # Webots 仿真世界
+│       └── config/
+│           └── formation_params.yaml
 │
-├── docs/                            # 📚 文档
-│   └── ROS2_WEBOTS_SETUP.md
+├── scripts/                         # 工具脚本
+│   └── analyze_results.py           # 结果分析与绘图
 │
-├── scripts/                         # 🔧 工具脚本
-│   └── analyze_results.py
+├── docs/                            # 文档
+│   └── ROS2_WEBOTS_SETUP.md         # ROS2/Webots 安装指南
 │
-├── test_all_envs.py                 # ✅ 测试套件
-├── setup.sh                         # 安装脚本
+├── refs/                            # 参考文献 (PDF/笔记)
+├── paper/                           # 论文资料
+│
+├── algorithms/                      # Git 子模块 (外部引用)
+│   ├── multi-robot-rmpflow/         # RMPflow 参考实现
+│   └── safe-po/                     # 安全策略优化参考
+│
+├── envs/                            # Git 子模块 (外部引用)
+│   └── safety-gymnasium/            # Safety-Gym 参考
+│
+├── setup.sh                         # 安装脚本 (Conda)
 ├── setup.py                         # pip 安装配置
-└── run_experiments.sh               # 实验脚本
+├── run_experiments.sh               # 批量实验脚本
+├── requirements.txt                 # Python 依赖
+├── ARCHITECTURE.md                  # 本文件
+├── CLAUDE.md                        # Claude AI 开发指南
+├── INSTALL_ENVS.md                  # 环境安装说明
+└── README.md                        # 项目说明
 ```
 
 ---
 
-## 二、核心组件架构
+## 三、程序架构图
 
-### 2.1 Registry 模式 (组件注册)
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      Registry Pattern                        │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│   @ENV_REGISTRY.register("formation_nav")                   │
-│   class FormationNavEnv(BaseMultiAgentEnv):                 │
-│       ...                                                   │
-│                                                             │
-│   @ALGO_REGISTRY.register("mappo")                          │
-│   class MAPPO(BaseMARLAlgo):                                │
-│       ...                                                   │
-│                                                             │
-│   @SAFETY_REGISTRY.register("cbf")                          │
-│   class CBFFilter(BaseSafetyFilter):                        │
-│       ...                                                   │
-│                                                             │
-│   ┌─────────────────────────────────────────────────────┐   │
-│   │                    Registry                          │   │
-│   ├─────────────────────────────────────────────────────┤   │
-│   │  ENV_REGISTRY:                                       │   │
-│   │    "formation_nav" → FormationNavEnv                 │   │
-│   │    "epuck_sim"     → EpuckSimEnv                     │   │
-│   │    "safety_gym"    → SafetyGymWrapper                │   │
-│   │    "mujoco"        → MuJoCoWrapper                   │   │
-│   │    "vmas"          → VMASWrapper                     │   │
-│   ├─────────────────────────────────────────────────────┤   │
-│   │  ALGO_REGISTRY:                                      │   │
-│   │    "mappo"   → MAPPO                                 │   │
-│   │    "qmix"    → QMIX                                  │   │
-│   │    "maddpg"  → MADDPG                                │   │
-│   ├─────────────────────────────────────────────────────┤   │
-│   │  SAFETY_REGISTRY:                                    │   │
-│   │    "cbf"     → CBFFilter                             │   │
-│   │    "cosmos"  → COSMOSFilter                          │   │
-│   │    "none"    → NoFilter                              │   │
-│   └─────────────────────────────────────────────────────┘   │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### 2.2 类继承结构
+### 3.1 COSMOS 框架架构
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                            类继承关系                                        │
+│                         COSMOS Framework                                     │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│   BaseMultiAgentEnv (ABC)                                                   │
-│   ├── FormationNavEnv          # 编队导航                                   │
-│   ├── EpuckSimEnv              # E-puck 仿真                                │
-│   ├── WebotsEpuckEnv           # Webots E-puck                             │
-│   ├── SafetyGymWrapper         # Safety-Gymnasium                          │
-│   ├── MuJoCoWrapper            # MuJoCo                                    │
-│   └── VMASWrapper              # VMAS                                      │
-│                                                                             │
-│   BaseMARLAlgo (ABC)                                                        │
-│   ├── MAPPO                    # Multi-Agent PPO                           │
-│   ├── QMIX                     # Value Decomposition                       │
-│   └── MADDPG                   # Multi-Agent DDPG                          │
-│                                                                             │
-│   BaseSafetyFilter (ABC)                                                    │
-│   ├── CBFFilter                # Control Barrier Function                  │
-│   ├── COSMOSFilter             # Manifold Projection                       │
-│   └── NoFilter                 # Pass-through (baseline)                   │
+│   ┌─────────────────────────────────────────────────────────────────────┐  │
+│   │                          train.py (入口)                             │  │
+│   │                              │                                       │  │
+│   │                      ┌───────┴───────┐                              │  │
+│   │                      │    Hydra      │                              │  │
+│   │                      │   配置加载     │                              │  │
+│   │                      └───────┬───────┘                              │  │
+│   │                              │                                       │  │
+│   │                      ┌───────┴───────┐                              │  │
+│   │                      │   Trainer     │                              │  │
+│   │                      └───────┬───────┘                              │  │
+│   └──────────────────────────────┼──────────────────────────────────────┘  │
+│                                  │                                          │
+│          ┌───────────────────────┼───────────────────────┐                 │
+│          │                       │                       │                 │
+│          ▼                       ▼                       ▼                 │
+│   ┌─────────────┐         ┌─────────────┐         ┌─────────────┐         │
+│   │ ENV_REGISTRY│         │ALGO_REGISTRY│         │SAFETY_REGIS │         │
+│   │             │         │             │         │             │         │
+│   │ formation   │         │   mappo     │         │    cbf      │         │
+│   │ epuck_sim   │         │   qmix      │         │   cosmos    │         │
+│   │ safety_gym  │         │   maddpg    │         │    none     │         │
+│   │ mujoco      │         │             │         │             │         │
+│   │ vmas        │         │             │         │             │         │
+│   └──────┬──────┘         └──────┬──────┘         └──────┬──────┘         │
+│          │                       │                       │                 │
+│          └───────────────────────┴───────────────────────┘                 │
+│                                  │                                          │
+│                          ┌───────┴───────┐                                 │
+│                          │    Runner     │                                 │
+│                          │   + Buffer    │                                 │
+│                          └───────────────┘                                 │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
----
-
-## 三、数据流架构
-
-### 3.1 训练数据流
+### 3.2 编队导航架构
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                           训练数据流                                         │
+│                       Formation Navigation                                   │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│   ┌─────────┐     ┌─────────┐     ┌─────────┐     ┌─────────┐             │
-│   │  Env    │────▶│ Policy  │────▶│ Safety  │────▶│  Env    │             │
-│   │ (obs)   │     │(action) │     │(project)│     │ (step)  │             │
-│   └─────────┘     └─────────┘     └─────────┘     └─────────┘             │
-│        │                                               │                   │
-│        │               ┌─────────┐                     │                   │
-│        └──────────────▶│ Buffer  │◀────────────────────┘                   │
-│                        │(store)  │                                         │
-│                        └────┬────┘                                         │
-│                             │                                              │
-│                        ┌────▼────┐                                         │
-│                        │ Update  │                                         │
-│                        │(policy) │                                         │
-│                        └─────────┘                                         │
+│   ┌─────────────────────────────────────────────────────────────────────┐  │
+│   │                          train.py (入口)                             │  │
+│   │                              │                                       │  │
+│   │                      ┌───────┴───────┐                              │  │
+│   │                      │   Config      │                              │  │
+│   │                      │  (dataclass)  │                              │  │
+│   │                      └───────┬───────┘                              │  │
+│   └──────────────────────────────┼──────────────────────────────────────┘  │
+│                                  │                                          │
+│          ┌───────────────────────┼───────────────────────┐                 │
+│          │                       │                       │                 │
+│          ▼                       ▼                       ▼                 │
+│   ┌─────────────┐         ┌─────────────┐         ┌─────────────┐         │
+│   │     env/    │         │    algo/    │         │   safety/   │         │
+│   │             │         │             │         │             │         │
+│   │ formation   │         │   MAPPO     │         │  ATACOM     │         │
+│   │ _env.py     │         │  networks   │         │  COSMOS     │         │
+│   │ formations  │         │  buffer     │         │  RMPflow    │         │
+│   └─────────────┘         └─────────────┘         └─────────────┘         │
 │                                                                             │
-│   详细流程:                                                                 │
-│   1. env.reset() → obs, share_obs                                          │
-│   2. policy.get_actions(obs) → actions, log_probs                          │
-│   3. safety.project(actions, constraint_info) → safe_actions               │
-│   4. env.step(safe_actions) → next_obs, rewards, costs, dones              │
-│   5. buffer.insert(obs, actions, rewards, costs, ...)                      │
-│   6. buffer.compute_returns() → advantages                                 │
-│   7. policy.update(buffer) → loss metrics                                  │
+│   特点:                                                                     │
+│   - 独立的 MAPPO 实现                                                       │
+│   - ATACOM + COSMOS + RMPflow 集成                                         │
+│   - 面向论文的完整实现                                                       │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 3.2 安全滤波数据流
+### 3.3 ROS2 部署架构
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                        CBF 安全滤波器数据流                                   │
+│                          ROS2 Deployment                                     │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│   输入:                                                                     │
-│   ┌─────────────────┐    ┌─────────────────┐                               │
-│   │  nominal_action │    │ constraint_info │                               │
-│   │     u_nom       │    │   positions     │                               │
-│   │   (N, act_dim)  │    │   velocities    │                               │
-│   └────────┬────────┘    │   obstacles     │                               │
-│            │             └────────┬────────┘                               │
-│            │                      │                                        │
-│            ▼                      ▼                                        │
-│   ┌─────────────────────────────────────────┐                              │
-│   │         CBF Constraint Construction      │                              │
-│   │                                         │                              │
-│   │  h(x) = ||p_i - p_j||² - d_safe²       │  ← 碰撞避免                   │
-│   │  ḣ(x) + αh(x) ≥ 0                      │  ← CBF 条件                   │
-│   │                                         │                              │
-│   │  构建 QP: min ||u - u_nom||²           │                              │
-│   │           s.t. A·u ≥ b                 │                              │
-│   └────────────────┬────────────────────────┘                              │
-│                    │                                                       │
-│                    ▼                                                       │
-│   ┌─────────────────────────────────────────┐                              │
-│   │            QP Solver (投影梯度下降)       │                              │
-│   │                                         │                              │
-│   │  u* = u_nom + η·A^T·λ                  │                              │
-│   │  λ = max(0, b - A·u)                   │                              │
-│   └────────────────┬────────────────────────┘                              │
-│                    │                                                       │
-│                    ▼                                                       │
-│   ┌─────────────────┐                                                      │
-│   │   safe_action   │                                                      │
-│   │      u*         │                                                      │
-│   │   (N, act_dim)  │                                                      │
-│   └─────────────────┘                                                      │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 四、环境接口
-
-### 4.1 BaseMultiAgentEnv 接口
-
-```python
-class BaseMultiAgentEnv(ABC):
-    """多智能体环境基类"""
-
-    # 属性
-    @property
-    def num_agents(self) -> int: ...
-    @property
-    def observation_space(self) -> gym.Space: ...
-    @property
-    def action_space(self) -> gym.Space: ...
-    @property
-    def share_observation_space(self) -> gym.Space: ...
-
-    # 维度查询
-    def get_obs_dim(self) -> int: ...
-    def get_act_dim(self) -> int: ...
-    def get_share_obs_dim(self) -> int: ...
-
-    # 核心方法
-    def reset(self, seed=None) -> Tuple[obs, share_obs, info]: ...
-    def step(self, actions) -> Tuple[obs, share_obs, rewards, costs, dones, infos, truncated]: ...
-    def get_constraint_info(self) -> Dict: ...
-    def render(self, mode="human"): ...
-    def close(self): ...
-```
-
-### 4.2 环境对比
-
-| 环境 | 类型 | 智能体数 | 观测维度 | 动作维度 | 速度 |
-|------|------|---------|---------|---------|------|
-| formation_nav | 内置 | 可变 | 30 | 2 | ~10k FPS |
-| epuck_sim | 内置 | 可变 | 16 | 2 | ~5k FPS |
-| safety_gym | 封装 | 1 | 60 | 2 | ~1k FPS |
-| mujoco | 封装 | 可变 | 27+ | 4+ | ~2k FPS |
-| vmas | 封装 | 可变 | 可变 | 2 | ~3k FPS |
-
----
-
-## 五、算法架构
-
-### 5.1 MAPPO (Multi-Agent PPO)
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              MAPPO 架构                                      │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│   ┌──────────────────────────────────────────────────────────────────┐     │
-│   │                         Actor Network                             │     │
-│   │  ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐       │     │
-│   │  │  obs_i  │───▶│ Linear  │───▶│  ReLU   │───▶│ Linear  │──▶ μ  │     │
-│   │  │ (N,obs) │    │   128   │    │         │    │ act_dim │       │     │
-│   │  └─────────┘    └─────────┘    └─────────┘    └─────────┘       │     │
-│   │                                                         ──▶ σ   │     │
-│   │                                                                  │     │
-│   │  输出: actions ~ N(μ, σ²), log_probs                            │     │
-│   └──────────────────────────────────────────────────────────────────┘     │
-│                                                                             │
-│   ┌──────────────────────────────────────────────────────────────────┐     │
-│   │                        Critic Network (CTDE)                      │     │
-│   │  ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐       │     │
-│   │  │share_obs│───▶│ Linear  │───▶│  ReLU   │───▶│ Linear  │──▶ V  │     │
-│   │  │(N,share)│    │   128   │    │         │    │    1    │       │     │
-│   │  └─────────┘    └─────────┘    └─────────┘    └─────────┘       │     │
-│   │                                                                  │     │
-│   │  输出: value estimates V(s)                                     │     │
-│   └──────────────────────────────────────────────────────────────────┘     │
-│                                                                             │
-│   训练目标:                                                                 │
-│   L_actor = -min(r·A, clip(r,1-ε,1+ε)·A) - β·H(π)                         │
-│   L_critic = (V - V_target)²                                               │
-│                                                                             │
-│   其中: r = π(a|s)/π_old(a|s), A = GAE advantages                          │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
-### 5.2 QMIX (Value Decomposition)
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              QMIX 架构                                       │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│   Agent Networks (每个智能体):                                              │
-│   ┌─────────┐    ┌─────────┐    ┌─────────┐                                │
-│   │  obs_i  │───▶│  GRU    │───▶│ Linear  │───▶ Q_i(s_i, a)               │
-│   └─────────┘    │  (64)   │    │n_actions│                                │
-│                  └─────────┘    └─────────┘                                │
-│                                                                             │
-│   Mixing Network:                                                           │
-│   ┌─────────────────────────────────────────────────────────────────┐      │
-│   │                                                                 │      │
-│   │   Q_1 ──┐                                                       │      │
-│   │         │    ┌──────────────┐                                   │      │
-│   │   Q_2 ──┼───▶│  Hypernetwork │───▶ Q_tot                       │      │
-│   │         │    │  (正权重约束)  │                                   │      │
-│   │   Q_N ──┘    └──────────────┘                                   │      │
-│   │                     ▲                                           │      │
-│   │                     │                                           │      │
-│   │              ┌──────┴──────┐                                    │      │
-│   │              │ global_state │                                    │      │
-│   │              └─────────────┘                                    │      │
-│   │                                                                 │      │
-│   │   约束: ∂Q_tot/∂Q_i ≥ 0 (单调性)                               │      │
-│   └─────────────────────────────────────────────────────────────────┘      │
-│                                                                             │
-│   训练目标: L = (Q_tot - (r + γ·max Q_tot'))²                              │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
-### 5.3 MADDPG (Multi-Agent DDPG)
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                            MADDPG 架构                                       │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│   每个智能体 i:                                                              │
-│                                                                             │
-│   Actor μ_i:  obs_i ──▶ [MLP] ──▶ tanh ──▶ action_i                        │
-│                                                                             │
-│   Critic Q_i: [obs_all, action_all] ──▶ [MLP] ──▶ Q_i                      │
-│                                                                             │
-│   ┌─────────────────────────────────────────────────────────────────┐      │
-│   │                      Centralized Critic                          │      │
-│   │                                                                 │      │
-│   │   ┌───────┐ ┌───────┐ ┌───────┐    ┌───────┐                   │      │
-│   │   │ obs_1 │ │ obs_2 │ │ obs_N │    │action │                   │      │
-│   │   └───┬───┘ └───┬───┘ └───┬───┘    │ _all  │                   │      │
-│   │       └─────────┴─────────┴────────┴───┬───┘                   │      │
-│   │                                        │                        │      │
-│   │                                   ┌────▼────┐                   │      │
-│   │                                   │  Concat │                   │      │
-│   │                                   └────┬────┘                   │      │
-│   │                                        │                        │      │
-│   │                                   ┌────▼────┐                   │      │
-│   │                                   │   MLP   │                   │      │
-│   │                                   │ 256,256 │                   │      │
-│   │                                   └────┬────┘                   │      │
-│   │                                        │                        │      │
-│   │                                   ┌────▼────┐                   │      │
-│   │                                   │   Q_i   │                   │      │
-│   │                                   └─────────┘                   │      │
-│   └─────────────────────────────────────────────────────────────────┘      │
-│                                                                             │
-│   训练:                                                                     │
-│   - Actor:  ∇_θ J = E[∇_a Q_i(s,a)|_{a=μ(s)} · ∇_θ μ_i(s)]                │
-│   - Critic: L = (Q_i - (r + γ·Q_i'(s',μ'(s'))))²                          │
-│   - 软更新: θ' ← τθ + (1-τ)θ'                                              │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 六、安全滤波器架构
-
-### 6.1 CBF (Control Barrier Function)
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         CBF 安全滤波器                                       │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│   安全约束定义:                                                              │
-│                                                                             │
-│   1. 碰撞避免 (agent-agent):                                                │
-│      h_ij(x) = ||p_i - p_j||² - d_safe²                                    │
-│      安全条件: h_ij(x) ≥ 0                                                  │
-│                                                                             │
-│   2. 边界约束 (boundary):                                                   │
-│      h_b(x) = (arena_size/2)² - ||p_i||²                                   │
-│                                                                             │
-│   3. 障碍物避免 (obstacle):                                                 │
-│      h_obs(x) = ||p_i - p_obs||² - r_obs²                                  │
-│                                                                             │
-│   CBF 条件 (确保前向不变性):                                                │
-│      ḣ(x,u) + α·h(x) ≥ 0                                                   │
-│                                                                             │
-│   QP 形式:                                                                  │
-│      min  ||u - u_nom||²                                                   │
-│      s.t. A·u ≥ b                                                          │
-│                                                                             │
-│      其中: A = ∂h/∂x · g(x)                                                │
-│            b = -∂h/∂x · f(x) - α·h(x)                                      │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
-### 6.2 COSMOS (Coordinated Safety on Manifold)
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         COSMOS 安全滤波器                                    │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│   ┌─────────────────────────────────────────────────────────────────┐      │
-│   │                     约束流形投影                                  │      │
-│   │                                                                 │      │
-│   │   约束: c(q) = 0  (编队约束、连通性约束等)                        │      │
-│   │                                                                 │      │
-│   │   雅可比: J = ∂c/∂q                                             │      │
-│   │                                                                 │      │
-│   │   零空间投影: N = I - J^+ · J                                   │      │
-│   │                                                                 │      │
-│   │   安全动作: u* = N · u_nom + J^+ · (-α·c(q))                    │      │
-│   │                ↑              ↑                                 │      │
-│   │           零空间分量      约束校正分量                            │      │
-│   └─────────────────────────────────────────────────────────────────┘      │
-│                                                                             │
-│   ┌─────────────────────────────────────────────────────────────────┐      │
-│   │                      RMPflow 集成                                │      │
-│   │                                                                 │      │
-│   │   RMP Tree:                                                     │      │
-│   │                                                                 │      │
-│   │          root (task space)                                      │      │
-│   │           /    |    \                                           │      │
-│   │         /      |      \                                         │      │
-│   │       goal  obstacle  formation                                 │      │
-│   │       RMP     RMP       RMP                                     │      │
-│   │                                                                 │      │
-│   │   Pullback: 从叶节点向根节点传递 (f, M)                          │      │
-│   │   Resolve:  a = M^{-1} · f                                      │      │
-│   └─────────────────────────────────────────────────────────────────┘      │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 七、配置系统
-
-### 7.1 Hydra 配置层次
-
-```
-configs/
-├── config.yaml              # 默认配置 + defaults 组合
-│   defaults:
-│   - env: formation_nav
-│   - algo: mappo
-│   - safety: cosmos
-│
-├── env/                     # 环境配置组
-│   ├── formation_nav.yaml
-│   ├── epuck_sim.yaml
-│   └── safety_gym.yaml
-│
-├── algo/                    # 算法配置组
-│   ├── mappo.yaml
-│   ├── qmix.yaml
-│   └── maddpg.yaml
-│
-└── safety/                  # 安全配置组
-    ├── cosmos.yaml
-    ├── cbf.yaml
-    └── none.yaml
-```
-
-### 7.2 配置覆盖示例
-
-```bash
-# 基础运行
-python -m cosmos.train
-
-# 切换环境
-python -m cosmos.train env=epuck_sim
-
-# 切换算法
-python -m cosmos.train algo=qmix
-
-# 覆盖参数
-python -m cosmos.train env.num_agents=6 algo.actor_lr=1e-4
-
-# 多配置 sweep
-python -m cosmos.train -m algo=mappo,qmix,maddpg env.num_agents=4,6,8
-```
-
----
-
-## 八、ROS2 部署架构
-
-### 8.1 节点通信图
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         ROS2 节点通信                                        │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│   ┌─────────────────┐          ┌─────────────────┐                         │
-│   │     Webots      │          │  Formation      │                         │
-│   │   Simulation    │          │  Controller     │                         │
-│   │                 │          │                 │                         │
-│   │  /epuck{i}/odom │─────────▶│                 │                         │
-│   │  /epuck{i}/prox │─────────▶│   Compute       │                         │
-│   │                 │          │   nominal       │                         │
-│   │                 │◀─────────│   actions       │                         │
-│   │  /epuck{i}/     │          │                 │                         │
-│   │    cmd_vel      │          └────────┬────────┘                         │
-│   └─────────────────┘                   │                                  │
-│                                         │                                  │
-│                                         ▼                                  │
-│                              ┌─────────────────┐                           │
-│                              │  Safety Filter  │                           │
-│                              │     Node        │                           │
-│                              │                 │                           │
-│                              │  CBF/COSMOS     │                           │
-│                              │  projection     │                           │
-│                              └────────┬────────┘                           │
-│                                       │                                    │
-│                                       ▼                                    │
-│                              ┌─────────────────┐                           │
-│                              │  MAPPO Policy   │                           │
-│                              │     Node        │                           │
-│                              │                 │                           │
-│                              │  Trained model  │                           │
-│                              │  inference      │                           │
-│                              └─────────────────┘                           │
+│   ┌─────────────┐      话题订阅      ┌─────────────────────────────────┐   │
+│   │   Webots    │ ─────────────────▶ │    formation_controller.py     │   │
+│   │ Simulation  │   /epuck{i}/odom   │                                 │   │
+│   │             │   /epuck{i}/prox   │   ┌─────────────────────────┐   │   │
+│   │ ┌─────────┐ │                    │   │     COSMOS/CBF          │   │   │
+│   │ │ E-puck0 │ │ ◀───────────────── │   │    Safety Filter        │   │   │
+│   │ │ E-puck1 │ │   /epuck{i}/cmd_vel│   └─────────────────────────┘   │   │
+│   │ │ E-puck2 │ │                    │                                 │   │
+│   │ │ E-puck3 │ │                    │   ┌─────────────────────────┐   │   │
+│   │ └─────────┘ │                    │   │     MAPPO Policy        │   │   │
+│   └─────────────┘                    │   │    (trained model)      │   │   │
+│                                      │   └─────────────────────────┘   │   │
+│                                      └─────────────────────────────────┘   │
 │                                                                             │
 │   话题:                                                                     │
-│   /epuck{i}/odom      - nav_msgs/Odometry     - 机器人位姿                 │
-│   /epuck{i}/proximity - Float32MultiArray     - 8个红外传感器               │
-│   /epuck{i}/cmd_vel   - geometry_msgs/Twist   - 速度命令                   │
-│   /formation/goal     - PoseStamped           - 编队目标                   │
-│   /formation/status   - String                - 编队状态                   │
+│   ├─ /epuck{i}/odom       (nav_msgs/Odometry)     机器人位姿               │
+│   ├─ /epuck{i}/proximity  (Float32MultiArray)     红外传感器               │
+│   ├─ /epuck{i}/cmd_vel    (geometry_msgs/Twist)   速度命令                 │
+│   ├─ /formation/goal      (PoseStamped)           编队目标                 │
+│   └─ /formation/status    (String)                编队状态                 │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 九、扩展指南
+## 四、类继承关系
 
-### 9.1 添加新环境
+### 4.1 环境类
 
+```
+gym.Env (ABC)
+    │
+    └── BaseMultiAgentEnv (cosmos/envs/base.py)
+            │
+            ├── FormationNavEnv        # 编队导航
+            ├── EpuckSimEnv            # E-puck 仿真
+            ├── WebotsEpuckEnv         # Webots E-puck
+            ├── SafetyGymWrapper       # Safety-Gymnasium
+            ├── MuJoCoWrapper          # MuJoCo
+            └── VMASWrapper            # VMAS
+```
+
+### 4.2 算法类
+
+```
+BaseMARLAlgo (ABC)
+    │
+    ├── MAPPO                          # On-policy, Actor-Critic
+    │   ├── Actor (MLP + Gaussian)
+    │   └── Critic (MLP)
+    │
+    ├── QMIX                           # Off-policy, Value-based
+    │   ├── AgentNetwork (GRU)
+    │   └── MixingNetwork (Hypernetwork)
+    │
+    └── MADDPG                         # Off-policy, Actor-Critic
+        ├── Actor (Deterministic)
+        └── CentralizedCritic
+```
+
+### 4.3 安全滤波类
+
+```
+BaseSafetyFilter (ABC)
+    │
+    ├── CBFFilter                      # Control Barrier Function
+    │   └── _solve_cbf_qp()            # QP 求解器
+    │
+    ├── COSMOSFilter                   # 约束流形投影
+    │   ├── _project_to_manifold()     # 零空间投影
+    │   └── _rmpflow_correction()      # RMPflow 修正
+    │
+    └── NoFilter                       # 直通 (基线)
+```
+
+---
+
+## 五、数据流
+
+### 5.1 训练数据流
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│                           Training Loop                                   │
+├──────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  for episode in range(num_episodes):                                     │
+│      │                                                                   │
+│      ▼                                                                   │
+│  ┌────────────────┐                                                      │
+│  │  env.reset()   │ ──▶ obs (N, obs_dim), share_obs (N, share_dim)      │
+│  └───────┬────────┘                                                      │
+│          │                                                               │
+│          ▼                                                               │
+│  for step in range(max_steps):                                           │
+│      │                                                                   │
+│      ▼                                                                   │
+│  ┌────────────────────────────────────────────────────────────────┐     │
+│  │  actions, log_probs = policy.get_actions(obs)                  │     │
+│  │  values = critic.get_values(share_obs)                         │     │
+│  └───────────────────────────┬────────────────────────────────────┘     │
+│                              │                                           │
+│                              ▼                                           │
+│  ┌────────────────────────────────────────────────────────────────┐     │
+│  │  constraint_info = env.get_constraint_info()                   │     │
+│  │  safe_actions = safety_filter.project(actions, constraint_info)│     │
+│  └───────────────────────────┬────────────────────────────────────┘     │
+│                              │                                           │
+│                              ▼                                           │
+│  ┌────────────────────────────────────────────────────────────────┐     │
+│  │  next_obs, share_obs, rewards, costs, dones, infos, _ =        │     │
+│  │      env.step(safe_actions)                                    │     │
+│  └───────────────────────────┬────────────────────────────────────┘     │
+│                              │                                           │
+│                              ▼                                           │
+│  ┌────────────────────────────────────────────────────────────────┐     │
+│  │  buffer.insert(obs, actions, rewards, costs, values, log_probs)│     │
+│  └───────────────────────────┬────────────────────────────────────┘     │
+│                              │                                           │
+│  end for step               │                                           │
+│      │                      │                                           │
+│      ▼                      ▼                                           │
+│  ┌────────────────────────────────────────────────────────────────┐     │
+│  │  buffer.compute_returns_and_advantages()                       │     │
+│  │  loss = policy.update(buffer)                                  │     │
+│  └────────────────────────────────────────────────────────────────┘     │
+│                                                                          │
+│  end for episode                                                         │
+│                                                                          │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+### 5.2 CBF 安全滤波数据流
+
+```
+输入: u_nom (N, act_dim), constraint_info
+
+for each agent pair (i, j):
+    │
+    ├── 计算距离: d_ij = ||p_i - p_j||
+    │
+    ├── 构建 CBF: h_ij = d_ij² - d_safe²
+    │
+    └── CBF 条件: ḣ_ij + α·h_ij ≥ 0
+                  ▼
+        ∂h/∂p · (v + B·u) + α·h ≥ 0
+                  ▼
+        A·u ≥ b  (线性约束)
+
+QP 求解:
+    min  ||u - u_nom||²
+    s.t. A·u ≥ b
+         u_min ≤ u ≤ u_max
+              │
+              ▼
+    使用投影梯度下降求解:
+    u ← u - η·(u - u_nom)
+    u ← u + η·A^T·max(0, b - A·u)
+              │
+              ▼
+输出: u_safe (N, act_dim)
+```
+
+---
+
+## 六、配置系统
+
+### 6.1 COSMOS (Hydra)
+
+```yaml
+# cosmos/configs/config.yaml
+defaults:
+  - env: formation_nav      # 从 env/ 目录加载
+  - algo: mappo             # 从 algo/ 目录加载
+  - safety: cbf             # 从 safety/ 目录加载
+
+experiment:
+  name: cosmos_exp
+  seed: 42
+  num_episodes: 200
+
+# 命令行覆盖:
+# python -m cosmos.train env=epuck_sim algo=qmix env.num_agents=6
+```
+
+### 6.2 Formation Nav (dataclass)
+
+```python
+# formation_nav/config.py
+@dataclass
+class Config:
+    # Environment
+    num_agents: int = 4
+    formation: str = "square"
+    arena_size: float = 5.0
+
+    # Algorithm
+    actor_lr: float = 3e-4
+    ppo_epochs: int = 10
+
+    # Safety
+    use_safety: bool = True
+    safety_mode: str = "cosmos"
+
+# 命令行覆盖:
+# python train.py --num_agents 6 --formation hexagon
+```
+
+---
+
+## 七、扩展指南
+
+### 7.1 添加新环境
+
+1. 创建环境类:
 ```python
 # cosmos/envs/my_env.py
-from cosmos.registry import ENV_REGISTRY
-from cosmos.envs.base import BaseMultiAgentEnv
-
 @ENV_REGISTRY.register("my_env")
 class MyEnv(BaseMultiAgentEnv):
-    def __init__(self, cfg=None, **kwargs):
-        # 初始化
-        pass
-
-    @property
-    def num_agents(self):
-        return self._num_agents
-
-    def reset(self, seed=None):
-        # 返回 (obs, share_obs, info)
-        pass
-
-    def step(self, actions):
-        # 返回 (obs, share_obs, rewards, costs, dones, infos, truncated)
-        pass
-
-    def get_constraint_info(self):
-        # 返回安全滤波器所需信息
-        return {"positions": ..., "velocities": ...}
+    ...
 ```
 
-### 9.2 添加新算法
+2. 创建配置:
+```yaml
+# cosmos/configs/env/my_env.yaml
+name: my_env
+param1: value1
+```
 
+3. 更新 `__init__.py`:
+```python
+from cosmos.envs.my_env import MyEnv
+```
+
+### 7.2 添加新算法
+
+1. 创建算法类:
 ```python
 # cosmos/algos/my_algo.py
-from cosmos.registry import ALGO_REGISTRY
-from cosmos.algos.base import BaseMARLAlgo
-
 @ALGO_REGISTRY.register("my_algo")
 class MyAlgo(BaseMARLAlgo):
-    def __init__(self, obs_dim, share_obs_dim, act_dim, num_agents, cfg=None, **kwargs):
-        # 初始化网络
-        pass
-
-    def get_actions(self, obs, deterministic=False):
-        # 返回 (actions, log_probs)
-        pass
-
-    def get_values(self, share_obs):
-        # 返回 values
-        pass
-
-    def update(self, buffer):
-        # 更新网络，返回 loss metrics
-        pass
+    ...
 ```
 
-### 9.3 添加新安全滤波器
-
-```python
-# cosmos/safety/my_filter.py
-from cosmos.registry import SAFETY_REGISTRY
-from cosmos.safety.base import BaseSafetyFilter
-
-@SAFETY_REGISTRY.register("my_filter")
-class MyFilter(BaseSafetyFilter):
-    def __init__(self, env_cfg, safety_cfg=None, **kwargs):
-        # 初始化
-        pass
-
-    def reset(self, constraint_info):
-        # 重置滤波器状态
-        pass
-
-    def project(self, actions, constraint_info):
-        # 投影动作到安全空间
-        # 返回 safe_actions
-        pass
+2. 创建配置:
+```yaml
+# cosmos/configs/algo/my_algo.yaml
+name: my_algo
+learning_rate: 3e-4
 ```
 
 ---
 
-## 十、性能指标
+## 八、性能参考
 
-| 组件 | 指标 | 典型值 |
+| 组件 | 指标 | 参考值 |
 |------|------|--------|
-| formation_nav | 训练速度 | ~10,000 steps/sec |
-| epuck_sim | 训练速度 | ~5,000 steps/sec |
-| safety_gym | 训练速度 | ~1,000 steps/sec |
+| formation_nav 训练 | 速度 | ~10,000 steps/sec |
+| epuck_sim 训练 | 速度 | ~5,000 steps/sec |
+| safety_gym 训练 | 速度 | ~1,000 steps/sec |
 | CBF 滤波 | 延迟 | < 1 ms |
 | MAPPO 推理 | 延迟 | < 0.5 ms |
-| QMIX 推理 | 延迟 | < 0.3 ms |
+| 碰撞率 (with CBF) | 安全性 | 0% |
 
 ---
 
-## 十一、参考文献
+## 九、参考文献
 
-| 方法 | 论文 | 用途 |
-|------|------|------|
-| ATACOM | Liu et al., CoRL 2021 | 约束流形投影 |
-| CBF | Ames et al., 2017 | 控制屏障函数 |
-| RMPflow | Cheng et al., WAFR 2018 | 几何运动策略 |
-| MAPPO | Yu et al., NeurIPS 2022 | 多智能体 PPO |
-| QMIX | Rashid et al., ICML 2018 | 值分解 |
-| MADDPG | Lowe et al., NeurIPS 2017 | 多智能体 DDPG |
+1. Liu et al., "Robot Reinforcement Learning on the Constraint Manifold", CoRL 2021
+2. Ames et al., "Control Barrier Functions: Theory and Applications", 2017
+3. Cheng et al., "RMPflow: A Computational Graph for Automatic Motion Policy Generation", WAFR 2018
+4. Yu et al., "The Surprising Effectiveness of PPO in Cooperative Multi-Agent Games", NeurIPS 2022
+5. Rashid et al., "QMIX: Monotonic Value Function Factorisation", ICML 2018
+6. Lowe et al., "Multi-Agent Actor-Critic for Mixed Cooperative-Competitive Environments", NeurIPS 2017
