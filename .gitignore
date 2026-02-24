@@ -21,3 +21,11 @@ wandb/
 # OS
 .DS_Store
 Thumbs.db
+
+# Generated data
+checkpoints/
+demo_output/
+outputs/
+results/
+*.egg-info/
+config.yaml
