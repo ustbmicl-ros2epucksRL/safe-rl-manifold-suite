@@ -11,8 +11,9 @@ Available environments:
 """
 
 from cosmos.envs.base import BaseMultiAgentEnv
+from cosmos.envs.env_wrapper import MultiAgentEnvWrapper, make_env
 
-__all__ = ["BaseMultiAgentEnv"]
+__all__ = ["BaseMultiAgentEnv", "MultiAgentEnvWrapper", "make_env"]
 
 # Import environments to trigger registration
 def _register_envs():
