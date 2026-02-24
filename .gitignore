@@ -1,3 +1,4 @@
+# Python
 __pycache__/
 *.pyc
 *.pyo
@@ -6,11 +7,11 @@ dist/
 build/
 .eggs/
 
-# Training artifacts
+# Training artifacts (all in artifacts/ folder)
+artifacts/
 logs/
-checkpoints/
-*.pt
 wandb/
+*.pt
 
 # IDE
 .idea/
@@ -22,10 +23,5 @@ wandb/
 .DS_Store
 Thumbs.db
 
-# Generated data
-checkpoints/
-demo_output/
-outputs/
-results/
-*.egg-info/
+# Temp files
 config.yaml

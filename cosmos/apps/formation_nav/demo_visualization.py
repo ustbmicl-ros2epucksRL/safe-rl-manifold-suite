@@ -277,11 +277,11 @@ def main():
     parser = argparse.ArgumentParser(description="Formation Navigation Visualization Demo")
     parser.add_argument("--mode", choices=["both", "rmp", "mappo"], default="both",
                        help="Which mode to visualize")
-    parser.add_argument("--model-path", type=str, default="demo_output/cosmos_mappo_model.pt",
+    parser.add_argument("--model-path", type=str, default="artifacts/demo_output/cosmos_mappo_model.pt",
                        help="Path to trained MAPPO model")
     parser.add_argument("--num-agents", type=int, default=4)
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--save-dir", type=str, default="demo_output")
+    parser.add_argument("--save-dir", type=str, default="artifacts/demo_output")
     args = parser.parse_args()
 
     cfg = Config()

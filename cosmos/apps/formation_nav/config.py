@@ -64,7 +64,7 @@ class TrainConfig:
     save_interval: int = 100
     eval_episodes: int = 10
     log_dir: str = "logs"
-    save_dir: str = "checkpoints"
+    save_dir: str = "artifacts/checkpoints"
     device: str = "cpu"
 
 

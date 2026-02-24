@@ -15,7 +15,7 @@ COSMOS + RMPflow + MAPPO 编队导航演示脚本
   --episodes    训练轮数 (默认 300)
   --num-agents  智能体数量 (默认 4)
   --formation   编队形状 (默认 square)
-  --output-dir  输出目录 (默认 demo_output)
+  --output-dir  输出目录 (默认 artifacts/demo_output)
   --no-video    不生成视频
   --seed        随机种子 (默认 42)
 """
@@ -44,7 +44,7 @@ def parse_args():
     parser.add_argument("--num-agents", type=int, default=4, help="智能体数量")
     parser.add_argument("--formation", type=str, default="square",
                         choices=["square", "triangle", "circle", "line", "hexagon"])
-    parser.add_argument("--output-dir", type=str, default="demo_output", help="输出目录")
+    parser.add_argument("--output-dir", type=str, default="artifacts/demo_output", help="输出目录")
     parser.add_argument("--no-video", action="store_true", help="不生成视频")
     parser.add_argument("--seed", type=int, default=42, help="随机种子")
     return parser.parse_args()

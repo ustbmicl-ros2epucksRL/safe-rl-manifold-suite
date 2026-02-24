@@ -187,14 +187,15 @@ git submodule update --init --recursive
 
 ## 生成数据 (自动忽略)
 
-这些目录由训练/测试生成，已在 `.gitignore` 中忽略：
+所有生成数据统一存放在 `artifacts/` 目录下，已在 `.gitignore` 中忽略：
 
-| 目录 | 内容 |
-|------|------|
-| `checkpoints/` | 训练模型检查点 (.pt) |
-| `demo_output/` | 演示输出 (图片、GIF、模型) |
-| `outputs/` | Hydra 训练输出 |
-| `results/` | 实验结果 (metrics.json) |
+```
+artifacts/
+├── checkpoints/    # 训练模型检查点 (.pt)
+├── demo_output/    # 演示输出 (图片、GIF、模型)
+├── outputs/        # Hydra 训练输出
+└── results/        # 实验结果 (metrics.json)
+```
 
 ---
 
