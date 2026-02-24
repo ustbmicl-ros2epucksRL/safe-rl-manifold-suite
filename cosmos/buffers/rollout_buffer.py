@@ -124,11 +124,32 @@ class RolloutBuffer:
         self.obs[t + 1] = torch.as_tensor(obs, dtype=torch.float32)
         self.share_obs[t + 1] = torch.as_tensor(share_obs, dtype=torch.float32)
         self.actions[t] = torch.as_tensor(actions, dtype=torch.float32)
-        self.log_probs[t] = torch.as_tensor(log_probs, dtype=torch.float32)
-        self.values[t] = torch.as_tensor(values, dtype=torch.float32)
-        self.rewards[t] = torch.as_tensor(rewards, dtype=torch.float32)
-        self.costs[t] = torch.as_tensor(costs, dtype=torch.float32)
-        self.masks[t + 1] = torch.as_tensor(masks, dtype=torch.float32)
+
+        # Handle different input shapes
+        log_probs_t = torch.as_tensor(log_probs, dtype=torch.float32)
+        if log_probs_t.dim() == 1:
+            log_probs_t = log_probs_t.unsqueeze(-1)
+        self.log_probs[t] = log_probs_t
+
+        values_t = torch.as_tensor(values, dtype=torch.float32)
+        if values_t.dim() == 1:
+            values_t = values_t.unsqueeze(-1)
+        self.values[t] = values_t
+
+        rewards_t = torch.as_tensor(rewards, dtype=torch.float32)
+        if rewards_t.dim() == 1:
+            rewards_t = rewards_t.unsqueeze(-1)
+        self.rewards[t] = rewards_t
+
+        costs_t = torch.as_tensor(costs, dtype=torch.float32)
+        if costs_t.dim() == 1:
+            costs_t = costs_t.unsqueeze(-1)
+        self.costs[t] = costs_t
+
+        masks_t = torch.as_tensor(masks, dtype=torch.float32)
+        if masks_t.dim() == 1:
+            masks_t = masks_t.unsqueeze(-1)
+        self.masks[t + 1] = masks_t
 
         self.step += 1
 
@@ -145,6 +166,8 @@ class RolloutBuffer:
             last_cost_values: Cost value estimates for final state (optional).
         """
         last_values = torch.as_tensor(last_values, dtype=torch.float32)
+        if last_values.dim() == 1:
+            last_values = last_values.unsqueeze(-1)
         self.values[self.step] = last_values
 
         # Compute GAE for rewards

@@ -33,7 +33,7 @@ import matplotlib.patches as patches
 from cosmos.apps.formation_nav.config import Config
 from cosmos.envs.formation_nav import FormationNavEnv
 from cosmos.envs.formations import FormationTopology
-from cosmos.safety.atacom import COSMOS, COSMOSMode
+from cosmos.safety.cosmos_filter import COSMOSFilter as COSMOS, COSMOSMode
 from cosmos.algos.mappo import MAPPO
 from cosmos.buffers.rollout_buffer import RolloutBuffer
 
@@ -108,8 +108,8 @@ def train(cfg, env, cosmos, mappo, buffer, num_episodes, log_interval=20):
             obs, share_obs = next_obs, next_share_obs
             total_steps += cfg.env.num_agents
 
-            ep_reward += rewards[0, 0]
-            ep_cost += costs[0, 0]
+            ep_reward += rewards[0] if rewards.ndim == 1 else rewards[0, 0]
+            ep_cost += costs[0] if costs.ndim == 1 else costs[0, 0]
             ep_form_err += infos[0]["formation_error"]
             ep_min_dist = min(ep_min_dist, infos[0]["min_inter_dist"])
             ep_collisions += infos[0]["collisions"]

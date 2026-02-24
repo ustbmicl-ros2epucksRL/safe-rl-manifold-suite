@@ -211,25 +211,28 @@ class MAPPO(OnPolicyAlgo):
 
     def update(self, buffer: Any) -> Dict[str, float]:
         """Update policy from buffer."""
-        # Get data from buffer
-        obs = torch.FloatTensor(buffer.obs).to(self.device)
-        share_obs = torch.FloatTensor(buffer.share_obs).to(self.device)
-        actions = torch.FloatTensor(buffer.actions).to(self.device)
-        old_log_probs = torch.FloatTensor(buffer.log_probs).to(self.device)
-        advantages = torch.FloatTensor(buffer.advantages).to(self.device)
-        returns = torch.FloatTensor(buffer.returns).to(self.device)
+        # Get data from buffer - obs has T+1 steps, actions has T steps
+        # Use only the first T steps of obs to match actions
+        T = buffer.step  # Number of actual steps taken
+        obs = buffer.obs[:T].to(self.device)  # (T, N, obs_dim)
+        share_obs = buffer.share_obs[:T].to(self.device)  # (T, N, share_obs_dim)
+        actions = buffer.actions[:T].to(self.device)  # (T, N, act_dim)
+        old_log_probs = buffer.log_probs[:T].to(self.device)  # (T, N, 1)
+        advantages = buffer.advantages[:T].to(self.device)  # (T, N, 1)
+        returns = buffer.returns[:T].to(self.device)  # (T, N, 1)
 
         # Normalize advantages
         advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
 
-        # Flatten batch dimensions
-        batch_size = obs.shape[0] * obs.shape[1]
-        obs = obs.view(batch_size, -1)
-        share_obs = share_obs.view(batch_size, -1)
-        actions = actions.view(batch_size, -1)
-        old_log_probs = old_log_probs.view(batch_size)
-        advantages = advantages.view(batch_size)
-        returns = returns.view(batch_size)
+        # Flatten batch dimensions: (T, N, dim) -> (T*N, dim)
+        num_agents = obs.shape[1]
+        batch_size = T * num_agents
+        obs = obs.reshape(batch_size, -1)
+        share_obs = share_obs.reshape(batch_size, -1)
+        actions = actions.reshape(batch_size, -1)
+        old_log_probs = old_log_probs.reshape(batch_size)
+        advantages = advantages.reshape(batch_size)
+        returns = returns.reshape(batch_size)
 
         # PPO update
         total_actor_loss = 0.0

@@ -80,23 +80,39 @@ class COSMOSFilter(BaseSafetyFilter):
         self.desired_distances = desired_distances
         self.topology_edges = topology_edges
         self.obstacle_positions = obstacle_positions if obstacle_positions is not None else np.zeros((0, 3))
+        self._positions = None
 
-    def reset(self, constraint_info: Dict[str, Any]):
-        """Reset filter for new episode."""
-        obstacles = constraint_info.get("obstacles", None)
-        if obstacles is not None:
-            self.obstacle_positions = obstacles
+    def reset(self, constraint_info_or_positions):
+        """Reset filter for new episode.
 
-        # Update desired distances if provided
-        if "desired_distances" in constraint_info:
-            self.desired_distances = constraint_info["desired_distances"]
-        if "topology_edges" in constraint_info:
-            self.topology_edges = constraint_info["topology_edges"]
+        Args:
+            constraint_info_or_positions: Either a dict with constraint info,
+                or a numpy array of positions (legacy API).
+        """
+        if isinstance(constraint_info_or_positions, dict):
+            constraint_info = constraint_info_or_positions
+            obstacles = constraint_info.get("obstacles", None)
+            if obstacles is not None:
+                self.obstacle_positions = obstacles
+            if "desired_distances" in constraint_info:
+                self.desired_distances = constraint_info["desired_distances"]
+            if "topology_edges" in constraint_info:
+                self.topology_edges = constraint_info["topology_edges"]
+            if "positions" in constraint_info:
+                self._positions = constraint_info["positions"]
+        else:
+            # Legacy API: positions array
+            self._positions = constraint_info_or_positions
+
+    def update_obstacles(self, obstacles: np.ndarray):
+        """Update obstacle positions (legacy API)."""
+        self.obstacle_positions = obstacles
 
     def project(
         self,
         actions: np.ndarray,
-        constraint_info: Dict[str, Any],
+        positions_or_info: Any,
+        velocities: Optional[np.ndarray] = None,
         dt: float = 0.05
     ) -> np.ndarray:
         """
@@ -109,14 +125,25 @@ class COSMOSFilter(BaseSafetyFilter):
 
         Args:
             actions: Nominal actions from RL policy (num_agents, act_dim)
-            constraint_info: Dict with positions, velocities, obstacles
+            positions_or_info: Either positions array (legacy) or constraint_info dict
+            velocities: Velocities array (legacy API, optional)
             dt: Time step
 
         Returns:
             safe_actions: Safe actions satisfying constraints
         """
-        positions = constraint_info["positions"][:, :2]  # (num_agents, 2)
-        velocities = constraint_info.get("velocities", np.zeros_like(positions))[:, :2]
+        # Support both legacy and new API
+        if isinstance(positions_or_info, dict):
+            constraint_info = positions_or_info
+            positions = constraint_info["positions"][:, :2]
+            velocities = constraint_info.get("velocities", np.zeros_like(positions))[:, :2]
+        else:
+            # Legacy API: positions array
+            positions = positions_or_info[:, :2] if positions_or_info.shape[1] > 2 else positions_or_info
+            if velocities is None:
+                velocities = np.zeros_like(positions)
+            else:
+                velocities = velocities[:, :2] if velocities.shape[1] > 2 else velocities
 
         num_agents = len(positions)
         safe_actions = np.zeros_like(actions)
