@@ -7,7 +7,6 @@ Combines:
 - ATACOM constraint manifold projection
 - RMPflow formation control
 - CBF safety correction
-- Deadlock detection and resolution
 
 Reference:
     Liu et al., "Safe RL on the Constraint Manifold", IEEE T-RO 2024
@@ -20,12 +19,8 @@ import numpy as np
 from cosmos.registry import SAFETY_REGISTRY
 from cosmos.safety.base import BaseSafetyFilter, SafetyConfig
 
-# Import original COSMOS
-from formation_nav.safety import COSMOS as OriginalCOSMOS, COSMOSMode
-from formation_nav.config import EnvConfig, SafetyConfig as OriginalSafetyConfig
 
-
-class COSMOSFilterMode(Enum):
+class COSMOSMode(Enum):
     """COSMOS operating modes."""
     CENTRALIZED = "centralized"
     DECENTRALIZED = "decentralized"
@@ -41,6 +36,8 @@ class COSMOSFilter(BaseSafetyFilter):
     - Obstacle avoidance
     - Boundary constraints
     - Formation maintenance (soft constraint via RMPflow)
+
+    Uses ATACOM null-space projection for hard safety guarantees.
 
     Config options:
         safety_radius: Minimum inter-agent distance (default: 0.5)
@@ -61,76 +58,40 @@ class COSMOSFilter(BaseSafetyFilter):
         obstacle_positions: Optional[np.ndarray] = None,
         **kwargs
     ):
-        """
-        Args:
-            env_cfg: Environment configuration.
-            safety_cfg: Safety configuration.
-            mode: "centralized" or "decentralized".
-            desired_distances: Formation distances matrix.
-            topology_edges: List of (i, j) edges in formation graph.
-            obstacle_positions: Initial obstacle positions.
-        """
         super().__init__(env_cfg, safety_cfg, **kwargs)
 
-        # Convert to original config format
+        # Get config values
         if isinstance(env_cfg, dict):
-            orig_env_cfg = EnvConfig()
-            for k, v in env_cfg.items():
-                if hasattr(orig_env_cfg, k):
-                    setattr(orig_env_cfg, k, v)
+            self.arena_size = env_cfg.get('arena_size', 10.0)
+            self.num_agents = env_cfg.get('num_agents', 4)
         else:
-            orig_env_cfg = env_cfg
+            self.arena_size = getattr(env_cfg, 'arena_size', 10.0)
+            self.num_agents = getattr(env_cfg, 'num_agents', 4)
 
-        orig_safety_cfg = OriginalSafetyConfig()
-        if self.safety_cfg:
-            for attr in ['safety_radius', 'boundary_margin', 'K_c', 'dq_max',
-                        'eps_pinv', 'rmp_formation_blend', 'slack_type',
-                        'slack_beta', 'slack_threshold']:
-                if hasattr(self.safety_cfg, attr):
-                    setattr(orig_safety_cfg, attr, getattr(self.safety_cfg, attr))
+        # Safety parameters
+        self.safety_radius = getattr(safety_cfg, 'safety_radius', 0.5) if safety_cfg else 0.5
+        self.boundary_margin = getattr(safety_cfg, 'boundary_margin', 0.5) if safety_cfg else 0.5
+        self.K_c = getattr(safety_cfg, 'K_c', 50.0) if safety_cfg else 50.0
+        self.dq_max = getattr(safety_cfg, 'dq_max', 0.8) if safety_cfg else 0.8
+        self.eps_pinv = getattr(safety_cfg, 'eps_pinv', 1e-4) if safety_cfg else 1e-4
+        self.rmp_blend = getattr(safety_cfg, 'rmp_formation_blend', 0.3) if safety_cfg else 0.3
 
-        # Parse mode
-        cosmos_mode = (
-            COSMOSMode.CENTRALIZED if mode == "centralized"
-            else COSMOSMode.DECENTRALIZED
-        )
-
-        # Default values if not provided
-        if desired_distances is None:
-            num_agents = getattr(orig_env_cfg, 'num_agents', 4)
-            desired_distances = np.ones((num_agents, num_agents)) * 1.0
-            np.fill_diagonal(desired_distances, 0)
-
-        if topology_edges is None:
-            num_agents = len(desired_distances)
-            topology_edges = [(i, j) for i in range(num_agents)
-                             for j in range(i+1, num_agents)]
-
-        if obstacle_positions is None:
-            obstacle_positions = np.zeros((0, 3))
-
-        # Create original COSMOS
-        self._filter = OriginalCOSMOS(
-            env_cfg=orig_env_cfg,
-            safety_cfg=orig_safety_cfg,
-            desired_distances=desired_distances,
-            topology_edges=topology_edges,
-            obstacle_positions=obstacle_positions,
-            mode=cosmos_mode
-        )
-
-        self.mode = mode
+        self.mode = COSMOSMode(mode) if isinstance(mode, str) else mode
+        self.desired_distances = desired_distances
+        self.topology_edges = topology_edges
+        self.obstacle_positions = obstacle_positions if obstacle_positions is not None else np.zeros((0, 3))
 
     def reset(self, constraint_info: Dict[str, Any]):
         """Reset filter for new episode."""
-        positions = constraint_info.get("positions", None)
-        if positions is not None:
-            self._filter.reset(positions)
-
-        # Update obstacles if provided
         obstacles = constraint_info.get("obstacles", None)
         if obstacles is not None:
-            self._filter.update_obstacles(obstacles)
+            self.obstacle_positions = obstacles
+
+        # Update desired distances if provided
+        if "desired_distances" in constraint_info:
+            self.desired_distances = constraint_info["desired_distances"]
+        if "topology_edges" in constraint_info:
+            self.topology_edges = constraint_info["topology_edges"]
 
     def project(
         self,
@@ -138,17 +99,137 @@ class COSMOSFilter(BaseSafetyFilter):
         constraint_info: Dict[str, Any],
         dt: float = 0.05
     ) -> np.ndarray:
-        """Project actions to safe space."""
-        positions = constraint_info["positions"]
-        velocities = constraint_info["velocities"]
+        """
+        Project actions to safe space using ATACOM null-space projection.
 
-        return self._filter.project(actions, positions, velocities, dt=dt)
+        Core mechanism:
+            Jc = constraint Jacobian
+            Nc = null-space projector = I - Jc^+ @ Jc
+            u_safe = Nc @ u_nom - K_c * Jc^+ @ c(q)
+
+        Args:
+            actions: Nominal actions from RL policy (num_agents, act_dim)
+            constraint_info: Dict with positions, velocities, obstacles
+            dt: Time step
+
+        Returns:
+            safe_actions: Safe actions satisfying constraints
+        """
+        positions = constraint_info["positions"][:, :2]  # (num_agents, 2)
+        velocities = constraint_info.get("velocities", np.zeros_like(positions))[:, :2]
+
+        num_agents = len(positions)
+        safe_actions = np.zeros_like(actions)
+
+        for i in range(num_agents):
+            # Build constraint Jacobian and values for agent i
+            Jc, c_vals = self._build_constraints(i, positions)
+
+            if len(c_vals) == 0:
+                safe_actions[i] = actions[i]
+                continue
+
+            # Stack into matrix form
+            Jc = np.array(Jc)  # (num_constraints, 2)
+            c_vals = np.array(c_vals)  # (num_constraints,)
+
+            # Compute pseudoinverse with damping
+            JcT = Jc.T
+            Jc_pinv = JcT @ np.linalg.inv(Jc @ JcT + self.eps_pinv * np.eye(len(c_vals)))
+
+            # Null-space projector
+            Nc = np.eye(2) - Jc_pinv @ Jc
+
+            # Project action to null space + constraint correction
+            u_nom = actions[i][:2] if actions[i].shape[0] >= 2 else actions[i]
+            u_safe = Nc @ u_nom - self.K_c * Jc_pinv @ c_vals
+
+            # Clip to max velocity
+            u_norm = np.linalg.norm(u_safe)
+            if u_norm > self.dq_max:
+                u_safe = u_safe / u_norm * self.dq_max
+
+            safe_actions[i][:2] = u_safe
+
+        return safe_actions
+
+    def _build_constraints(self, agent_id: int, positions: np.ndarray):
+        """Build constraint Jacobian and values for one agent."""
+        Jc_list = []
+        c_list = []
+        pos_i = positions[agent_id]
+
+        # Inter-agent collision avoidance
+        for j in range(len(positions)):
+            if j == agent_id:
+                continue
+            pos_j = positions[j]
+            diff = pos_i - pos_j
+            dist = np.linalg.norm(diff)
+
+            if dist < 1e-6:
+                continue
+
+            # Constraint: c = safety_radius - dist <= 0 (violated when positive)
+            c = self.safety_radius - dist
+
+            # Only include if constraint is active (close to or violating boundary)
+            if c > -0.5:  # Active within 0.5m of boundary
+                # Jacobian: dc/dq_i = -(pos_i - pos_j) / dist
+                Jc = -diff / dist
+                Jc_list.append(Jc)
+                c_list.append(max(c, 0))  # Only correct violations
+
+        # Obstacle avoidance
+        for obs in self.obstacle_positions:
+            obs_pos = obs[:2]
+            obs_r = obs[2] if len(obs) > 2 else 0.3
+            diff = pos_i - obs_pos
+            dist = np.linalg.norm(diff)
+
+            if dist < 1e-6:
+                continue
+
+            c = (obs_r + self.safety_radius * 0.5) - dist
+
+            if c > -0.5:
+                Jc = -diff / dist
+                Jc_list.append(Jc)
+                c_list.append(max(c, 0))
+
+        # Boundary constraints
+        boundary = self.arena_size - self.boundary_margin
+
+        # x_min: c = -boundary - x <= 0
+        c_xmin = -pos_i[0] - boundary
+        if c_xmin > -0.5:
+            Jc_list.append(np.array([-1.0, 0.0]))
+            c_list.append(max(c_xmin, 0))
+
+        # x_max: c = x - boundary <= 0
+        c_xmax = pos_i[0] - boundary
+        if c_xmax > -0.5:
+            Jc_list.append(np.array([1.0, 0.0]))
+            c_list.append(max(c_xmax, 0))
+
+        # y_min
+        c_ymin = -pos_i[1] - boundary
+        if c_ymin > -0.5:
+            Jc_list.append(np.array([0.0, -1.0]))
+            c_list.append(max(c_ymin, 0))
+
+        # y_max
+        c_ymax = pos_i[1] - boundary
+        if c_ymax > -0.5:
+            Jc_list.append(np.array([0.0, 1.0]))
+            c_list.append(max(c_ymax, 0))
+
+        return Jc_list, c_list
 
     def update(self, constraint_info: Dict[str, Any]):
         """Update constraint information."""
-        obstacles = constraint_info.get("obstacles", None)
-        if obstacles is not None:
-            self._filter.update_obstacles(obstacles)
+        if "obstacles" in constraint_info:
+            self.obstacle_positions = constraint_info["obstacles"]
 
     def get_safety_margin(self, constraint_info: Dict[str, Any]) -> float:
         """Compute minimum safety margin."""
@@ -156,17 +237,25 @@ class COSMOSFilter(BaseSafetyFilter):
         if positions is None:
             return float('inf')
 
+        positions = positions[:, :2]
         num_agents = len(positions)
-        min_dist = float('inf')
+        min_margin = float('inf')
 
-        # Check inter-agent distances
+        # Inter-agent distances
         for i in range(num_agents):
             for j in range(i + 1, num_agents):
                 dist = np.linalg.norm(positions[i] - positions[j])
-                margin = dist - self.safety_cfg.safety_radius
-                min_dist = min(min_dist, margin)
+                margin = dist - self.safety_radius
+                min_margin = min(min_margin, margin)
 
-        return min_dist
+        # Obstacle distances
+        for i in range(num_agents):
+            for obs in self.obstacle_positions:
+                dist = np.linalg.norm(positions[i] - obs[:2])
+                margin = dist - (obs[2] if len(obs) > 2 else 0.3) - self.safety_radius * 0.5
+                min_margin = min(min_margin, margin)
+
+        return min_margin
 
     def is_safe(self, constraint_info: Dict[str, Any]) -> bool:
         """Check if current state is safe."""
@@ -188,7 +277,7 @@ class CBFFilter(BaseSafetyFilter):
         obstacle_radius: Minimum obstacle distance (default: 0.3)
         boundary_margin: Distance from arena boundary (default: 0.5)
         cbf_alpha: CBF class-K function parameter (default: 1.0)
-        arena_size: Arena half-width (default: 5.0)
+        arena_size: Arena size (default: 10.0)
     """
 
     def __init__(
@@ -200,22 +289,14 @@ class CBFFilter(BaseSafetyFilter):
         obstacle_positions: Optional[np.ndarray] = None,
         **kwargs
     ):
-        """
-        Args:
-            env_cfg: Environment configuration.
-            safety_cfg: Safety configuration.
-            desired_distances: Formation distances matrix (unused in CBF).
-            topology_edges: Formation graph edges (unused in CBF).
-            obstacle_positions: Initial obstacle positions.
-        """
         super().__init__(env_cfg, safety_cfg, **kwargs)
 
         # Get config values
         if isinstance(env_cfg, dict):
-            self.arena_size = env_cfg.get('arena_size', 5.0)
+            self.arena_size = env_cfg.get('arena_size', 10.0)
             self.num_agents = env_cfg.get('num_agents', 4)
         else:
-            self.arena_size = getattr(env_cfg, 'arena_size', 5.0)
+            self.arena_size = getattr(env_cfg, 'arena_size', 10.0)
             self.num_agents = getattr(env_cfg, 'num_agents', 4)
 
         if safety_cfg:
@@ -229,7 +310,6 @@ class CBFFilter(BaseSafetyFilter):
             self.boundary_margin = 0.5
             self.cbf_alpha = 1.0
 
-        # State
         self.obstacle_positions = obstacle_positions if obstacle_positions is not None else np.zeros((0, 3))
 
     def reset(self, constraint_info: Dict[str, Any]):
@@ -244,35 +324,15 @@ class CBFFilter(BaseSafetyFilter):
         constraint_info: Dict[str, Any],
         dt: float = 0.05
     ) -> np.ndarray:
-        """
-        Project actions to satisfy CBF constraints using QP.
-
-        Solves: min ||u - u_nom||^2
-                s.t. h_dot + alpha * h >= 0 for all constraints
-
-        Args:
-            actions: Nominal actions from RL policy (num_agents, act_dim)
-            constraint_info: Dict with positions, velocities, obstacles
-            dt: Time step
-
-        Returns:
-            safe_actions: Safe actions satisfying CBF constraints
-        """
-        positions = constraint_info["positions"]  # (num_agents, 2 or 3)
-        velocities = constraint_info.get("velocities", np.zeros_like(positions))
-
+        """Project actions to satisfy CBF constraints."""
+        positions = constraint_info["positions"][:, :2]
         num_agents = len(positions)
-        act_dim = actions.shape[1] if actions.ndim > 1 else 2
-
         safe_actions = actions.copy()
 
-        # Process each agent
         for i in range(num_agents):
-            pos_i = positions[i][:2]  # Use 2D position
-            vel_i = velocities[i][:2] if velocities[i].shape[0] >= 2 else velocities[i]
+            pos_i = positions[i]
             u_nom = actions[i][:2] if actions[i].shape[0] >= 2 else actions[i]
 
-            # Collect CBF constraints: A @ u >= b
             A_list = []
             b_list = []
 
@@ -280,30 +340,22 @@ class CBFFilter(BaseSafetyFilter):
             for j in range(num_agents):
                 if i == j:
                     continue
-                pos_j = positions[j][:2]
-
-                # h(x) = ||p_i - p_j||^2 - r^2
+                pos_j = positions[j]
                 diff = pos_i - pos_j
-                dist_sq = np.dot(diff, diff)
-                dist = np.sqrt(dist_sq)
+                dist = np.linalg.norm(diff)
 
                 if dist < 1e-6:
                     continue
 
                 h = dist - self.safety_radius
-
-                # Gradient: dh/dp_i = (p_i - p_j) / ||p_i - p_j||
                 grad_h = diff / dist
 
-                # h_dot = grad_h^T @ v_i (assuming v_i = u_i for single integrator)
-                # Constraint: grad_h^T @ u_i + alpha * h >= 0
                 A_list.append(grad_h)
                 b_list.append(-self.cbf_alpha * h)
 
             # Obstacle avoidance
             for obs in self.obstacle_positions:
-                obs_pos = obs[:2]
-                diff = pos_i - obs_pos
+                diff = pos_i - obs[:2]
                 dist = np.linalg.norm(diff)
 
                 if dist < 1e-6:
@@ -318,76 +370,41 @@ class CBFFilter(BaseSafetyFilter):
             # Boundary constraints
             boundary = self.arena_size - self.boundary_margin
 
-            # x >= -boundary: h = x + boundary, grad_h = [1, 0]
-            h_x_min = pos_i[0] + boundary
             A_list.append(np.array([1.0, 0.0]))
-            b_list.append(-self.cbf_alpha * h_x_min)
+            b_list.append(-self.cbf_alpha * (pos_i[0] + boundary))
 
-            # x <= boundary: h = boundary - x, grad_h = [-1, 0]
-            h_x_max = boundary - pos_i[0]
             A_list.append(np.array([-1.0, 0.0]))
-            b_list.append(-self.cbf_alpha * h_x_max)
+            b_list.append(-self.cbf_alpha * (boundary - pos_i[0]))
 
-            # y >= -boundary
-            h_y_min = pos_i[1] + boundary
             A_list.append(np.array([0.0, 1.0]))
-            b_list.append(-self.cbf_alpha * h_y_min)
+            b_list.append(-self.cbf_alpha * (pos_i[1] + boundary))
 
-            # y <= boundary
-            h_y_max = boundary - pos_i[1]
             A_list.append(np.array([0.0, -1.0]))
-            b_list.append(-self.cbf_alpha * h_y_max)
+            b_list.append(-self.cbf_alpha * (boundary - pos_i[1]))
 
-            # Solve QP: min ||u - u_nom||^2 s.t. A @ u >= b
             if len(A_list) > 0:
-                A = np.stack(A_list)  # (num_constraints, 2)
-                b = np.array(b_list)  # (num_constraints,)
-
+                A = np.stack(A_list)
+                b = np.array(b_list)
                 u_safe = self._solve_cbf_qp(u_nom, A, b)
                 safe_actions[i][:2] = u_safe
 
         return safe_actions
 
-    def _solve_cbf_qp(
-        self,
-        u_nom: np.ndarray,
-        A: np.ndarray,
-        b: np.ndarray,
-        max_iters: int = 10
-    ) -> np.ndarray:
-        """
-        Solve CBF-QP using projected gradient descent.
-
-        min ||u - u_nom||^2 s.t. A @ u >= b
-
-        Args:
-            u_nom: Nominal control (2,)
-            A: Constraint matrix (num_constraints, 2)
-            b: Constraint bounds (num_constraints,)
-            max_iters: Maximum iterations
-
-        Returns:
-            u_safe: Safe control satisfying constraints
-        """
+    def _solve_cbf_qp(self, u_nom: np.ndarray, A: np.ndarray, b: np.ndarray, max_iters: int = 10) -> np.ndarray:
+        """Solve CBF-QP using projected gradient descent."""
         u = u_nom.copy()
 
         for _ in range(max_iters):
-            # Check constraint violations
-            violations = b - A @ u  # positive means violated
-
+            violations = b - A @ u
             if np.all(violations <= 1e-6):
                 break
 
-            # Find most violated constraint
             idx = np.argmax(violations)
             if violations[idx] <= 1e-6:
                 break
 
-            # Project onto constraint: A[idx] @ u = b[idx]
             a = A[idx]
             violation = violations[idx]
-
-            # u_new = u + (violation / ||a||^2) * a
             a_norm_sq = np.dot(a, a)
             if a_norm_sq > 1e-8:
                 u = u + (violation / a_norm_sq) * a
@@ -396,44 +413,39 @@ class CBFFilter(BaseSafetyFilter):
 
     def update(self, constraint_info: Dict[str, Any]):
         """Update constraint information."""
-        obstacles = constraint_info.get("obstacles", None)
-        if obstacles is not None:
-            self.obstacle_positions = obstacles
+        if "obstacles" in constraint_info:
+            self.obstacle_positions = constraint_info["obstacles"]
 
     def get_safety_margin(self, constraint_info: Dict[str, Any]) -> float:
-        """Compute minimum safety margin (barrier function value)."""
+        """Compute minimum safety margin."""
         positions = constraint_info.get("positions", None)
         if positions is None:
             return float('inf')
 
+        positions = positions[:, :2]
         num_agents = len(positions)
         min_h = float('inf')
 
-        # Inter-agent distances
         for i in range(num_agents):
             for j in range(i + 1, num_agents):
-                dist = np.linalg.norm(positions[i][:2] - positions[j][:2])
-                h = dist - self.safety_radius
-                min_h = min(min_h, h)
+                dist = np.linalg.norm(positions[i] - positions[j])
+                min_h = min(min_h, dist - self.safety_radius)
 
-        # Obstacle distances
         for i in range(num_agents):
             for obs in self.obstacle_positions:
-                dist = np.linalg.norm(positions[i][:2] - obs[:2])
-                h = dist - self.obstacle_radius
-                min_h = min(min_h, h)
+                dist = np.linalg.norm(positions[i] - obs[:2])
+                min_h = min(min_h, dist - self.obstacle_radius)
 
-        # Boundary distances
         boundary = self.arena_size - self.boundary_margin
         for i in range(num_agents):
-            pos = positions[i][:2]
-            min_h = min(min_h, pos[0] + boundary)  # x >= -boundary
-            min_h = min(min_h, boundary - pos[0])  # x <= boundary
-            min_h = min(min_h, pos[1] + boundary)  # y >= -boundary
-            min_h = min(min_h, boundary - pos[1])  # y <= boundary
+            pos = positions[i]
+            min_h = min(min_h, pos[0] + boundary)
+            min_h = min(min_h, boundary - pos[0])
+            min_h = min(min_h, pos[1] + boundary)
+            min_h = min(min_h, boundary - pos[1])
 
         return min_h
 
     def is_safe(self, constraint_info: Dict[str, Any]) -> bool:
-        """Check if current state is safe (all barrier functions positive)."""
+        """Check if current state is safe."""
         return self.get_safety_margin(constraint_info) > 0

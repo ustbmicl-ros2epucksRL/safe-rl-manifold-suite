@@ -115,8 +115,8 @@ def run_rmp_episode(env, cfg, seed=42):
 def run_mappo_episode(env, cfg, model_path, seed=42):
     """Run one episode with trained MAPPO model."""
     import torch
-    from formation_nav.algo.mappo import MAPPO
-    from formation_nav.safety import COSMOS, COSMOSMode
+    from cosmos.algos.mappo import MAPPO
+    from cosmos.safety.cosmos_filter import COSMOSFilter as COSMOS, COSMOSMode
 
     obs, share_obs, _ = env.reset(seed=seed)
     topology = FormationTopology(cfg.env.num_agents, "complete")
