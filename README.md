@@ -48,41 +48,150 @@
 
 ```
 safe-rl-manifold-suite/
-├── formation_nav/           # 主要代码
+├── formation_nav/              # 核心实现：多机器人编队导航
 │   ├── safety/
-│   │   ├── cosmos.py        # COSMOS 核心实现
-│   │   ├── atacom.py        # 基础 ATACOM
-│   │   └── rmp_policies.py  # RMPflow 编队策略
+│   │   ├── cosmos.py           # COSMOS 安全滤波器
+│   │   ├── atacom.py           # ATACOM 约束流形投影
+│   │   ├── rmp_tree.py         # RMPflow 树结构
+│   │   └── rmp_policies.py     # RMPflow 编队策略
 │   ├── algo/
-│   │   └── mappo.py         # MAPPO 算法
+│   │   ├── mappo.py            # MAPPO 算法
+│   │   ├── networks.py         # Actor/Critic 网络
+│   │   └── buffer.py           # 经验回放缓冲区
 │   ├── env/
-│   │   └── formation_env.py # 编队导航环境
-│   ├── demo.py              # 演示脚本
-│   ├── COSMOS_Demo.ipynb    # Colab Notebook
-│   └── docs/THEORY.md       # 理论文档
-├── refs/                    # 参考文献笔记
-└── paper/                   # 论文资料
+│   │   ├── formation_env.py    # 编队导航环境
+│   │   └── formations.py       # 编队形状与拓扑
+│   ├── train.py                # 训练脚本
+│   ├── eval.py                 # 评估脚本
+│   ├── benchmark.py            # 基准测试（RMPflow vs MAPPO）
+│   ├── COSMOS_Demo.ipynb       # Colab 演示 Notebook
+│   └── README.md               # 详细文档
+│
+├── cosmos/                     # 统一训练框架（配置驱动）
+│   ├── registry.py             # 组件注册器
+│   ├── trainer.py              # 统一训练器
+│   ├── train.py                # Hydra 训练入口
+│   ├── configs/                # YAML 配置文件
+│   ├── envs/                   # 环境基类与封装
+│   ├── algos/                  # 算法基类与封装
+│   └── safety/                 # 安全滤波器基类与封装
+│
+├── refs/                       # 参考文献与阅读笔记
+├── paper/                      # 论文资料
+├── ARCHITECTURE.md             # 架构设计文档
+└── CLAUDE.md                   # Claude AI 开发指南
 ```
 
 ## 快速开始
 
-### 本地运行
+### 方式一：自动安装（推荐）
 
 ```bash
-# 安装依赖
-pip install torch numpy gymnasium matplotlib scipy pillow
+# 1. 运行安装脚本
+chmod +x setup.sh
+./setup.sh
 
-# 运行演示
-PYTHONPATH=. python formation_nav/demo.py --episodes 200
+# 2. 激活环境
+conda activate cosmos
+
+# 3. 验证安装
+python test_all_envs.py
+
+# 4. 运行实验
+./run_experiments.sh quick
 ```
 
-### Google Colab
+### 方式二：手动安装
+
+```bash
+# 创建环境
+conda create -n cosmos python=3.10 -y
+conda activate cosmos
+
+# 安装依赖
+pip install torch numpy scipy matplotlib gymnasium
+pip install hydra-core omegaconf wandb tqdm
+
+# 安装可选环境
+pip install safety-gymnasium vmas mujoco
+
+# 安装 COSMOS
+pip install -e .
+```
+
+### 方式三：Google Colab
 
 ```python
-!pip install gymnasium -q
+!pip install gymnasium torch hydra-core omegaconf -q
 !git clone https://github.com/ustbmicl-ros2epucksRL/safe-rl-manifold-suite.git
 %cd safe-rl-manifold-suite
-!python formation_nav/demo.py --episodes 200
+!pip install -e . -q
+!python test_all_envs.py
+```
+
+## 多环境实验
+
+### 可用环境
+
+| 环境 | 命令 | 安装 |
+|------|------|------|
+| 编队导航 | `env=formation_nav` | 内置 |
+| E-puck模拟 | `env=epuck_sim` | 内置 |
+| Safety-Gym | `env=safety_gym` | `pip install safety-gymnasium` |
+| VMAS | `env=vmas` | `pip install vmas` |
+
+### 运行训练
+
+```bash
+# 编队导航 + MAPPO + COSMOS
+python -m cosmos.train env=formation_nav algo=mappo safety=cosmos
+
+# E-puck + QMIX + CBF
+python -m cosmos.train env=epuck_sim algo=qmix safety=cbf
+
+# Safety-Gym 基准测试
+python -m cosmos.train env=safety_gym algo=mappo safety=cbf \
+    env.env_id=SafetyPointGoal1-v0
+
+# 自定义参数
+python -m cosmos.train \
+    env=formation_nav \
+    algo=mappo \
+    safety=cosmos \
+    env.num_agents=6 \
+    experiment.num_episodes=1000 \
+    logging.use_wandb=true
+```
+
+### 批量实验
+
+```bash
+# 快速测试
+./run_experiments.sh quick
+
+# 编队实验
+./run_experiments.sh formation
+
+# 安全性对比
+./run_experiments.sh safety
+
+# 消融实验
+./run_experiments.sh ablation
+
+# 全部实验
+./run_experiments.sh all
+```
+
+### 结果分析
+
+```bash
+# 生成图表和表格
+python scripts/analyze_results.py experiments/TIMESTAMP/
+
+# 输出:
+# - learning_curves.png/pdf
+# - safety_comparison.png/pdf
+# - results_table.tex
 ```
 
 ## 演示结果

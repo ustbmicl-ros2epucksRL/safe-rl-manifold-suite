@@ -1,0 +1,27 @@
+# QMIX Algorithm Configuration
+# Value decomposition with monotonic mixing for cooperative MARL
+
+name: qmix
+
+# Learning parameters
+actor_lr: 5e-4
+gamma: 0.99
+tau: 0.005
+
+# Network architecture
+hidden_sizes: [64, 64]  # [hidden_dim, rnn_hidden_dim]
+
+# Replay buffer
+buffer_size: 5000  # Number of episodes
+batch_size: 32  # Episodes per batch
+
+# Exploration (epsilon-greedy)
+epsilon_start: 1.0
+epsilon_end: 0.05
+epsilon_decay: 50000
+
+# Target network
+target_update_interval: 200
+
+# Training
+max_grad_norm: 10.0

@@ -9,21 +9,33 @@ Meta-project orchestrating git submodules + standalone modules for research on *
 ## Repository Layout
 
 ```
+formation_nav/                     # 核心实现：多机器人编队导航 (ATACOM + COSMOS + RMPflow + MAPPO)
+cosmos/                            # 统一训练框架（配置驱动、组件注册）
 algorithms/
-  safe-po/                         # Primary codebase — SafePO fork with constrained manifold modules
-  multi-robot-rmpflow/             # Reference impl: RMPflow for multi-robot coordination
+  safe-po/                         # SafePO fork with constrained manifold modules (子模块)
+  multi-robot-rmpflow/             # Reference: RMPflow for multi-robot coordination (子模块)
 envs/
-  safety-gymnasium/                # Safety Gymnasium environments (forked)
+  safety-gymnasium/                # Safety Gymnasium environments (子模块)
 paper/
-  safe-rl-manifold-constraints/    # Thesis paper source
-formation_nav/                     # Standalone module: multi-robot formation navigation (ATACOM + RMPflow + MAPPO)
+  3_Control_SafeMARL/              # 论文资料与备份
 refs/                              # Reference papers (Git LFS) & reading notes
 ```
 
-- **`algorithms/safe-po`** is where most development happens. It corresponds to the `safeRL_manifold` project (a fork of PKU-Alignment's Safe-Policy-Optimization).
-- **`algorithms/multi-robot-rmpflow`** is a reference implementation from Georgia Tech (gtrll/multi-robot-rmpflow). Provides the RMPflow framework that informs the constrained manifold approach in safe-po.
-- **`formation_nav/`** is a self-contained module that integrates ATACOM safety filtering, RMPflow formation guidance, and MAPPO training for multi-robot formation navigation. See `formation_nav/README.md` for problem definition, method, and usage.
-- **`refs/`** contains reference papers (PDF, managed by Git LFS) and reading notes. See `refs/README.md` for a categorized index.
+- **`formation_nav/`** 是核心开发模块，实现了 ATACOM/COSMOS 安全滤波 + RMPflow 编队引导 + MAPPO 强化学习。包含：
+  - `safety/cosmos.py`: COSMOS 多智能体安全滤波器
+  - `safety/atacom.py`: ATACOM 约束流形投影
+  - `benchmark.py`: 性能基准测试（RMPflow vs COSMOS+MAPPO）
+  - `COSMOS_Demo.ipynb`: Google Colab 演示 Notebook
+  - 详见 `formation_nav/README.md`
+
+- **`cosmos/`** 是统一训练框架，支持：
+  - 组件注册系统（ENV_REGISTRY, ALGO_REGISTRY, SAFETY_REGISTRY）
+  - Hydra 配置驱动的实验管理
+  - WandB 日志与检查点保存
+  - 详见 `ARCHITECTURE.md` 第七章
+
+- **`algorithms/`** 子模块目录（当前为空占位）
+- **`refs/`** 参考文献（PDF, Git LFS）与阅读笔记
 
 ## Submodule Commands
 

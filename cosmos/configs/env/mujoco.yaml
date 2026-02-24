@@ -1,0 +1,13 @@
+# MuJoCo Environment Configuration
+# High-fidelity physics simulation
+
+name: mujoco
+
+# Standard MuJoCo environments:
+#   Ant-v4, HalfCheetah-v4, Humanoid-v4, Walker2d-v4
+env_id: Ant-v4
+num_agents: 2          # Split action space among agents
+render_mode: null
+
+# Installation:
+#   pip install mujoco gymnasium[mujoco]

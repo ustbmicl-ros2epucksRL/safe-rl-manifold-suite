@@ -1,0 +1,15 @@
+# CBF Safety Filter Configuration
+# Control Barrier Function based safety projection
+
+name: cbf
+
+# Safety distances
+safety_radius: 0.5      # Minimum inter-agent distance
+obstacle_radius: 0.3    # Minimum obstacle distance
+boundary_margin: 0.5    # Distance from arena boundary
+
+# CBF parameters
+cbf_alpha: 1.0          # Class-K function parameter (higher = more aggressive safety)
+
+# Arena
+arena_size: 5.0         # Arena half-width

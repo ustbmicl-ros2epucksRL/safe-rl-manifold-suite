@@ -1,0 +1,21 @@
+# Webots E-puck Environment Configuration
+# Full physics simulation with E-puck robots
+
+name: webots_epuck
+
+num_agents: 4
+timestep: 64           # Simulation timestep in ms
+max_steps: 1000
+arena_size: 1.0        # Arena size in meters
+headless: false        # Run without GUI
+world_file: null       # Custom world file (optional)
+
+# Installation:
+#   1. Download Webots: https://cyberbotics.com/
+#   2. export WEBOTS_HOME=/path/to/webots
+#   3. pip install controller
+
+# E-puck robot:
+#   - Differential drive
+#   - 8 IR proximity sensors
+#   - Camera, LEDs, speaker

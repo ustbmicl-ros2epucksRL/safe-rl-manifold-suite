@@ -1,0 +1,15 @@
+# Multi-Agent MuJoCo Configuration
+# Factorized control of MuJoCo robots
+
+name: ma_mujoco
+
+# Environment configurations:
+#   2x4_ant: 2 agents, each controls 4 Ant joints
+#   4x2_ant: 4 agents, each controls 2 Ant joints
+#   2x3_hopper: 2 agents for Hopper
+#   3x1_humanoid: 3 agents for Humanoid
+env_id: 2x4_ant
+render_mode: null
+
+# Installation:
+#   pip install multiagent-mujoco mujoco

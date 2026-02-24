@@ -1,0 +1,16 @@
+# Safety-Gym Environment Configuration
+# Constrained RL with safety costs
+
+name: safety_gym
+
+# Environment IDs:
+#   SafetyPointGoal1-v0, SafetyCarGoal1-v0
+#   SafetyPointButton1-v0, SafetyPointPush1-v0
+#   SafetyDoggoGoal1-v0 (requires MuJoCo)
+env_id: SafetyPointGoal1-v0
+num_agents: 1
+render_mode: null
+
+# Installation:
+#   pip install safety-gymnasium  # Recommended
+#   pip install safety-gym        # Original (needs MuJoCo)

@@ -22,7 +22,7 @@ from cosmos.algos.base import BaseMARLAlgo
 from cosmos.safety.base import BaseSafetyFilter
 
 # Import buffer
-from formation_nav.algo.buffer import RolloutBuffer
+from cosmos.buffers import RolloutBuffer
 
 
 class Trainer:
@@ -249,12 +249,12 @@ class Trainer:
 
             obs, share_obs = next_obs, next_share_obs
 
-            # Accumulate metrics
+            # Accumulate metrics (use .get() for optional fields)
             ep_reward += rewards[0, 0]
             ep_cost += costs[0, 0]
-            ep_form_err += infos[0]["formation_error"]
-            ep_min_dist = min(ep_min_dist, infos[0]["min_inter_dist"])
-            ep_collisions += infos[0]["collisions"]
+            ep_form_err += infos[0].get("formation_error", 0.0)
+            ep_min_dist = min(ep_min_dist, infos[0].get("min_inter_dist", ep_min_dist))
+            ep_collisions += infos[0].get("collisions", 0)
 
             if dones.all():
                 break

@@ -141,16 +141,19 @@ flowchart LR
 ## 六、小结
 
 - **根仓库**：通过子模块规划了「环境 (safety-gymnasium) + 算法 (safe-po, multi-robot-rmpflow)」的 Safe RL + 黎曼流形套件，当前这些子模块目录为空。
-- **实际可运行代码**：集中在 `paper/3_Control_SafeMARL/备份/programs/atacom-main`，实现基于 ATACOM 的约束流形安全 RL（SAC + 各类 Tiago/Fetch/HRI 环境）。
-- **论文与课题**：`paper/3_Control_SafeMARL` 下包含课题说明、IROS 论文、本硕论文及备份，与 atacom-main 共同构成「控制 + SafeMARL」的文档与实现架构。
+- **核心实现代码**：
+  - **`formation_nav/`**：多机器人编队导航模块，实现 ATACOM + COSMOS + RMPflow + MAPPO
+  - **`cosmos/`**：统一训练框架，支持组件注册、配置驱动、WandB 日志（已实现，见下文）
+- **参考代码**：`paper/3_Control_SafeMARL/备份/programs/atacom-main`，基于 ATACOM 的约束流形安全 RL（SAC + Tiago/Fetch/HRI 环境）。
+- **论文与课题**：`paper/3_Control_SafeMARL` 下包含课题说明、IROS 论文、本硕论文及备份。
 
 ---
 
-## 七、框架重构方案
+## 七、COSMOS 统一框架（已实现）
 
-为了更方便地扩展环境和 MARL 算法，建议采用以下架构重构方案。
+统一训练框架已在 `cosmos/` 目录下实现，支持环境、算法、安全滤波器的灵活组合。
 
-### 7.1 当前架构问题
+### 7.1 架构设计目标
 
 | 问题 | 影响 |
 |------|------|
@@ -391,47 +394,72 @@ python -m cosmos.train env.num_agents=6 algo.lr=1e-4
 python -m cosmos.train -m algo=mappo,qmix,maddpg
 ```
 
-### 7.10 新目录结构
+### 7.10 当前目录结构（已实现）
 
 ```
-cosmos/
+cosmos/                          # 统一训练框架
 ├── __init__.py
-├── registry.py              # 组件注册器
-├── trainer.py               # 统一训练器
-├── configs/                 # Hydra 配置
-│   ├── config.yaml
+├── registry.py                  # 组件注册器（ENV/ALGO/SAFETY_REGISTRY）
+├── train.py                     # Hydra 训练入口
+├── trainer.py                   # 统一训练器（训练循环、日志、检查点）
+│
+├── configs/                     # Hydra YAML 配置
+│   ├── config.yaml              # 主配置（defaults 组合）
 │   ├── env/
-│   │   ├── formation_nav.yaml
-│   │   ├── mpe.yaml
-│   │   └── traffic.yaml
+│   │   └── formation_nav.yaml   # 编队导航环境配置
 │   ├── algo/
-│   │   ├── mappo.yaml
-│   │   ├── qmix.yaml
-│   │   └── maddpg.yaml
+│   │   └── mappo.yaml           # MAPPO 超参数
 │   └── safety/
-│       ├── cosmos.yaml
-│       ├── cbf.yaml
-│       └── none.yaml
-├── envs/                    # 环境
+│       ├── cosmos.yaml          # COSMOS 安全滤波器配置
+│       └── none.yaml            # 无安全滤波（基线）
+│
+├── envs/                        # 环境封装
 │   ├── __init__.py
-│   ├── base.py
-│   ├── formation_nav/
-│   └── mpe/
-├── algos/                   # MARL 算法
+│   ├── base.py                  # BaseMultiAgentEnv 抽象基类
+│   └── formation_nav.py         # FormationNav 环境封装
+│
+├── algos/                       # MARL 算法
 │   ├── __init__.py
-│   ├── base.py
-│   ├── mappo/
-│   ├── qmix/
-│   └── maddpg/
-├── safety/                  # 安全滤波器
+│   ├── base.py                  # BaseMARLAlgo 抽象基类
+│   └── mappo.py                 # MAPPO 算法封装
+│
+├── safety/                      # 安全滤波器
 │   ├── __init__.py
-│   ├── base.py
-│   ├── cosmos/
-│   └── cbf/
+│   ├── base.py                  # BaseSafetyFilter 抽象基类
+│   └── cosmos_filter.py         # COSMOS 安全滤波器封装
+│
 └── utils/
-    ├── logger.py
-    ├── checkpoint.py
-    └── visualization.py
+    ├── __init__.py
+    └── checkpoint.py            # 检查点保存/加载
+
+formation_nav/                   # 独立编队导航模块
+├── config.py                    # Python dataclass 配置
+├── train.py                     # 独立训练脚本
+├── eval.py                      # 评估脚本
+├── demo.py                      # 交互式演示
+├── demo_visualization.py        # 可视化工具
+├── benchmark.py                 # 性能基准测试（NEW）
+├── COSMOS_Demo.ipynb            # Colab 演示 Notebook（NEW）
+├── README.md                    # 详细文档
+│
+├── algo/                        # MAPPO 实现
+│   ├── networks.py              # Actor/Critic 网络
+│   ├── buffer.py                # RolloutBuffer (GAE)
+│   └── mappo.py                 # MAPPO 训练器
+│
+├── env/                         # 环境
+│   ├── formation_env.py         # 2D 编队导航环境
+│   └── formations.py            # 编队形状与拓扑
+│
+├── safety/                      # 安全模块
+│   ├── constraints.py           # StateConstraint, ConstraintsSet
+│   ├── atacom.py                # ATACOM 安全滤波器
+│   ├── cosmos.py                # COSMOS 安全滤波器（NEW）
+│   ├── rmp_tree.py              # RMPflow 树结构
+│   └── rmp_policies.py          # RMP 叶节点策略
+│
+└── docs/
+    └── THEORY.md                # 理论文档
 ```
 
 ### 7.11 添加新组件

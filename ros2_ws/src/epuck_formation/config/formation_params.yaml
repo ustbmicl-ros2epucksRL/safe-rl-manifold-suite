@@ -1,0 +1,58 @@
+# E-puck Formation Controller Parameters
+# ROS2 parameter file
+
+formation_controller:
+  ros__parameters:
+    # Number of robots
+    num_robots: 4
+
+    # Arena size (meters)
+    arena_size: 1.0
+
+    # Formation type: square, line, circle, v
+    formation_type: "square"
+
+    # Control timestep (seconds)
+    dt: 0.064
+
+    # Safety margin for collision avoidance (meters)
+    safety_margin: 0.08
+
+    # Maximum linear velocity (m/s)
+    max_linear_vel: 0.12
+
+    # Maximum angular velocity (rad/s)
+    max_angular_vel: 2.0
+
+    # Formation spacing (meters)
+    formation_spacing: 0.15
+
+safety_filter:
+  ros__parameters:
+    # Enable safety filter
+    enabled: true
+
+    # CBF parameters
+    cbf_gamma: 1.0
+    cbf_alpha: 0.5
+
+    # Safety constraints
+    min_distance: 0.08
+    boundary_margin: 0.05
+
+    # QP solver iterations
+    max_iterations: 10
+
+mappo_policy:
+  ros__parameters:
+    # Model path (empty = random actions)
+    model_path: ""
+
+    # Inference device
+    device: "cpu"
+
+    # Action noise (exploration)
+    action_noise: 0.0
+
+    # Use deterministic actions
+    deterministic: true

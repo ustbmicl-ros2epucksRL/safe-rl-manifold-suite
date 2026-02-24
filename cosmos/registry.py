@@ -40,13 +40,19 @@ class Registry:
         self._registry: Dict[str, Type] = {}
         self._aliases: Dict[str, str] = {}
 
-    def register(self, name: Optional[str] = None, aliases: Optional[List[str]] = None):
+    def register(
+        self,
+        name: Optional[str] = None,
+        aliases: Optional[List[str]] = None,
+        replace: bool = False
+    ):
         """
         Decorator to register a class.
 
         Args:
             name: Registration name. If None, uses class name.
             aliases: Optional list of alternative names.
+            replace: If True, silently replace existing registration.
 
         Returns:
             Decorator function.
@@ -59,7 +65,7 @@ class Registry:
         def decorator(cls: Type) -> Type:
             key = name if name is not None else cls.__name__
 
-            if key in self._registry:
+            if key in self._registry and not replace:
                 logger.warning(
                     f"Overwriting {self.name} '{key}' "
                     f"(was {self._registry[key]}, now {cls})"

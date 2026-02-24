@@ -1,0 +1,17 @@
+# E-puck Simulated Environment Configuration
+# Fast training before Webots sim-to-real transfer
+
+name: epuck_sim
+
+num_agents: 4
+dt: 0.064              # 64ms timestep (matches Webots)
+max_steps: 500
+arena_size: 1.0        # 1m x 1m arena
+
+# E-puck specifications:
+#   Wheel radius: 0.0205m
+#   Axle length: 0.052m
+#   Robot radius: 0.035m
+#   8 IR proximity sensors
+
+# No installation required - runs standalone

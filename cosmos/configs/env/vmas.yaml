@@ -1,0 +1,15 @@
+# VMAS Environment Configuration
+# Vectorized Multi-Agent Simulator
+
+name: vmas
+
+# Scenario options: navigation, formation_control, transport, wheel, etc.
+scenario: navigation
+num_agents: 4
+num_envs: 32           # Parallel environments for vectorization
+device: cpu            # cpu or cuda
+continuous_actions: true
+max_steps: 100
+
+# Installation:
+#   pip install vmas

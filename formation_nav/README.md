@@ -2140,6 +2140,70 @@ class FormationDecentralized(RMPLeaf):
 | 编队引导 | 无 | 无 | RMPflow 几何先验 |
 | 核心公式 | $A_r - \lambda A_c$ | TRPO + 可行性分析 | $\dot{q} = N_c\alpha - K_c J_c^\dagger c(q)$ |
 
+### 4.1 Benchmark 实验对比：RMPflow 基线 vs COSMOS+MAPPO
+
+#### 实验配置
+
+| 参数 | 值 |
+|------|-----|
+| 智能体数量 | 4 |
+| 障碍物数量 | 4 |
+| 测试回合数 | 30 |
+| 编队形状 | 正方形 |
+| 场地大小 | 10×10 |
+
+#### 实验结果
+
+| 指标 | RMPflow 基线 | COSMOS+MAPPO | 优胜者 |
+|------|-------------|--------------|--------|
+| **碰撞率** | **0%** | **0%** | **平局** |
+| 成功率 | 96.67% | 0%* | RMPflow |
+| 平均能耗 | 13.40 | 101.66 | RMPflow |
+| 平均编队误差 | 0.00 | 0.62 | RMPflow |
+| 最大编队误差 | 0.05 | 2.40 | RMPflow |
+| 平均最小距离 | 1.25 | 0.38 | RMPflow |
+| 计算时间(ms) | 383.95 | 506.03 | RMPflow |
+
+*注：当前 MAPPO 模型仅训练约 100 回合（Colab 快速演示），尚未充分收敛。
+
+#### 关键发现
+
+**1. 两种方法均实现零碰撞**
+
+这是 **COSMOS 的核心贡献**：安全性由约束零空间投影保证，与策略质量无关。即使策略表现很差（0% 成功率），COSMOS 仍能确保零碰撞。
+
+**2. COSMOS+MAPPO 的价值主张**
+
+| 方面 | RMPflow | COSMOS+MAPPO |
+|------|---------|--------------|
+| 安全机制 | 软排斥（度量张量趋于无穷） | **硬约束（零空间投影）** |
+| 可调性 | 每个场景需手动调参 | **从经验中学习** |
+| 适应性 | 固定行为 | **可适应新场景** |
+| 真实机器人部署 | 调参正确才安全 | **学习过程中即安全（关键！）** |
+| 优化能力 | 人工设计的启发式规则 | **可发现更高效的策略** |
+
+**核心优势**：**COSMOS 将安全性与学习解耦**——策略可以在学习过程中安全地失败，这对于真实机器人训练场景（碰撞不可接受）至关重要。
+
+**3. 关于性能差距**
+
+- RMPflow 是经过手工调优的几何控制器，针对此任务表现优异
+- MAPPO 当前仅训练约 100 回合，尚未充分学习
+- 随着训练时间增加（2000+ 回合），MAPPO 应能匹配甚至超越 RMPflow
+- 关键点：**学习过程全程安全**，这是传统 RL 方法（MAPPO-Lag、MACPO）无法保证的
+
+#### 运行 Benchmark
+
+```bash
+# 仅 RMPflow 基线
+PYTHONPATH=. python3 formation_nav/benchmark.py --num-episodes 30 --num-agents 4
+
+# 完整对比（需要训练好的模型）
+PYTHONPATH=. python3 formation_nav/benchmark.py --num-episodes 30 --model-path demo_output/cosmos_mappo_model.pt
+
+# 保存结果到 JSON
+PYTHONPATH=. python3 formation_nav/benchmark.py --save-results results.json
+```
+
 ---
 
 ## 五、贡献总结
@@ -2169,20 +2233,31 @@ class FormationDecentralized(RMPLeaf):
 formation_nav/
 ├── config.py                  # 全部超参数（dataclass）
 ├── requirements.txt           # torch, numpy, gymnasium, matplotlib, tensorboard
+├── train.py                   # 主训练脚本
+├── eval.py                    # 评估脚本
+├── demo.py                    # 交互式演示
+├── demo_visualization.py      # 可视化工具（NEW）
+├── benchmark.py               # 性能基准测试：RMPflow vs MAPPO（NEW）
+├── COSMOS_Demo.ipynb          # Google Colab 演示 Notebook（NEW）
+│
 ├── env/
 │   ├── formations.py          # 编队形状 & 拓扑定义
 │   └── formation_env.py       # 2D 多机器人 Gymnasium 环境（纯 NumPy 物理）
+│
 ├── safety/
+│   ├── cosmos.py              # COSMOS 多智能体安全滤波器（NEW）
+│   ├── atacom.py              # ATACOM 基础安全滤波器
+│   ├── constraints.py         # StateConstraint + ConstraintsSet（松弛变量）
 │   ├── rmp_tree.py            # RMPflow 树结构（RMPRoot/RMPNode/RMPLeaf）
-│   ├── rmp_policies.py        # 叶节点策略 + MultiRobotRMPForest 便捷类
-│   ├── constraints.py         # StateConstraint + ConstraintsSet（含松弛变量）
-│   └── atacom.py              # ATACOM 安全滤波器（零空间投影 + RMPflow 编队力混合）
+│   └── rmp_policies.py        # 叶节点策略 + MultiRobotRMPForest
+│
 ├── algo/
 │   ├── networks.py            # Actor / Critic / CostCritic（PyTorch）
 │   ├── buffer.py              # RolloutBuffer（GAE 计算）
 │   └── mappo.py               # MAPPO 训练器（CTDE）
-├── train.py                   # 主训练脚本
-└── eval.py                    # 评估 & 可视化
+│
+└── docs/
+    └── THEORY.md              # 理论文档
 ```
 
 ### 6.2 阶段二：Safety-Gymnasium 对比实验 🔄

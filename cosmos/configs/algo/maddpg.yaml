@@ -1,0 +1,26 @@
+# MADDPG Algorithm Configuration
+# Multi-Agent DDPG with centralized critics
+
+name: maddpg
+
+# Learning rates
+actor_lr: 1e-4
+critic_lr: 1e-3
+
+# Discount and target update
+gamma: 0.95
+tau: 0.01
+
+# Network architecture
+hidden_sizes: [128, 128]
+
+# Replay buffer
+buffer_size: 100000
+batch_size: 256
+
+# Exploration (Ornstein-Uhlenbeck noise)
+noise_scale: 0.1
+noise_decay: 0.9999
+
+# Training
+max_grad_norm: 0.5
