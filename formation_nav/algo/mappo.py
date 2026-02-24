@@ -56,8 +56,8 @@ class MAPPO:
         """
         obs_t = torch.as_tensor(obs, dtype=torch.float32).to(self.device)
         actions, log_probs = self.actor.get_actions(obs_t, deterministic)
-        # Clip to [-1, 1] for ATACOM input
-        actions = torch.tanh(actions)
+        # Note: Do NOT apply tanh here - it would break log_prob consistency
+        # COSMOS/ATACOM will handle action scaling
         return actions.cpu().numpy(), log_probs.cpu().numpy()
 
     @torch.no_grad()
