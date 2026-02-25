@@ -28,8 +28,20 @@ safe-rl-manifold-suite/
 │   ├── tests/                      # Test suite
 │   ├── examples/                   # Jupyter notebooks
 │   ├── scripts/                    # Analysis scripts
-│   ├── docs/                       # Documentation
+│   ├── docs/                       # Design documents (all .md here)
+│   │   ├── THEORY.md               #   Theoretical foundations
+│   │   ├── ARCHITECTURE.md         #   System architecture
+│   │   ├── DIRECTORIES.md          #   Directory structure
+│   │   ├── INSTALL_ENVS.md         #   Environment installation
+│   │   └── ROS2_WEBOTS_SETUP.md    #   ROS2 + Webots setup
 │   └── ros2/                       # ROS2 E-puck deployment
+│
+├── refs/                           # Reference papers & reading notes
+│   ├── *.pdf                       #   Reference papers
+│   ├── README.md                   #   Paper list & descriptions
+│   ├── ATACOM-Thesis-Liu2024-学习笔记.md
+│   ├── reading-notes.md
+│   └── multi_agent_formation_safe_avoidance_design.md
 │
 ├── artifacts/                      # Generated data (gitignored)
 │   ├── checkpoints/                # Model checkpoints
@@ -39,7 +51,6 @@ safe-rl-manifold-suite/
 │
 ├── algorithms/                     # Git submodules (external reference)
 ├── envs/                           # Git submodules (external reference)
-├── refs/                           # Reference papers (PDF) & reading notes
 ├── paper/                          # Thesis materials
 │
 ├── README.md                       # Project readme
@@ -107,11 +118,17 @@ GitHub operations require SOCKS5 proxy (Shadowrocket):
 
 ## Documentation
 
-See `cosmos/docs/` for detailed documentation:
+### Design Documents (`cosmos/docs/`)
+- `THEORY.md` - Theoretical foundations (MARL + Constraint Manifold + Riemannian Manifold)
 - `ARCHITECTURE.md` - System architecture
 - `DIRECTORIES.md` - Directory structure
 - `INSTALL_ENVS.md` - Environment installation
 - `ROS2_WEBOTS_SETUP.md` - ROS2 + Webots setup
+
+### Reading Notes (`refs/`)
+- `ATACOM-Thesis-Liu2024-学习笔记.md` - ATACOM paper notes
+- `reading-notes.md` - General reading notes
+- `multi_agent_formation_safe_avoidance_design.md` - Formation design notes
 
 ## Technical Background
 
