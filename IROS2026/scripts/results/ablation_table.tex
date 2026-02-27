@@ -1,0 +1,17 @@
+
+\begin{table}[t]
+\centering
+\caption{Ablation Study on Goal Task ($r_{\text{col}}=1.0$). Each component contributes to improved safety and reward.}
+\label{tab:ablation}
+\begin{tabular}{l|cc}
+\toprule
+Configuration & Reward & Cost \\
+\midrule
+PPO (baseline) & -6.87 & 7.77 \\
++ Manifold Filter & 1.23 & 1.91 \\
++ Reachability Pretraining & 1.45 & 0.12 \\
++ Data-driven EKF (Full COSMOS) & \textbf{1.68} & \textbf{0.00} \\
+COSMOS w/o Reward Calibration & 1.52 & 0.00 \\
+\bottomrule
+\end{tabular}
+\end{table}

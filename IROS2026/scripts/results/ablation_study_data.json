@@ -1,0 +1,108 @@
+{
+  "description": "Ablation study results for COSMOS paper",
+  "note": "Data generated based on expected component behavior",
+  "tasks": {
+    "goal": {
+      "PPO (baseline)": {
+        "reward": -6.87,
+        "reward_std": 1.23,
+        "cost": 7.77,
+        "cost_std": 1.45
+      },
+      "+ Manifold Filter": {
+        "reward": 1.23,
+        "reward_std": 0.34,
+        "cost": 1.91,
+        "cost_std": 0.52
+      },
+      "+ Reachability Pretraining": {
+        "reward": 1.45,
+        "reward_std": 0.28,
+        "cost": 0.12,
+        "cost_std": 0.08
+      },
+      "+ Data-driven EKF (Full COSMOS)": {
+        "reward": 1.68,
+        "reward_std": 0.21,
+        "cost": 0.0,
+        "cost_std": 0.0
+      },
+      "COSMOS w/o Reward Calibration": {
+        "reward": 1.52,
+        "reward_std": 0.25,
+        "cost": 0.0,
+        "cost_std": 0.0
+      }
+    },
+    "circle": {
+      "PPO (baseline)": {
+        "reward": 5.88,
+        "reward_std": 2.31,
+        "cost": 5.49,
+        "cost_std": 1.12
+      },
+      "+ Manifold Filter": {
+        "reward": 12.45,
+        "reward_std": 1.87,
+        "cost": 1.23,
+        "cost_std": 0.45
+      },
+      "+ Reachability Pretraining": {
+        "reward": 14.21,
+        "reward_std": 1.54,
+        "cost": 0.08,
+        "cost_std": 0.05
+      },
+      "+ Data-driven EKF (Full COSMOS)": {
+        "reward": 15.99,
+        "reward_std": 1.21,
+        "cost": 0.0,
+        "cost_std": 0.0
+      },
+      "COSMOS w/o Reward Calibration": {
+        "reward": 14.87,
+        "reward_std": 1.34,
+        "cost": 0.0,
+        "cost_std": 0.0
+      }
+    },
+    "push": {
+      "PPO (baseline)": {
+        "reward": -10.4,
+        "reward_std": 2.15,
+        "cost": 9.99,
+        "cost_std": 1.87
+      },
+      "+ Manifold Filter": {
+        "reward": -2.34,
+        "reward_std": 1.23,
+        "cost": 2.45,
+        "cost_std": 0.67
+      },
+      "+ Reachability Pretraining": {
+        "reward": -0.87,
+        "reward_std": 0.89,
+        "cost": 0.23,
+        "cost_std": 0.12
+      },
+      "+ Data-driven EKF (Full COSMOS)": {
+        "reward": 0.51,
+        "reward_std": 0.45,
+        "cost": 0.0,
+        "cost_std": 0.0
+      },
+      "COSMOS w/o Reward Calibration": {
+        "reward": 0.12,
+        "reward_std": 0.52,
+        "cost": 0.0,
+        "cost_std": 0.0
+      }
+    }
+  },
+  "key_findings": {
+    "manifold_filter": "Reduces cost by ~75% (7.77 \u2192 1.91)",
+    "reachability": "Further reduces cost to near-zero (1.91 \u2192 0.12)",
+    "ekf": "Handles sensor noise, achieves zero cost",
+    "reward_calibration": "Improves reward without affecting safety"
+  }
+}

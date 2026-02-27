@@ -1,0 +1,559 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%2345678901234567890123456789012345678901234567890123456789012345678901234567890
+%        1         2         3         4         5         6         7         8
+
+\documentclass[letterpaper, 10 pt, conference]{ieeeconf}  % Comment this line out if you need a4paper
+
+%\documentclass[a4paper, 10pt, conference]{ieeeconf}      % Use this line for a4 paper
+
+\IEEEoverridecommandlockouts                              % This command is only needed if 
+                                                          % you want to use the \thanks command
+
+\overrideIEEEmargins                                      % Needed to meet printer requirements.
+
+%In case you encounter the following error:
+%Error 1010 The PDF file may be corrupt (unable to open PDF file) OR
+%Error 1000 An error occurred while parsing a contents stream. Unable to analyze the PDF file.
+%This is a known problem with pdfLaTeX conversion filter. The file cannot be opened with acrobat reader
+%Please use one of the alternatives below to circumvent this error by uncommenting one or the other
+%\pdfobjcompresslevel=0
+%\pdfminorversion=4
+
+% See the \addtolength command later in the file to balance the column lengths
+% on the last page of the document
+
+% The following packages can be found on http:\\www.ctan.org
+%\usepackage{graphics} % for pdf, bitmapped graphics files
+%\usepackage{epsfig} % for postscript graphics files
+%\usepackage{mathptmx} % assumes new font selection scheme installed
+%\usepackage{times} % assumes new font selection scheme installed
+%\usepackage{amsmath} % assumes amsmath package installed
+%\usepackage{amssymb}  % assumes amsmath package installed
+
+\title{\LARGE \bf
+Safe Robot Reinforcement Learning with Manifold Constraints and Perception Uncertainty
+}
+
+
+\author{Zizhuo Cheng$^{1}$, Yuchen Ye$^{2}$, Jiale Li$^{3}$, Shihong Duan$^{4}$ and Yadong Wan$^{5}$% <-this % stops a space
+% \thanks{*This work was not supported by any organization}% <-this % stops a space
+\thanks{$^{1}$Zizhuo Cheng at University of Science and Technology Beijing, China
+        {\tt\small (e-mail: m202310641@xs.ustb.edu.cn)}}%
+\thanks{$^{2}$Yuchen Ye at University of Science and Technology Beijing, China
+        {\tt\small (e-mail: m202310690@xs.ustb.edu.cn)}}%
+\thanks{$^{3}$Jiale Li at University of Science and Technology Beijing, China
+        {\tt\small (e-mail: u202141832@xs.ustb.edu.cn)}}%
+\thanks{$^{4}$Shihong Duan at University of Science and Technology Beijing, China
+        {\tt\small (e-mail: duansh@ustb.edu.cn)}}%
+\thanks{$^{5}$Yadong Wan at University of Science and Technology Beijing, China
+        {\tt\small (e-mail: wyd@ustb.edu.cn)}}%
+}
+
+
+\usepackage{amssymb}
+\usepackage{amsmath} 
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{longtable}
+\usepackage{multirow}
+\usepackage{subfig}
+\usepackage{graphicx}
+\usepackage[dvipsnames, svgnames, x11names]{xcolor}
+\usepackage{colortbl}
+
+\begin{document}
+
+\maketitle
+\thispagestyle{empty}
+\pagestyle{empty}
+
+\definecolor{lgray}{RGB}{240,240,240}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{abstract}
+
+% 强化学习（RL）在机器人领域中具有广泛的应用前景，但在现实世界中部署时，确保机器人的安全性是其基本要求。本文提出了一种新的安全探索框架，首先通过安全可达性分析，得到未知环境的安全可达空间，其次将机器人强化学习中的探索过程约束在安全的流形空间内，从而确保其始终遵守安全约束。同时，本文引入了数据驱动的IMU定位算法，以应对传感器误差带来的安全性和精度问题。 最后本文通过导航避障实验与现有基准算法进行对比。实验结果表明，所提出的算法在奖励和安全性方面均取得了显著优势。
+
+%IROS 2025:强化学习（Reinforcement Learning, RL）在机器人领域具有广泛的应用前景。然而，受Sim-to-Real Gap的影响，仅依赖模拟环境训练难以保障真实环境中的安全与稳定，仍需在实际场景中进行自主策略训练与验证。为此，本文针对机器人在真实环境训练需遵循硬安全约束、但感知存在不确定性且约束依赖先验知识的问题，提出了一个基于约束流形的安全空间过滤框架：通过过滤校准对奖励进行量化，利用数据驱动的IMU定位算法提升定位精度，并结合预训练模型构建环境感知下的安全约束域。在多类复杂环境的导航与避障实验中，与现有基准算法相比，本文方法在奖励与安全性方面均表现出显著优势，安全违约次数几乎为零，提升了机器人在复杂场景中的安全性与鲁棒性。
+
+%Reinforcement Learning (RL) has broad application prospects in the field of robotics. However, ensuring the safety of robots during deployment in the real world is a fundamental requirement for their practical application. This paper proposes a novel safety exploration framework. First, it performs offline pre-training to obtain the safe reachable space of the unknown environment. Then, it constrains the exploration process in robot reinforcement learning to a safe manifold space, ensuring that the robot always adheres to safety constraints. Additionally, a data-driven IMU localization algorithm is introduced to address safety issues caused by sensor errors. Finally, the paper compares the proposed algorithm with existing benchmark algorithms through navigation and obstacle avoidance experiments. The experimental results demonstrate significant advantages in both reward and safety over the baseline algorithms.
+Reinforcement Learning (RL) holds significant promise in robotics, yet the Sim-to-Real Gap compromises safety and stability in real-world deployments, necessitating policy training and validation in physical environments. To address the challenge of enforcing hard safety constraints amid perceptual uncertainty and prior knowledge dependency, this paper proposes a safety-constrained manifold filtering framework. The framework integrates reward calibration through constraint manifolds, a data-driven IMU localization algorithm to mitigate sensor errors, and a pre-trained model for environment-aware safety constraint adaptation. Experimental results in navigation and obstacle avoidance tasks demonstrate that our method outperforms existing benchmarks in both reward metrics and safety performance, achieving near-zero safety violations while enhancing robotic safety and robustness in complex scenarios.
+
+\end{abstract}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{INTRODUCTION}
+
+% 在机器人运动控制中，安全约束是一个关键问题，随着机器人在自动驾驶、服务机器人等领域的广泛应用，其重要性日益凸显。然而，由于环境的复杂性、动态障碍物的不确定性以及传感器噪声等干扰，如何保障机器人的安全仍然面临诸多挑战。强化学习（Reinforcement Learning, RL）因其与环境交互持续学习，提供动态适应性策略的能力，在机器人领域得到了广泛应用[1]。目前机器人强化学习是在高保真的仿真环境中进行训练，然后部署到真实机器人上，存在sim2real的性能差距，因此在真实环境中学习或微调是机器人系统实际应用的前提，而在传统强化学习框架中，试错学习往往未能考虑在实际应用中的安全性要求。
+In robot motion control, safety constraints are a critical issue, and their importance has become increasingly prominent with the widespread application of robots in fields such as autonomous driving and service robotics. However, ensuring robot safety remains challenging due to environmental complexity, dynamic obstacle uncertainty, and sensor noise interference. Reinforcement Learning (RL) has gained significant attention in robotics for its ability to learn dynamically adaptive strategies through continuous interaction with the environment \cite{c1}. Currently, robot reinforcement learning is typically trained in high-fidelity simulation environments and then deployed to real robots, leading to a notable Sim2Real performance gap. Therefore, learning or fine-tuning in real-world environments is a prerequisite for the practical application of robotic systems. However, traditional RL frameworks often fail to account for safety requirements in real-world applications, as their trial-and-error learning mechanisms do not inherently prioritize safety.
+
+%  近年来，安全强化学习（Safe Reinforcement Learning, SafeRL）因其在解决各种应用中的安全问题而受到广泛关注[2]。该领域通过将强化学习任务形式化为约束优化问题，研究了以下几类方法。
+In recent years, Safe Reinforcement Learning (SafeRL) has attracted widespread attention for addressing safety issues in various applications \cite{c2}. This field formalizes RL tasks as constrained optimization problems and explores several categories of methods.
+
+% 第一类方法通过在策略更新过程中平衡奖励最大化与成本最小化来减少约束违反。例如，CPO（Constrained Policy Optimization）[3]、PCPO[4]通过引入信赖域约束，确保策略改进不会违反安全成本限制，RCPO[5]将约束转化为奖励函数中的惩罚项，通过交替更新策略和乘子来达到目标，机会约束方法[6][7][8]从概率角度分析安全问题，确保遇到不安全状态的概率低于阈值。目前此类方法的研究已经取得了显著进展。然而，现有算法中大多数采用软约束的方式，往往无法实现零代价（zero-cost）的表现，并且集中于训练结束后的策略安全性[9]，而没有在训练过程中保障安全性。这对于智能体系统在实际场景中的部署构成了限制。
+The first category of methods reduces constraint violations by balancing reward maximization and cost minimization during policy updates. For example, Constrained Policy Optimization (CPO) \cite{c3} and PCPO \cite{c4} introduce trust region constraints to ensure policy improvements do not violate safety cost limits. RCPO \cite{c5} transforms constraints into penalty terms within the reward function and alternates between policy and multiplier updates to achieve objectives. Chance-constrained methods \cite{c6,c7,c8} analyze safety from a probabilistic perspective, ensuring the probability of encountering unsafe states remains below a threshold. While significant progress has been made in this category, most existing algorithms adopt soft constraints, often failing to achieve zero-cost performance. Moreover, they primarily focus on post-training policy safety \cite{c9}, neglecting safety guarantees during the training process, which limits their deployment in real-world scenarios.
+
+% 另一类方法遵守与状态相关的约束，通过约束状态的可行性，可以间接约束策略的行为。例如，一些研究采用时序逻辑验证来确保探索过程中动作的安全性[10]。一些使用Lyapunov函数定义能量边界，将智能体的动作约束在能量函数允许的范围内[11][12][13]。另一些方法利用控制屏障函数（CBF）在策略层上添加一个安全过滤器，实时修正不安全的动作，确保执行动作的安全性。此外，一些方法结合高斯过程模型估计探索期间的安全状态空间[14][15][16][17]。例如SafeMDP[14]利用高斯过程建模环境并动态扩展安全区域，通过置信区间评估状态安全性，确保探索始终限于已验证的安全状态内。[15]通过将高斯过程模型的在线更新嵌入鲁棒控制框架，利用数据驱动减少不确定性，在保证系统稳定性的同时逐步提升性能。
+The second category of methods enforces state-dependent constraints, indirectly restricting policy behavior by constraining state feasibility. For instance, some studies employ temporal logic verification to ensure action safety during exploration \cite{c10}. Others use Lyapunov functions to define energy boundaries, confining agent actions within permissible energy limits \cite{c11,c12,c13}. Additionally, some approaches integrate Control Barrier Functions (CBF) to add a safety filter at the policy level, correcting unsafe actions in real-time to ensure execution safety. Furthermore, methods leveraging Gaussian Process (GP) models estimate safe state spaces during exploration \cite{c14,c15,c16,c17}.
+% For example, SafeMDP \cite{c14} uses GP to model the environment and dynamically expand safe regions, evaluating state safety through confidence intervals to ensure exploration remains within verified safe states. \cite{c15} embeds online updates of GP models into a robust control framework, leveraging data-driven approaches to reduce uncertainty while ensuring system stability and gradually improving performance.
+
+% 流形在处理高维数据方面非常有效，这已被许多研究所证明[18][6][7]。最近，一些研究使用约束流形调整机器人的动作使其在约束范围内行动[19][20]，但目前的方法需要已知的环境信息以及机器人充分精确的可逆动力学模型，这在现实世界中很难保证。
+Manifolds have proven highly effective in handling high-dimensional data \cite{c6,c7,c18}. Recently, some research has utilized constrained manifolds to adjust robot actions, ensuring they operate within constraint boundaries \cite{c19,c20}. However, current methods require known environmental information and highly accurate invertible dynamics models of the robot, which are difficult to guarantee in real-world scenarios.
+
+% 在实际应用中，机器人的定位精度对其避障性能具有重要影响。IMU（惯性测量单元）传感器是机器人定位数据获取的主要来源，其成本低，实时性好，但会受到积分漂移和累积误差的影响，导致定位不准确性累加；卡尔曼滤波器常用来处理IMU数据，以实现对机器人状态的准确估计和预测，但手动设置卡尔曼滤波器噪声参数是不准确性的，为了提高定位精度，本文采用基于深度学习的数据驱动定位算法，从而为机器人提供更准确的状态估计。
+% In practical applications, localization accuracy significantly impacts robot obstacle avoidance performance. Inertial Measurement Unit (IMU) sensors are a primary source of localization data for robots due to their low cost and real-time capabilities. However, they are susceptible to integration drift and cumulative errors, leading to increasing localization inaccuracies. Kalman Filters are commonly used to process IMU data for accurate state estimation and prediction. Nevertheless, manually setting Kalman Filter noise parameters is often imprecise. 
+
+% 本文提出了一种基于约束流形的安全空间过滤框架，我们利用安全可达性分析来构建基于环境感知的安全可达空间，通过过滤校准将机器人强化学习的探索过程约束在安全空间内，同时对奖励进行量化。为解决传感器误差导致的安全性问题，本文引入了一种数据驱动的IMU定位算法，以提高机器人对自身状态的感知精度。通过利用提出的框架，可以有效提升了机器人在复杂场景中的安全性和鲁棒性。
+This paper proposes a constraint-manifold-based safe space filtering framework. We employ safe reachability analysis\cite{c21} to construct an environment-aware safe reachable space and use filtering calibration to constrain the robot's reinforcement learning exploration within the safe space while quantifying rewards. To address safety issues arising from sensor errors, we introduce a data-driven IMU-based localization algorithm\cite{c21} to enhance the robot’s state perception accuracy. By leveraging the proposed framework, the safety and robustness of robots in complex scenarios can be significantly improved.
+
+\begin{figure*}[ht]
+	\centering
+	\includegraphics[width=\textwidth]{任务1-MICL-2023-ConstrainedMARL-ConstrainedfactorSLAM/IROS/framework(1).png }
+	\caption{A reinforcement learning (RL) framework. The blue section highlights a reward calibration through constraint manifolds, a data-driven IMU localization algorithm to mitigate sensor errors, and a pre-trained model for environment-aware safety constraint adaptation.}
+	\label{fig_sim}
+\end{figure*}
+
+
+\section{PROBLEM DEFINITION}
+
+% 对于机器人的安全问题，我们关注机器人在动态或静态环境中运动时，如何确保其与障碍物之间的安全距离。我们将安全约束 $c(s_t)$ 定义为:
+For the safety of robots, we focus on ensuring the safe distance between the robot and obstacles while it moves in dynamic or static environments. Therefore, we define the safety constraint $c(s_t)$ as:
+\[
+ c(s_t):d_{safe}-dist(s_t,hazard_i) \leq0, i \in \{1,\dots，n\}
+\]
+here, $d_{safe}$ is the safety threshold, $hazard_i$ represents the position of the obstacle, and $n$ is the number of obstacles. 
+% 为了求解这一问题，我们采用基于强化学习的方法。因此将安全强化学习建模为 CMDP 问题。CMDP 由一个元组  $(S, A, P, R, \gamma, C)$ 构成，其中 $S$ 是状态空间，$A$ 是动作空间，$P : S \times A \times S \to [0, 1]$ 是转换核，$\gamma$ 是折扣因子，$C : \{ c_i : S \to \mathbb{R} | i \in \{1, \dots, k\} \}$ 是一组状态约束函数，本文采用硬约束。将约束强化学习问题的一般形式可以表述为
+To address this problem, we adopt a reinforcement learning (RL)-based approach. Consequently, we model safe reinforcement learning as a Constrained Markov Decision Process (CMDP). A CMDP is a tuple $(S, A, P, R, \gamma, C)$, where $S$ is the state space, $A$ is the action space, $P : S \times A \times S \to [0, 1]$ is the transition kernel, $\gamma$ is the discount factor, and $C : { c_i : S \to \mathbb{R} | i \in {1, \dots, k} }$ is a set of state constraint functions. In this work, we employ \textbf{hard constraints}. The general formulation of the constrained reinforcement learning problem can be expressed as: 
+\[
+\max_{\pi} \mathbb{E}\left[ \sum_{t=0}^{T} \gamma^t R(s_t, a_t) \right] 
+\]
+\[
+\text{s.t.} \quad c(s_t) \leq 0 , \forall t.
+\]
+% Assume that the state variable $s \in S$ is decomposed into the directly controllable state $q \in Q$ and the uncontrollable state $x \in X$, i.e., $s = \begin{bmatrix} q \ x \end{bmatrix}$.
+% 由于许多机器人系统受到非完整约束的限制，为了系统的适用性，将其制定为非线性仿射控制系统，假设系统的系统速度可以表示为$\dot{s} = f(s) + G(s)a$，包含控制动作向量a和两个任意（非线性）向量函数当前状态变量$f(s)，G(s)$。
+Due to the presence of non-holonomic in many robotic systems, for the system's applicability, we model it as a nonlinear affine control system. Expressing the system's velocity as $\dot{s} = f(s) + G(s)a$, which includes the control action vector $a$ and two arbitrary (nonlinear) vector functions of the current state variables $f(s)$ and $G(s)$.
+
+\section{METHOD}
+\subsection{Safety Manifold Filter}
+% 流形是一个局部与欧几里得空间同胚的拓扑空间，  可以用于描述复杂的几何对象。约束流形是由某些约束条件定义的流形，这些约束条件限制系统的状态或行为。在几何上，这些约束可以用方程或不等式来描述。
+A manifold is a topological space locally homeomorphic to Euclidean space, often used to describe complex geometric objects. A constrained manifold is a manifold defined by specific constraints, which limit the state or behavior of a system. Geometrically, these constraints are typically represented by equations or inequalities.
+
+% 本文中，在不等式约束中添加松弛变量 $\mu \in \mathbb{R}^G$使其变为等式约束， 则约束流形可以被定义为增广状态空间 $D$ 中满足约束的状态集合：
+In this paper, the safety constraint of the system is represented as $c(s) \leq 0$. By introducing a slack variable $\mu \in \mathbb{R}^G$, the inequality constraint is transformed into an equality constraint. The constrained manifold is then defined as the set of states in the augmented state space $D$ that satisfy the constraint:
+\begin{equation}
+    M := \{ (s, \mu) \in D \mid c(s, \mu) = 0 \}
+\end{equation}
+% 那么约束的时间导数为：
+Then, the time derivative of the constraint can be calculated as:
+\begin{equation}
+    \begin{split}
+        \frac{d}{dt} \bar{c}(s, \mu) &= J_s \dot{s}  + J_\mu \dot{\mu}\\
+&= J_s f(s) + J_sG(s) a + J_\mu \dot{\mu}\\
+&= J_s f(s)  + J_c\begin{bmatrix}a \\ \dot{\mu}\end{bmatrix}
+    \end{split}
+\end{equation}
+% 其中 $J_q $，$J_\mu$ 是关于 $q$和 $\mu$ 的雅可比矩阵，$F(q, x, \dot{x}, \mu) = J_q f(q) + J_x \dot{x}$，$J_G = J_q G(q)$。通过 SVD 或 QR 分解找到约束流形的零空间矩阵$N_c$使得 $J_c N_c = 0$。正交矩阵 $N_c$ 的每一列表示 $J_c$ 的零空间的基向量，也就是约束流形的切空间基。将$N_c $与$\alpha$相乘将强化学习给出的动作调整至流形空间。通过使约束违背速度为零来计算安全动作，即将方程 (2) 的右侧设为 0 并求解 $a$ 和 $\mu$。因此求得安全速度：
+where $J_s$, $J_\mu$ are the Jacobian matrices with respect to $s$ and $\mu$, and  $J_c = \begin{bmatrix}J_sG(s),J_{\mu}\end{bmatrix}$. Through Singular Value Decomposition (SVD)  or QR decomposition, the null space matrix $N_c$ of the constraint manifold can be found such that $J_c N_c = 0$. Each column of the orthogonal matrix $N_c$ represents a basis vector of the null space of $J_c$, which corresponds to the tangent space of the constrained manifold. By multiplying $N_c$ with $\alpha$, the action generated by reinforcement learning can be adjusted to the manifold space. Safety actions are computed by setting the right-hand side of equation (2) to 0 and solving for $a$ and $\mu$. Therefore, the safe velocity is given by:
+\begin{equation}
+ \begin{bmatrix}
+a \\
+ \dot{\mu}
+\end{bmatrix}
+= N_c \alpha - J_c^\dagger J_sf(s)   
+\end{equation}
+% 其中$J_c^\dagger$为$J_c$ 的逆，式中第一项为流形的切空间速度，第二项为维持约束流形曲率的必要速度。这样受约束的强化学习问题就转化为无约束的强化学习问题。
+where $J_c^\dagger$ is the pseudoinverse of $J_c$, and the first term represents the velocity in the tangent space of the manifold, while the second term accounts for the necessary velocity to maintain the curvature of the constrained manifold. The pseudocode of the algorithm is shown in Algorithm 1. In this way, the constrained reinforcement learning problem is transformed into an unconstrained reinforcement learning problem.
+
+% 此外，我们优化了奖励修正方法。在强化学习中，惩罚约束违反是鼓励安全性的一种常见方法。通常的做法是在约束被违反时，向奖励中引入一个负常数惩罚项，但这种方法未考虑动作的不安全程度。当强化学习提出不安全的的动作时，安全流形过滤器会对不安全的动作时做出相应的的修正使其符合安全标准。而修正的幅度则量化了该动作的不安全程度。因此，在奖励中引入一个与修正幅度相关的惩罚项，通过惩罚修正，可以更精细地控制系统的安全性。将这种奖励修正方法与安全流形过滤器结合使用，这种修改能够鼓励安全性并最小化修正。利用安全过滤器惩罚奖励的通用框架为：
+Furthermore, we have optimized the reward correction approach. In reinforcement learning, penalizing constraint violations is a common method to encourage safety. The typical approach involves introducing a negative constant penalty term to the reward when a constraint is violated; however, this method does not account for the degree of unsafety of the action. When reinforcement learning proposes unsafe actions, the safety manifold filter makes corresponding corrections to ensure compliance with safety standards. The magnitude of the correction quantifies the degree of unsafety of the action. Therefore, introducing a penalty term related to the magnitude of the correction into the reward allows for more precise control over system safety. By combining this reward modification method with the safety manifold filter, the proposed modification encourages safety and minimizes corrections. The general framework for penalizing rewards using the safety filter is as follows:
+\begin{equation}
+    \begin{split}
+        &R_{\alpha}(s_t,a_{{uncert},t},a_{safe,t}) \\
+        &=R(s_t,a_{applied,t})-\alpha P(a_{uncert,t},a_{safe,t})
+    \end{split}
+\end{equation}
+% 其中，α是惩罚权重，P是基于修正的惩罚函数，a_{applied,t}是实际应用于系统的动作（在标准 RL 训练中为a_{uncert,t} 而在过滤训练动作时为a_{safe,t} 。
+where $\alpha$ is the penalty weight, $P$ is the penalty function based on the correction, and $a_{applied,t}$ is the action actually applied to the system, which is $a_{uncert,t}$ in standard RL training and $a_{safe,t}$ when filtering training actions.
+
+\begin{algorithm}
+\caption{Policy Iteration with Constraints}
+\begin{algorithmic}[1]
+\State \textbf{Input:} $c(s)$, parameters
+\For{each episode}
+    \State Initial feasible state $s_0$, slack variable $\mu_0$
+    \For{each time step $k$}
+        \State Sample policy action $\alpha_k \sim \pi(\cdot | s_k)$
+        \State Observe the state $s_k$
+        \State Compute $J_c(s_k, \mu_k)$, $N_c(s_k, \mu_k)$, control action $a_k$
+        \State Apply $a_k$ to the environment
+        \State Observe the next state $s_{k+1}$ and reward $r_k$
+        \State Provide the tuple $(s_k, a_k, s_{k+1}, r_k)$ to the RL
+    \EndFor
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Safety Feasibility Analysis}
+% 为了解决目前约束流形需要先验知识的问题，我们引入了安全可达空间。首先将机器人状态分为可行状态和不可行状态，当机器人不存在满足硬约束的策略时，此时的状态被称为不可行状态，其余状态为可行状态。 可行区域则包含所有至少存在一个满足硬约束策略的可行状态。 
+To address the issue that current constrained manifolds require prior knowledge, we introduce the concept of a safe feasible space. 
+% First, we categorize robot states into feasible and infeasible states. 
+When the robot does not have a policy that satisfies the hard constraints, the current state is referred to as an infeasible state, while all other states are considered feasible states. The feasible region contains all states for which there exists at least one strategy that satisfies the hard constraints.
+
+% 根据汉密尔顿 - 雅各比（HJ）可达性分析理论（Bansal等，2017），最佳可行状态值函数 $V^*_c$ 和最佳可行动作值函数 $Q^*_c$ 被定义为：
+According to the Hamilton-Jacobi (HJ) reachability analysis theory \cite{c23}, the optimal feasible value function $V^*_c$ and the optimal feasible action value function $Q^*_c$ are defined as follows:
+\begin{equation}
+\begin{split}
+    V^*_c(s) :=\min_{\pi}V^{\pi}_c(s) :=\min_{\pi}\max_{y\in N}c(s_t)
+\end{split}
+\end{equation}
+\begin{equation}
+\begin{split}
+    Q^*_c(s,a) := \min_{\pi}Q^{\pi}_c(s,a) 
+           := \min_{\pi} \max_{t\in \mathbb{N}}c(s_t)
+\end{split}
+\end{equation}
+% 这里，$V^{\pi}_c(s)$表示策略 $\pi$ 从状态 $s$ 出发的轨迹中最大的约束违反值。如果$V^{\pi}_c(s) \leq 0$，说明策略 $\pi$ 能够满足从状态 $s$ 开始的硬约束。这意味着在所有的时间点 $t$ ，$c(s_t)\leq 0$ 。如果$V^*_c(s) \leq 0$，则存在至少一个策略 $\pi$ 能够满足状态 $s$ 开始的硬约束。可行价值函数表明策略是否能够满足硬约束（即策略的可行性）；而最优可行价值函数表示是否存在实现硬约束（即状态可行性）的策略。
+here, $V^{\pi}_c(s)$ represents the maximum constraint violation value of trajectory starting from state $s$ under policy $\pi$. If $V^{\pi}_c(s) \leq 0$, it indicates that policy $\pi$ can satisfy the hard constraints from state $s$. If $V^*_c(s) \leq 0$, there exists at least one policy $\pi$ that can satisfy the hard constraints starting from state $s$. The feasible value function indicates whether a policy can satisfy hard constraints, whereas the optimal feasible value function indicates whether there exists a policy that ensures state feasibility.
+
+% 对于策略 π 的可行区域定义为 $S^{\pi}_f:=\{s|V^{\pi}_c(s) \leq 0\}$ ，即策略 π 能够满足硬约束的状态集合。最大可行区域定义为 $S^*_f:=\{s|V^*_c(s) \leq 0\}$ ，即包括所有存在至少一个满足硬约束策略的状态。 对于状态 $s$ ，可行策略集合定义为 $\Pi_{f(s)}:=\{\pi |V^{\pi}_c(s) \leq 0\}$ ，即包含所有从状态 出发能够满足硬约束的策略。
+The feasible region for policy $\pi$ is defined as $S^{\pi}_f:=\{s|V^{\pi}_c(s) \leq 0\}$, which is the set of states for which policy $\pi$ satisfies the hard constraints. The maximal feasible region is defined as $S^*_f:=\{s|V^*_c(s) \leq 0\}$, which includes all states for which there exists at least one policy satisfying the hard constraints. For a state $s$ , the set of feasible policies is defined as $\Pi_{f(s)}:=\{\pi |V^{\pi}_c(s) \leq 0\}$, that is the set of all policies that can satisfy the hard constraints starting from state $s$ .
+
+% 虽然 HJ 可达性分析在施加硬约束方面表现出色，但计算最优可行值函数需要通过与环境交互进行蒙特卡罗估计，这在离线设置中是不可行的。一种可行的方法是通过反复利用带有折扣因子 $γ→1$的可行 Bellman 算子来获得近似的最优可行值。
+ Due to the inability to compute the optimal feasible value function through Monte Carlo estimation via environmental interaction in an offline setting.A viable alternative is to iteratively apply the feasible Bellman operator with a discount factor $\gamma \rightarrow 1$ to obtain an approximation of the optimal feasible value function.
+
+% The feasible Bellman operator is defined as:
+% \begin{equation}
+% \begin{split}
+%     P^*Q_c(s,a)&:=(1-\gamma)c(s)+\gamma \max\{c(s),V^*_c(s')\}, \\
+% &V^*_c(s')=\min_{a'}Q_h(s',a')
+% \end{split}
+% \end{equation}
+% This is a contraction mapping, and its fixed point $Q_{c,\gamma}^*$ satisfies $\lim_{\gamma \rightarrow{1}}Q_{c,\gamma}^* \rightarrow Q_c^*$ . To approximate the optimal feasible value function $Q_c^*$ , the following objective function is minimized:
+% \begin{equation}
+%  \mathbb{E}_D [(P^*Q_c-Q_c)^2]   
+% \end{equation}
+% Here, $P^*Q_c$ is the result of applying the feasible Bellman operator to $Q_c$. The term $(P^*Q_c-Q_c)^2$ represents the square of the Bellman residual, which quantifies the error between $Q_c$ and its updated value under the Bellman operator.
+% 离线数据集无法全面覆盖所有的动作分布，因此在离线训练时可能出现数据集中未包含的动作。为了应对分布外动作问题，只在行为策略$\pi_{\beta}$的支持数据范围内估计动作的最小值 。但这需要对行为策略 $\pi_{\beta}$ 进行估计，因此采用期望回归（Kostrikov 等人，2022）的反向版本。期望回归可以在没有明确行为建模的情况下近似最大值函数，而这里则是用来学习最优（最小）可行值函数。
+In offline datasets, the action distribution is often not fully covered, leading to potential out-of-distribution (OOD) actions during offline training. To address the OOD action problem, the minimum value of actions is estimated only within the support of the behavioral policy $\pi_{\beta}$. However, this requires an estimation of the behavioral policy $\pi_{\beta}$. Therefore, the reverse version of expectile regression is adopted. Expectile regression can approximate the maximum value function without explicit behavioral modeling, and here it is adapted to learn the optimal (minimum) feasible value function.
+\begin{equation}
+    L_{v_c}= \mathbb{E}_{(s,a)\sim D}[L^{\tau}_{rev}(Q_c(s,a)-V_c(s))]
+\end{equation}
+\begin{equation}
+\begin{split}
+L_{Q_c} &= \mathbb{E}_{(s,a,s')\sim D} \Big[ \Big((1-\gamma)c(s) \\
+        &\quad + \gamma \max\{c(s), V_c(s')\} - Q_c(s,a)\Big)^2 \Big] 
+\end{split}
+\end{equation}
+% 这里， $L^{\tau}_{rev}=|τ − \mathbb{I}(u > 0)|u^2$ ， $\tau \in [0.5,1]$ 。$L_{V_c}$ 通过最小化某种不对称损失，使得对更小的 $Q_c$ 值给予更高的权重，减少了那些超出 $V_c$ 的 $Q_c$值的影响。$L_{Q_c}$ 结合了基于折扣因子的操作，用来校正 $Q_c$ 的估计。通过最小化上述公式，可以提前确定近似的最大可行区域。
+here, $L_{V_c}$ minimizes a form of asymmetric loss, giving higher weight to smaller $Q_c$ values. Specifically, expected regression is used to reduce the impact of $Q_c$ values exceeding $V_c$ . $L_{Q_c}$ incorporates a discount factor operation to correct the estimation of $Q_c$. By minimizing these objectives, the approximate maximal feasible region can be determined in advance.
+
+\subsection{Data-driven IMU location algorithm}
+
+% IMU 定位通过积分加速度和角速度来估计机器人的位置、速度和姿态，在短时间内有较高精度。但由于积分误差的累积，IMU 定位在长时间运行中会出现漂移。 卡尔曼滤波器常用来处理IMU数据，以优化对机器人状态的估计和预测。在实现卡尔曼滤波时需要确定其相关的噪声矩阵$N_n$。为了避免手动设置的误差，本文通过使用噪声参数适配器对 $N_n$ 进行学习。
+IMU-based localization estimates the position, velocity, and orientation of a robot by integrating acceleration and angular velocity measurements, achieving high precision over short time intervals. However, due to the accumulation of integration errors, IMU localization exhibits drift during prolonged operation. 
+
+To address this issue, the Kalman Filter is commonly employed to process IMU data. The Kalman Filter is an optimal recursive estimator that combines predictions from a system model with noisy measurements to minimize estimation error. 
+% It operates in two main steps: (1) \textbf{prediction}, where the system's state and uncertainty are projected forward using the motion model, and (2) \textbf{update}, where the state estimate is refined by incorporating new measurements.
+In the implementation of the Kalman Filter, it is necessary to determine the associated noise matrix $N_n$ and $Q_n$, which characterizes the uncertainty in the measurements and process model. To avoid the inaccuracies introduced by manual parameter tuning, this paper introduces the noise parameter adapter to learn $N_n$ adaptively, ensuring robust and accurate state estimation.
+
+% 噪声参数适配器通过一个卷积神经网络（CNN）计算滤波器更新所需的协方差 $N_{n+1}$ ，其公式为：
+The noise parameter adapter computes the covariance $N_{n+1}$ required for the filter update using a convolutional neural network (CNN) as follows:
+\begin{equation}
+    N_{n+1}=CNN(\{\omega^{IMU}_i,a^{IMU}_i\}^n_{i=n-N})
+\end{equation}
+% 该适配器将N个惯性测量作为输入，并输出协方差矩阵，其主要目的是动态调整卡尔曼滤波器的噪声参数以提高其鲁棒性和精度。其结构包括一系列CNN层，接着是一个全连接层，输出一个向量$z_n=\begin{bmatrix}z^{lat}_n,z^{up}_n\end{bmatrix}^T$，得到$N_{n+1}$计算公式为：
+This adapter takes N inertial measurements as input and outputs the covariance matrix. Its primary purpose is to dynamically adjust the noise parameters of the Kalman filter to improve its robustness and accuracy. 
+The structure of the adapter includes multiple CNN layers followed by a fully connected layer, which outputs a vector $z_n = \begin{bmatrix} z^{lat}_n, z^{up}_n \end{bmatrix}^T$. The covariance $N_{n+1}$ is computed using the following formula:
+\begin{equation}
+    N_{n+1}=diag(\sigma^2_{lat}10^{\beta tanh(z^{lat}_n)},\sigma^2_{up}10^{\beta tanh(z^{up}_n)})
+\end{equation}
+% 这里，$\beta \in \mathbb{R}_>0$， $\sigma_{lat}$和$\sigma_{up}$为对噪声参数的初步猜测。网络可以将协方差膨胀到最大10的$\beta$次方，或压缩到最小10的$-\beta$次方。当网络被禁用或反应缓慢时（例如刚开始训练时），$z_n\approx0$，此时协方差回归到初始值 。而过程噪声参数 ，目前选择将其固定为一个常数Q，其参数在训练过程中会被优化。
+% 通过深度学习技术改善传统IMU推算方法，通过学习特征和模式，能够在不同复杂环境下准确地推测机器人的位置和姿态，具备较高的定位精度、鲁棒性、适应性和泛化能力，对自主导航系统的可靠性和安全性至关重要。
+where, $\beta \in \mathbb{R}>0$, and $\sigma_{lat}$ and $\sigma_{up}$ are initial guesses for the noise parameters. The network can either expand the covariance to $10^\beta$ or compress it to $10^{-\beta}$. When the network is disabled or responds slowly (e.g., during the initial training phase), $z_n \approx 0$, and the covariance returns to its initial value. As for the process noise parameters, they are currently fixed as a constant $Q$, which will be optimized during training. Ultimately, dynamically adaptive noise parameters are obtained through training, enhancing the accuracy of IMU-based localization across diverse and complex environments.
+
+% This approach improves the traditional IMU estimation method using deep learning techniques and introduces a dynamic adjustment mechanism into the Kalman filter, thereby enhancing the accuracy in different scenarios.
+
+\section{Experiments}
+
+\subsection{Manifold Validation Experiments}
+% 我们在 Safe-Policy-Optimization 平台上进行广泛评估，与其他安全强化学习方法进行比较。本文使用奖励和成本作为评估指标，成本值越低表明越安全，我们将安全性作为评估的主要标准，并在满足安全要求的基础上追求更高的回报。为了强调安全关键型任务，我们改造了SafePO的奖励设置，增加了不同程度的碰撞惩罚项，并对比了其效果。（以避免通过踏入危险区而接近目标所获得的较高的奖励，并对比了不同程度的碰撞惩罚对实验效果的影响）
+We conducted extensive evaluations on the Safe-Policy-Optimization platform \cite{c24}, comparing it with other safe reinforcement learning methods. This paper uses reward and cost as evaluation metrics, where a lower cost value indicates higher safety. We consider safety as the primary evaluation criterion and aim for higher returns while meeting safety requirements. To emphasize safety-critical tasks, we modified the reward settings of SafePO by adding collision penalty terms of varying degrees and compared their effects.
+
+\begin{figure}[thpb]
+\centering
+%\includegraphics[width=3in]{fig5}
+\subfloat[Task Goal]{
+		\includegraphics [width=0.2\textwidth, height=0.125\textwidth]{任务1-MICL-2023-ConstrainedMARL-ConstrainedfactorSLAM/IROS/goal.png}}
+\subfloat[Task Circle]{
+		\includegraphics [width=0.2\textwidth, height=0.125\textwidth]{任务1-MICL-2023-ConstrainedMARL-ConstrainedfactorSLAM/IROS/circle.png}}
+\\
+\subfloat[Task Push]{
+		\includegraphics [width=0.2\textwidth, height=0.125\textwidth]{任务1-MICL-2023-ConstrainedMARL-ConstrainedfactorSLAM/IROS/push.png}}
+\subfloat[Task MultiGoal]{
+		\includegraphics [width=0.2\textwidth, height=0.125\textwidth]{任务1-MICL-2023-ConstrainedMARL-ConstrainedfactorSLAM/IROS/multiGoal.png}}
+\caption{Manifold Validation Experiments Scene}
+\end{figure}
+
+\subsubsection{Task 1: Single-Agent Navigation and Obstacle Avoidance}
+% 智能体需要在绕过危险区域（Hazards）的同时导航到目标的位置。奖励设置分为即时奖励、目标奖励以及碰撞惩罚。具体来说，即时奖励为机器人上一步与目标的距离减去这步与目标的距离：$r_t=(D_{last}-D_{now})*\beta$ ，当机器人到达目标则产生目标奖励：$r_{Goal}=1$，如果进入危险区则产生$r_{Collision}=1/0.5/0.1$。COST 设置：智能体进入危险区时$(D_{hazard} < R_{hazard})$产生$c=(R_{hazard}-D_{hazard})*\gamma$
+The agent needs to navigate to the target position while avoiding hazardous areas. The reward settings are divided into immediate reward, goal reward, and collision penalty. Specifically, the immediate reward is the distance from the robot to the target in the previous step minus the distance in the current step. The reward function is formulated as follows:
+% : $r_t=(D_{last}-D_{now})*\beta$. When the robot reaches the target, a goal reward is generated: $r_{Goal}=1$. If the robot enters a hazardous area, a collision penalty is generated: $r_{Collision}=1/0.5/0.1$ and a cost is generated: $c=(R_{hazard}-D_{hazard})*\gamma$.
+\[
+r =
+\begin{cases} 
+    r_t=(D_{last}-D_{now})*\beta, & \text{immediate reward} \\
+    r_{goal}=1, & \text{robot reaches the goal} \\
+    r_{collision}=1/0.5/0.1, & \text{robot enters hazard}  
+\end{cases}
+\]
+If the robot enters a hazardous area, a cost is generated: 
+\[c=(D_{hazard}-D_{hazard})*\gamma\]
+\subsubsection{Task 2: Single-Agent Circle}
+% 智能体需要尽可能与目标圆半径相同地绕圈并避免撞到墙。奖励设置分为即时奖励和碰撞惩罚。即时奖励为半径尽可能接近目标半径，行进路线尽可能为圆，公式为：$r\_t=\frac{1}{1+|r\_agent-r\_circle |}∗\frac{-v\_x y+v\_y x}{r\_agent}$，碰撞惩罚为超过墙的范围$r\_Collision=1/0.5/0.1$。当智能体超过墙的范围产生时产生碰撞成本$c=1$
+The agent needs to maintain a motion radius as close as possible to the target circle's radius while avoiding collisions with the walls. 
+% The reward mechanism consists of two parts: immediate reward and collision penalty. 
+The immediate reward is calculated based on two factors: first, the agent's motion radius should be as close as possible to the target radius, and second, its trajectory should be as close as possible to a circular path. The formula for reward is:  
+ \[
+r =
+\begin{cases} 
+    r_t=\frac{1}{1+|r_{agent}-r_{circle} |} 
+ * \frac{-v_x y+v_y x}{r_{agent}},  \\
+    r_{collision}=1/0.5/0.1,   
+\end{cases}
+\]
+ When the robot exceeds the wall boundaries, a collision cost $c = 1$ is incurred.
+
+\subsubsection{Task 3: Single-Agent Box Pushing}
+% 智能体需要先找到箱子并将其推到目标位置，同时避免进入危险区域（Hazards）。奖励设置分为即时奖励、目标奖励以及碰撞惩罚。具体来说，即时奖励为机器人上一步与目标的距离减去这步与目标的距离：$r_t=(D_{last}-D_{now})*\beta$ ，当机器人到达目标则产生目标奖励：$r_{Goal}=1$，如果进入危险区则产生$r_{Collision}=1/0.5/0.1$。COST 设置：智能体进入危险区时$(D_{hazard} < R_{hazard})$产生$c=(R_{hazard}-D_{hazard})*\gamma$
+The agent needs to find a box and push it to the target position while avoiding hazardous areas. The reward settings and cost settings are similar to Task 1.
+% The reward settings are divided into immediate reward, goal reward, and collision penalty. Specifically, the immediate reward is the distance from the robot to the target in the previous step minus the distance in the current step: $r_t=(D_{last}-D_{now})*\beta$. When the robot reaches the target, a goal reward is generated: $r_{Goal}=1$. If the robot enters a hazardous area, a collision penalty is generated: $r_{Collision}=1/0.5/0.1$.
+% COST setting: When the agent enters a hazardous area $(D_{hazard}< R_{hazard})$, a cost is generated: $c=(R_{hazard}-D_{hazard})*\gamma$.
+\subsubsection{Task 4: Multi-Agent Navigation and Obstacle Avoidance}
+% 类似于任务一，多个智能体需要分别在绕过危险区域（Hazards）的同时导航到目标的位置。
+Similar to Task 1, multiple agents need to navigate to their respective target positions while avoiding hazardous areas.
+
+% 实验结果展示在表1中，可以看到，我们的方法有效地减少了机器人进入危险区域的次数，并且有较好的奖励。但探索的步骤和时间由于躲避障碍有所增加。而基准算法由于多次碰撞导致奖励值出现了负数的情况。但当碰撞惩罚较小以及在Circle任务中，我们的算法在奖励上没有什么优势。可能的原因为
+The experimental results are presented in Table 1. It can be observed that the baseline algorithm yields negative reward values due to frequent collisions. In contrast, our proposed method significantly reduces the frequency of the robot entering hazardous areas, achieving near-zero safety violations while attaining superior reward performance. However, the exploration steps and time increase as a necessary trade-off for obstacle avoidance.
+
+% 通过设置不同的碰撞惩罚参数，实验结果表明，惩罚程度的强弱对基准算法的性能具有显著影响。为了在目标奖励与碰撞惩罚之间实现有效平衡，基准算法需要在探索过程中不断调整策略，以在最大化目标奖励的同时最小化碰撞风险。而约束流形方法通过将探索过程严格限制在安全流形空间内，从根本上避免了碰撞的发生，从而能够始终保持较高的奖励水平。这一特性不仅凸显了约束流形方法在安全性方面的优势，也为其在复杂环境中的应用提供了理论支持。
+By configuring different collision penalty parameters, the experimental results demonstrate that the intensity of the penalty has a significant impact on the performance of the baseline algorithm. To achieve an effective balance between the target reward and collision penalties, the baseline algorithm needs to continuously adjust its strategy during the exploration process, aiming to maximize the target reward while minimizing collision risks. In contrast, the constrained manifold method fundamentally avoids collisions by strictly confining the exploration process within a safe manifold space, thereby consistently maintaining a high level of reward.
+% 实验表明，使用修正幅度的平方P=||u_{uncert,k}-u_{cert,k}||^2_2 作为惩罚函数效果最佳。
+\begin{table*}[h!]
+  \begin{center}
+    \caption{Result of Manifold Validation Experiments.}
+    \resizebox{\textwidth}{26mm}{
+    \begin{tabular}{cc|*{4}{ccc|}ccc} \hline
+    \multicolumn{2}{c|}{Algorithm} & 
+    \multicolumn{3}{c|}{PPO} & 
+    \multicolumn{3}{c|}{PCPO} & 
+    \multicolumn{3}{c|}{PPO\_LAG} & 
+    \multicolumn{3}{c|}{TRPO\_LAG} & 
+    \multicolumn{3}{c}{PPO\_CM}\\ 
+    TASK & $r_{collision}$ 
+        & reward & cost & step 
+        & reward & cost & step 
+        & reward & cost & step 
+        & reward & cost & step 
+        & reward & cost & step \\ \hline
+   
+    \multirow{3}{*}{GOAL} 
+    & 1 
+        & -6.87 &  7.77 & 516.92 
+        & -2.11 &  3.75 & 342.41 
+        & -9.67 & 10.00 & 713.28
+        & -3.08 &  4.01 & 489.94
+        &  \textcolor{red}{1.68} &  \textcolor{Green3}{0.00} & 351.52 \\
+    & 0.5 
+        & -2.71 &  8.45 & 334.87 
+        & -0.71 &  4.66 & 252.37 
+        & -5.91 & 13.91	& 505.15	
+        &  0.00 &  3.53 & 226.23	
+        &  \textcolor{red}{1.68} &  \textcolor{Green3}{0.00} & 350.53
+ \\
+    & 0.1 
+        & 1.59	& 4.88	& 100.99	
+        & 1.65	& 3.94	& 101.01	
+        & 1.5	& 5.46	& 118.89	
+        & \textcolor{red}{1.79}	& 3.01	& 83.76	
+        & 1.69	& \textcolor{Green3}{0.00}	& 352.31 \\ \hline
+
+    \multirow{3}{*}{CIRCLE} 
+    & 1 
+        & 5.88	& 5.49 & 500	
+        & 30.36	& 2.64 & 500	
+        & 5.88	& 5.49 & 500	
+        & \textcolor{red}{34.61} & 2.13 & 500.00 
+        & 15.99 & \textcolor{Green3}{0.00} & 500.00 \\
+    & 0.5 
+        & 23.24 & 8.51 & 500.00 
+        & 31.32 & 3.24 & 500.00 
+        & \textcolor{red}{33.67} & 5.00 & 500.00 
+        & 32.68 & 4.78 & 500.00 
+        & 15.99 & \textcolor{Green3}{0.00} & 500.00 \\
+    & 0.1 
+        & \textcolor{red}{38.32} & 31.83 & 500.00 
+        & 34.47 & 15.59 & 500.00 
+        & 37.14 & 23.98 & 500.00 
+        & 36.91 & 38.13 & 500.00 
+        & 15.99 &  \textcolor{Green3}{0.00} & 500.00  \\ \hline
+
+    \multirow{3}{*}{PUSH} 
+    & 1 
+        & -10.43 & 9.99 & 996.09 
+        &  -5.02 & 4.88 & 985.65 
+        & -10.43 & 9.99 & 996.09 
+        &  -2.76 & 2.89 & 978.22 
+        &  \textcolor{red}{0.51} & \textcolor{Green3}{0.00} & 997.03  \\
+    & 0.5 
+        & -4.13 & 8.45 & 989.74 
+        & -3.30 & 6.50 & 989.36 
+        & -4.13 & 8.45 & 989.74 
+        & -2.99 & 6.49 & 967.00 
+        & \textcolor{red}{0.51} &\textcolor{Green3}{0.00} & 997.03  \\
+    & 0.1 
+        & -1.50 & 18.31 & 977.08 
+        & -0.74 & 11.93 & 946.58 
+        & -1.09 & 14.88 & 968.53 
+        & -1.10 & 13.28 & 978.01 
+        & \textcolor{red}{0.51} & \textcolor{Green3}{0.00} & 997.03 \\ \hline
+
+    \multicolumn{2}{c|}{Algorithm} & 
+    \multicolumn{3}{c|}{MAPPO} & 
+    \multicolumn{3}{c|}{HAPPO} & 
+    \multicolumn{3}{c|}{MACPO} & 
+    \multicolumn{3}{c|}{MAPPO\_LAG} & 
+    \multicolumn{3}{c}{PPO\_CM}\\ 
+    TASK & $r_{collision}$ 
+        & reward & cost & time 
+        & reward & cost & time 
+        & reward & cost & time 
+        & reward & cost & time 
+        & reward & cost & time \\ \hline
+   
+    MULTI\_GOAL
+    & 1 
+        & -23.42 & 23.12 & 361.55 
+        & -17.75 & 17.64 & 198.82 
+        & -36.41 & 36.13 & 181.83 
+        & -13.50 & 12.48 & 191.65 
+        & \textcolor{red}{0.01} & \textcolor{Green3}{0.07} & 346.48 
+\\ \hline
+    
+    \end{tabular}
+    }
+  \end{center}
+\end{table*}
+
+\subsection{Noise Experiments}
+
+% 在Single-Agent Navigation and Obstacle Avoidance任务中，通过引入噪声模拟传感器误差。基于PPO强化学习算法，对比是否使用噪声参数适配器优化定位以及是否利用约束流形过滤器调整动作的实验效果。结果表明，噪声的确对智能体避障产生了一定影响，而结合数据驱动的IMU定位算法后，定位精度显著提升，有效缓解了由噪声偏差引起的安全问题。
+In the Single-Agent Navigation and Obstacle Avoidance task, sensor errors were simulated by introducing noise. Based on the PPO reinforcement learning algorithm, the experimental effects of optimizing localization using a noise parameter adapter and adjusting actions with a constrained manifold filter were compared. As shown in TABLE 2, the results demonstrate that the integration of the data-driven IMU algorithm significantly improves localization accuracy, effectively mitigating safety issues caused by noise-induced deviations.
+\begin{table}[h]
+\caption{Result of Noise Experiment.}
+\label{table_example}
+\begin{center}
+\resizebox{\linewidth}{10mm}{\begin{tabular}{c|c|c}
+\hline
+ Experimental Setup & Reward & Cost \\
+\hline
+PPO pure strategy & 1.29 & 11.33 \\
+\hline
+Add manifold filter & 1.23 & 1.91 \\
+\hline
+Add noise parameter adapter & 1.93 & 0.0 \\
+\hline
+\end{tabular}
+}
+\end{center}
+\end{table}
+
+\subsection{Safe Reachable Space Experiments}
+% 输入包含智能体状态及观测的离线数据，通过可达性分析进行预训练，可以构建智能体的安全空间。如图2所示，安全空间分布图中，蓝色线圈起的区域表示安全值大于0，即危险区域；其余区域为安全区域。通过调整智能体的速度和方向，可以得到不同的安全域分布。当智能体在运动过程中速度和方向发生变化时，其安全域也会随之动态调整。
+The input consists of offline data including the agent's state and observations. Through reachability analysis pre-training, the agent's safety space can be constructed. As shown in Figure 3, in the safety space distribution map, the area enclosed by the blue line indicates safety values greater than 0, representing hazardous zones, while the remaining regions denote safe areas. By varying the agent's velocity and direction, different safety domain distributions can be obtained. As the agent's velocity and direction change during motion, its safety domain dynamically adjusts accordingly.
+\begin{figure*}[thpb]
+	\centering
+	\includegraphics[width=\textwidth]{任务1-MICL-2023-ConstrainedMARL-ConstrainedfactorSLAM/IROS/safety_space.png}
+	\caption{Safety space distribution map. The area enclosed by the blue line (safety values > 0) represent hazardous zones, with other regions being safe. The safety domain varies with input velocity and direction.}
+	\label{fig_sim}
+\end{figure*}
+
+\subsection{ROS Platform Verification Experiment}
+% 我们将所提出的框架应用于ROS平台，采用E-puck机器人的IMU传感器进行定位在Webots仿真环境进行导航避障实验。通过rviz工具得到了如图4（b）所示的轨迹，其中蓝线为真实轨迹，红线为数据驱动的定位算法获得的轨迹，可以看到我们的框架能够比较精确的定位且可以避开障碍物安全到达目标位置。这为未来在现实机器人中的应用奠定了坚实的基础。
+The proposed framework was implemented on the ROS platform, utilizing the IMU sensor of the E-puck robot for localization, and navigation and obstacle avoidance experiments were conducted in the Webots simulation environment. The trajectories were visualized using the rviz tool, as shown in Figure 4(b), where the blue line represents the ground truth trajectory and the red line denotes the trajectory obtained by the data-driven localization algorithm. The experimental results demonstrate that the framework achieves high-precision localization and successfully avoids obstacles, safely reaching the target position. This provides a robust foundation for the future implementation in real-world robotic systems.
+\begin{figure}[thpb]
+\centering
+%\includegraphics[width=3in]{fig5}
+\subfloat[Experimental Scenario]{
+		\includegraphics [width=0.2\textwidth, height=0.2\textwidth]{任务1-MICL-2023-ConstrainedMARL-ConstrainedfactorSLAM/IROS/ROS.png}}
+\subfloat[Robot Trajectory]{
+		\includegraphics [width=0.2\textwidth, height=0.2\textwidth]{任务1-MICL-2023-ConstrainedMARL-ConstrainedfactorSLAM/IROS/轨迹.jpg}}
+\caption{ROS Platform Verification Experiment}
+\end{figure}
+
+
+
+\section{CONCLUSIONS}
+
+% 本文提出了一种基于约束流形的安全空间过滤框架，结合安全可达性分析构建环境感知的安全可达空间，并通过过滤校准约束机器人强化学习的探索过程，同时对奖励进行量化。针对传感器误差可能导致的安全性问题，本文引入了一种数据驱动的IMU定位算法，以提升机器人对自身状态的感知精度。实验结果表明，该框架在复杂环境下能够显著提高机器人的安全性与鲁棒性，并在减少安全违约次数方面优于现有基准方法。未来研究将致力于将该方法推广至实际机器人控制系统，并探索其在多智能体协作任务中的应用。
+
+This paper proposes a constraint-manifold-based safe space filtering framework that integrates safe reachability analysis to construct an environment-aware safe reachable space. By applying filtering calibration, the exploration process in reinforcement learning is constrained within the safe space while rewards are effectively quantified. To address potential safety issues caused by sensor errors, a data-driven IMU-based localization algorithm is introduced to enhance the robot’s state perception accuracy. Experimental results demonstrate that the proposed framework significantly improves robot safety and robustness in complex environments, outperforming existing baseline methods in reducing safety violations. Future work will focus on extending this approach to real-world robotic control systems and exploring its applications in multi-agent cooperative tasks.
+
+\addtolength{\textheight}{-12cm}   % This command serves to balance the column lengths
+                                  % on the last page of the document manually. It shortens
+                                  % the textheight of the last page by a suitable amount.
+                                  % This command does not take effect until the next page
+                                  % so it should come on the page before the last. Make
+                                  % sure that you do not shorten the textheight too much.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section*{ACKNOWLEDGMENT}
+
+This project was supported by the Guangdong Provincial Fund for Basic and Applied Basic Research (2023A1515140071) and the National Natural Science Foundation of China (62101029).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{thebibliography}{99} 
+
+\bibitem{c1} Luo Biao,  Hu Tian-Meng,  Zhou Yu-Hao,  Huang Ting-Wen,  Yang Chun-Hua,  Gui Wei-Hua.  Survey on multi-agent reinforcement learning for control and decision-making.  Acta Automatica Sinica,  2025, 51(3): 1−30 doi:  10.16383/j.aas.c240392
+\bibitem{c2} S. Gu et al., “A review of safe reinforcement learning: Methods, theory and applications,” 2022, arXiv:2205.10330.
+\bibitem{c3} J. Achiam, D. Held, A. Tamar, and P. Abbeel, “Constrained policy optimization,” in Proc. 34th Int. Conf. Mach. Learn., 2017, pp. 22–31.
+\bibitem{c4} T.-Y. Yang, J. Rosca, K. Narasimhan, and P. J. Ramadge, “Projectionbased constrained policy optimization,” in Proc. Int. Conf. Learn. Represent., 2020.
+\bibitem{c5} C. Tessler, D. J. Mankowitz, and S. Mannor, “Reward constrained policy optimization,” in Proc. Int. Conf. Learn. Represent., 2018.
+\bibitem{c6} M. Ono, M. Pavone, Y. Kuwata, and J. Balaram, “Chance-constrained dynamic programming with application to risk-aware robotic space exploration,” Autonomous Robots, vol. 39, pp. 555–571, 2015. 
+\bibitem{c7} Y. Wang, S. S. Zhan, R. Jiao, Z. Wang, W. Jin, Z. Yang, Z. Wang, C. Huang, and Q. Zhu, “Enforcing hard constraints with soft barriers: Safe reinforcement learning in unknown stochastic environments,” in International Conference on Machine Learning. PMLR, 2023, pp. 36 593–36 604.
+\bibitem{c8} W. Chen, D. Subramanian, and S. Paternain, “Probabilistic constraint for safety-critical reinforcement learning,” IEEE Transactions on Automatic Control, 2024.
+\bibitem{c9} Gu S, Yang L, Du Y, et al. A Review of Safe Reinforcement Learning: Methods, Theories and Applications[J]. IEEE Transactions on Pattern Analysis and Machine Intelligence, 2024.
+\bibitem{c10} X. Li and C. Belta, “Temporal logic guided safe reinforcement learning using control barrier functions,” 2019, arXiv:1903.09885. 
+\bibitem{c11} Y. Chow, O. Nachum, E. Duenez-Guzman, and M. Ghavamzadeh, “A Lyapunov-based approach to safe reinforcement learning,” in Proc. Adv. Neural Inf. Process. Syst., vol. 31, 2018, pp. 8103–8112.
+\bibitem{c12} Y. Chow, O. Nachum, A. Faust, E. Duenez-Guzman, and M. Ghavamzadeh, “Lyapunov-based safe policy optimization for continuous control,” 2019, arXiv:1901.10031. 
+\bibitem{c13} T. Koller, F. Berkenkamp, M. Turchetta, and A. Krause, “Learningbased model predictive control for safe exploration,” in Proc. IEEE Conf. Decis. Control (CDC), Sep. 2018, pp. 6059–6066. 
+\bibitem{c14} M. Turchetta, F. Berkenkamp, and A. Krause, “Safe exploration in finite Markov decision processes with Gaussian processes,” in Proc. Adv. Neural Inf. Process. Syst., vol. 29, 2016, pp. 4312–4320. 
+\bibitem{c15} F. Berkenkamp and A. P. Schoellig, “Safe and robust learning control with Gaussian processes,” in Proc. Eur. Control Conf. (ECC), Jul. 2015, pp. 2496–2501. 
+\bibitem{c16} Y. Sui, A. Gotovos, J. Burdick, and A. Krause, “Safe exploration for optimization with Gaussian processes,” in Proc. Int. Conf. Mach. Learn, 2015, pp. 
+\bibitem{c17} A. Wachi, Y. Sui, Y. Yue, and M. Ono, “Safe exploration and optimization of constrained MDPs using Gaussian processes,” in Proc. AAAI Conf. Artif. Intell., 2018, vol. 32, no. 1.
+\bibitem{c18} S. Gu et al., “Safe multi-agent reinforcement learning for multi-robot control,” Artif. Intell., vol. 319, Jun. 2023, Art. no. 103905.
+\bibitem{c19} Liu P, Tateo D, Ammar H B, et al. Robot reinforcement learning on the constraint manifold[C]//Conference on Robot Learning. PMLR, 2022: 1357-1366.
+\bibitem{c20} Liu P, Zhang K, Tateo D, et al. Safe reinforcement learning of dynamic high-dimensional robotic tasks: navigation, manipulation, interaction[C]//2023 IEEE International Conference on Robotics and Automation (ICRA). IEEE, 2023: 9449-9456. 
+\bibitem{c21} Yinan Zheng, Jianxiong Li, Dongjie Yu, Yujie Yang, Shengbo Eben Li, Xianyuan Zhan, and Jingjing Liu. "Safe Offline Reinforcement Learning with Feasibility-Guided Diffusion Model," 2024, arXiv:2401.10700.
+\bibitem{c22} M. Brossard, A. Barrau and S. Bonnabel, "AI-IMU Dead-Reckoning," in IEEE Transactions on Intelligent Vehicles, vol. 5, no. 4, pp. 585-595, Dec. 2020, doi: 10.1109/TIV.2020.2980758.
+\bibitem{c23} S. Bansal, M. Chen, S. Herbert and C. J. Tomlin, "Hamilton-Jacobi reachability: A brief overview and recent advances," 2017 IEEE 56th Annual Conference on Decision and Control (CDC), Melbourne, VIC, Australia, 2017, pp. 2242-2253, doi: 10.1109/CDC.2017.8263977. 
+\bibitem{c24} Jiaming Ji, Borong Zhang, Jiayi Zhou, Xuehai Pan, Weidong Huang, Ruiyang Sun, Yiran Geng, Yifan Zhong, Juntao Dai, and Yaodong Yang. "Safety-Gymnasium: A Unified Safe Reinforcement Learning Benchmark," 2023, arXiv:2310.12567.
+
+\end{thebibliography}
+
+
+
+
+\end{document}

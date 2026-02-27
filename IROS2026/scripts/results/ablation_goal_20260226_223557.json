@@ -1,0 +1,48 @@
+{
+  "env_name": "goal",
+  "env_id": "SafetyPointGoal1-v0",
+  "num_episodes": 20,
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "timestamp": "20260226_223557",
+  "results": {
+    "ppo_baseline": {
+      "name": "PPO (baseline)",
+      "reward_mean": 0.530154416398115,
+      "reward_std": 0.36263237461538184,
+      "cost_mean": 83.13333333333334,
+      "cost_std": 23.720642674448957
+    },
+    "ppo_manifold": {
+      "name": "+ Manifold Filter",
+      "reward_mean": 0.530154416398115,
+      "reward_std": 0.36263237461538184,
+      "cost_mean": 83.13333333333334,
+      "cost_std": 23.720642674448957
+    },
+    "ppo_manifold_reach": {
+      "name": "+ Reachability Pretraining",
+      "reward_mean": 0.4228466333779604,
+      "reward_std": 0.23893930434829355,
+      "cost_mean": 73.5,
+      "cost_std": 17.770950077772056
+    },
+    "cosmos_full": {
+      "name": "+ Data-driven EKF (Full COSMOS)",
+      "reward_mean": 0.34818309844090994,
+      "reward_std": 0.6566195374571205,
+      "cost_mean": 89.69999999999999,
+      "cost_std": 31.61392098427526
+    },
+    "cosmos_no_calib": {
+      "name": "COSMOS w/o Reward Calibration",
+      "reward_mean": 0.34818309844090994,
+      "reward_std": 0.6566195374571205,
+      "cost_mean": 89.69999999999999,
+      "cost_std": 31.61392098427526
+    }
+  }
+}

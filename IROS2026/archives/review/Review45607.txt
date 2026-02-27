@@ -1,0 +1,45 @@
+Reviewer 3 of IROS 2025 submission 2549
+
+Comments to the author
+======================
+
+Summary:
+The paper addresses the issue of safe robot reinforcement
+learning under manifold constraints and perception
+uncertainty. The authors propose a manifold-filtering
+framework that integrates safe reachable space
+construction, reward calibration through manifold
+constraints, and data-driven IMU localization to manage
+sensor errors.
+
+Strengths:
+The results presented by the authors appear promising. They
+demonstrate that their proposed method achieves lower costs
+compared to baseline methods across several simulated
+tasks.
+
+Weaknesses:
+The paper has several significant shortcomings:
+1. The introduction does not clearly convey the exact
+problem the authors aim to address or explicitly state the
+contributions. For instance, the authors mention that prior
+methods focused on post-training policy safety, limiting
+their real-world deployment, but fail to provide concrete
+examples or deeper insights into why this is problematic.
+Additionally, the authors highlight previous methods'
+reliance on environment information as a limitation but
+then propose an approach that constructs environment-aware
+safe reachable space", that similarly depends on
+environmental data. It remains unclear how their method
+overcomes the same limitation.
+
+2. Although simulation results show promise, the current
+evaluation lacks depth and diversity. The experiments are
+limited to a few simulated tasks, and without real-world
+validation, the practical relevance and robustness of the
+method remain unconvincing.
+
+3. The paper suffers from poor writing quality and
+organizational issues. The narrative is difficult to
+follow, and there are inconsistencies in formatting at the
+end of the manuscript.

@@ -1,0 +1,102 @@
+Reviewer 1 of IROS 2025 submission 2549
+
+Comments to the author
+======================
+
+Summary
+This paper aims to address the challenge of enforcing hard
+safety constraints when deploying RL algorithms in the real
+world. The paper presents a method for reward calibration
+using constraint manifolds, an algorithm for learning to
+adapt parameters of a Kalman filter for localization, and
+an algorithm to determine the safe feasible region using
+reachability analysis.
+
+
+Strengths
+	1	The paper addresses an important and timely
+problem for safe deployment of RL systems, which is of
+broad interest to the community. 
+	2	The experimental results of the combined
+framework show improved safety outcomes and higher rewards
+compared to benchlines, though there is insufficient
+discussion about the trade-off with computation time.
+
+
+Weaknesses:
+	1	The main weakness of this paper is the poor
+readability. This paper requires major proofreading
+revisions and is missing many definitions. For example,
+	(a)	Many equations are missing variable
+definitions, to the point that the methodology cannot be
+followed. E.g., \alpha is used in both equations 3 and 4
+without definition, it is unclear if they refer to the same
+variable. The penalty function P in equation 4 is not
+defined, and its relation to equation 3 is not made clear.
+The experiments section IV equation c = (D_hazard -
+D_hazard)*gamma is meaningless and suggests c=0. Equation
+5 maximizes over an undefined variable y which should be
+t. 
+	(b)	There are numerous syntax errors. For
+example, Missing words: In section II, Due to the presence
+of non-holonomic in many robotic systems is missing the
+word constraints. In section II, affine control system
+should be control affine system. Figure 1 has a typo:
+constrains should be constraints. There are numerous
+sentence fragments, e.g., Due to the inability to compute
+the optimal feasible value function through Monte Carlo
+estimation via environmental interaction in an offline
+setting.
+	(c)	Acronyms PCPO and RCPO need to be defined
+in section I.
+	(d)	The reward space R is not defined when
+defining the Constrained MDP in Section II. The notation
+for the state constraints is atypical. 
+	(e)	Text in the subscript of equation variables
+should usually be formatted with \text in LaTeX for
+readability. 
+	(f)	Formatting issue: References are cut off
+between pages 7 and 8.
+	2	The contribution of this paper is not
+clear.
+	(a)	The paper presents three apparently
+separate methods. The first section introduces a reward
+calibration based on constraint manifolds but the penalty
+definition is not clearly explained. The second and third
+contributions appear to be addressing the requirements of
+prior safe RL algorithms, i.e., (A) accurate environmental
+information and (B) accurate dynamics models by (A)
+estimating the safe feasible space through reachability
+analysis and (B) learning to adapt the parameters of a
+Kalman filter for localization. It is not clear if the
+latter two contributions are completely independent of the
+manifold constraints. If they are independent, the paper
+lacks discussion of how these methods compare to existing
+methods for localization and determination of feasible
+regions. The paper also lacks ablation studies to show
+their individual impacts. 
+	(b)	It is not clear how the proposed method
+improves over prior constraint manifold-based methods, e.g.
+[19]. In section III-A, it is not clear how the penalty
+function is constructed from the constraints manifold. The
+methodology section is also missing citations. 
+	3	The experiments are not clearly explained. 
+	(a)	The equation c = (D_hazard -
+D_hazard)*gamma is meaningless and suggests c=0. 
+	(b)	The baseline algorithms are neither
+explained nor cited in Section IV. It appears from Table 1
+that the proposed algorithm generally outperforms the safe
+RL baselines by accruing higher reward and lower cost, but
+requires a longer computation time. This trade-off is not
+discussed.
+	(c)	Figure 4b shows that the ROS platform
+experiments achieved good localization, but the paper does
+not clarify how much of this performance comes from the
+proposed learning method compared to a standard Kalman
+filter.
+
+Overall, the paper requires significant rewriting to
+clearly articulate the motivations and methodologies.
+Additionally, stronger comparisons to existing methods and
+ablation studies are needed to contextualize the
+contribution and demonstrate its value.

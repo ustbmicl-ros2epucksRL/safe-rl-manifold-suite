@@ -1,0 +1,37 @@
+# IROS2026 .gitignore
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Results (regeneratable)
+results/*.json
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# LaTeX auxiliary files
+*.aux
+*.log
+*.out
+*.bbl
+*.blg
+*.synctex.gz
+
+# OS
+.DS_Store
+Thumbs.db

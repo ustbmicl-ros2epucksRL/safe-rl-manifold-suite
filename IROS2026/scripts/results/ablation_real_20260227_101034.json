@@ -1,0 +1,35 @@
+{
+  "description": "Real ablation study results",
+  "timestamp": "20260227_101034",
+  "config": {
+    "episodes_per_seed": 30,
+    "seeds": [
+      0,
+      1,
+      2
+    ],
+    "train_steps": 20000
+  },
+  "results": {
+    "goal": {
+      "PPO (baseline)": {
+        "reward_mean": -0.3615922762190549,
+        "reward_std": 0.3566678934141349,
+        "cost_mean": 44.833333333333336,
+        "cost_std": 23.211555232174696
+      },
+      "+ Manifold Filter": {
+        "reward_mean": -1.0823615233556512,
+        "reward_std": 1.1580566911505525,
+        "cost_mean": 0.16666666666666666,
+        "cost_std": 0.23570226039551584
+      },
+      "+ Reward Calibration": {
+        "reward_mean": -22.63795016423529,
+        "reward_std": 3.6004215035150464,
+        "cost_mean": 0.16666666666666666,
+        "cost_std": 0.23570226039551584
+      }
+    }
+  }
+}

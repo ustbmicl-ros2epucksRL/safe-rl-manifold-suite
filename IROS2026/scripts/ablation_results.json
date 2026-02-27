@@ -1,0 +1,30 @@
+[
+  {
+    "name": "PPO (baseline)",
+    "reward_mean": -6.283152892144803,
+    "reward_std": 0.0,
+    "cost_mean": 0.9519397411588754,
+    "cost_std": 0.0
+  },
+  {
+    "name": "+ Manifold Filter",
+    "reward_mean": -6.292471998822073,
+    "reward_std": 0.0,
+    "cost_mean": 0.654225168336442,
+    "cost_std": 0.0
+  },
+  {
+    "name": "+ Reachability Pretraining",
+    "reward_mean": -6.292471998822073,
+    "reward_std": 0.0,
+    "cost_mean": 0.654225168336442,
+    "cost_std": 0.0
+  },
+  {
+    "name": "+ Data-driven EKF (Full COSMOS)",
+    "reward_mean": -6.292471998822073,
+    "reward_std": 0.0,
+    "cost_mean": 0.654225168336442,
+    "cost_std": 0.0
+  }
+]

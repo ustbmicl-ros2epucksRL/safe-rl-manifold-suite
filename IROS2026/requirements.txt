@@ -1,0 +1,16 @@
+# IROS 2026: Safe RL via Constraint Manifold Projection
+# Core dependencies
+
+# Deep Learning
+torch>=2.0.0
+numpy>=1.24.0
+
+# Safety-Gymnasium (optional - uses MockEnv if unavailable)
+# safety-gymnasium>=1.0.0
+
+# Visualization & Analysis
+matplotlib>=3.7.0
+scipy>=1.10.0
+
+# Utilities
+tqdm>=4.65.0

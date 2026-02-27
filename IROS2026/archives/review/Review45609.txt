@@ -1,0 +1,48 @@
+Reviewer 4 of IROS 2025 submission 2549
+
+Comments to the author
+======================
+
+This paper focuses on safe reinforcement learning under
+localization uncertainty using manifold constraints.
+
+- The main contribution of the paper is claimed to be
+manifold-based safety filtering, however, it is not clear
+how this filter works, and it is not explained well in the
+paper either.  According to the diagram in Fig. 1, the
+safety filter takes a_uncert as an input and outputs
+a_safe, but this process is not explained.
+
+- The definition of safety condition c(s_t) is not very
+clear (First equation in Section II). The right-hand side
+depends on i, but the left-hand side does not. 
+
+- If the system is nonlinear, why is the Kalman filter used
+instead of the ones that are suitable for nonlinear
+dynamics (e.g., UKF, EKF, particle filter)
+
+- Why does Eq. 3 create a safe velocity? 
+
+- None of the baseline papers are cited properly.
+
+- Experiments are not explained in detail. How many times
+were the algorithms run? Does Table 1 list average results,
+or are they coming from a single run?
+
+- Since ROS experiments are also done in simulations, they
+do not add much value in terms of representing real sensor
+noise. The paper mentions safety in the presence of a
+sim-to-real gap, but there are no real experiments.
+
+- The paper does not use the correct format, and it has
+unnecessary blank spaces on pages 6 and 7.
+
+- The paper needs a major rewrite. Notations are mostly
+either unclear or not properly defined. Some examples are
+as follows:
+- s_t is not defined
+- \alpha in Eq. 3 is not defined
+- dist is not defined.
+- The dimensionality of \mu (G) is not defined
+- Task 1 collision condition c = (D_hazard -
+D_hazard)*\gamma would be always equal to zero. 
