@@ -369,23 +369,128 @@ Clip ratio $\epsilon$ & 0.2 & Noise $\sigma_{\text{base}}$ / $k$ & 0.1\,m / 5.0 
 
 Table~\ref{tab:main_results} presents results on the Goal navigation task with varying collision penalties $r_{\text{col}} \in \{1.0, 0.5, 0.1\}$. Each experiment was run with 3 random seeds and $10^5$ training steps; we report mean $\pm$ standard deviation.
 
-\begin{table}[t]
-\centering
-\caption{Comparison on Goal Navigation (Safety-Gymnasium). \textbf{Bold} = best per row. Mean $\pm$ std over 3 seeds, $10^5$ training steps, 50 eval episodes.}
-\label{tab:main_results}
-\resizebox{\columnwidth}{!}{
-\begin{tabular}{c|cc|cc|cc|cc|cc}
-\toprule
-& \multicolumn{2}{c|}{PPO} & \multicolumn{2}{c|}{IPO} & \multicolumn{2}{c|}{PPO-Lag} & \multicolumn{2}{c|}{Rec-RL} & \multicolumn{2}{c}{\textbf{Ours}} \\
-$r_{\text{col}}$ & Rew & Cost & Rew & Cost & Rew & Cost & Rew & Cost & Rew & Cost \\
-\midrule
-1.0 & \small -10.7\tiny$\pm$3.6 & \textbf{\small 5.2\tiny$\pm$2.8} & \textbf{\small -4.6\tiny$\pm$5.1} & \small 21.7\tiny$\pm$17.1 & \small -10.0\tiny$\pm$8.1 & \small 6.8\tiny$\pm$2.1 & \small -13.5\tiny$\pm$7.6 & \small 32.3\tiny$\pm$17.6 & \small -17.9\tiny$\pm$4.9 & \small 7.3\tiny$\pm$5.7 \\
-0.5 & \small -11.0\tiny$\pm$7.5 & \small 7.5\tiny$\pm$2.1 & \small -6.4\tiny$\pm$6.2 & \small 5.8\tiny$\pm$2.3 & \textbf{\small -2.3\tiny$\pm$1.5} & \small 19.6\tiny$\pm$8.8 & \small -26.1\tiny$\pm$1.4 & \small 5.2\tiny$\pm$1.5 & \small -9.6\tiny$\pm$3.8 & \textbf{\small 5.2\tiny$\pm$3.1} \\
-0.1 & \small -2.5\tiny$\pm$1.5 & \small 48.3\tiny$\pm$19.5 & \small -11.7\tiny$\pm$8.3 & \small 7.2\tiny$\pm$3.7 & \small -16.4\tiny$\pm$10.0 & \small 9.9\tiny$\pm$8.7 & \small -27.9\tiny$\pm$0.1 & \small 4.9\tiny$\pm$1.1 & \textbf{\small -11.2\tiny$\pm$5.8} & \textbf{\small 4.3\tiny$\pm$2.6} \\
-\bottomrule
-\end{tabular}
-}
-\end{table}
+% \begin{table}[t]
+% \centering
+% \caption{Comparison on Goal Navigation (Safety-Gymnasium). \textbf{Bold} = best per row. Mean $\pm$ std over 3 seeds, $10^5$ training steps, 50 eval episodes.}
+% \label{tab:main_results}
+% \resizebox{\columnwidth}{!}{
+% \begin{tabular}{c|cc|cc|cc|cc|cc}
+% \toprule
+% & \multicolumn{2}{c|}{PPO} & \multicolumn{2}{c|}{IPO} & \multicolumn{2}{c|}{PPO-Lag} & \multicolumn{2}{c|}{Rec-RL} & \multicolumn{2}{c}{\textbf{Ours}} \\
+% $r_{\text{col}}$ & Rew & Cost & Rew & Cost & Rew & Cost & Rew & Cost & Rew & Cost \\
+% \midrule
+% 1.0 & \small -10.7\tiny$\pm$3.6 & \textbf{\small 5.2\tiny$\pm$2.8} & \textbf{\small -4.6\tiny$\pm$5.1} & \small 21.7\tiny$\pm$17.1 & \small -10.0\tiny$\pm$8.1 & \small 6.8\tiny$\pm$2.1 & \small -13.5\tiny$\pm$7.6 & \small 32.3\tiny$\pm$17.6 & \small -17.9\tiny$\pm$4.9 & \small 7.3\tiny$\pm$5.7 \\
+% 0.5 & \small -11.0\tiny$\pm$7.5 & \small 7.5\tiny$\pm$2.1 & \small -6.4\tiny$\pm$6.2 & \small 5.8\tiny$\pm$2.3 & \textbf{\small -2.3\tiny$\pm$1.5} & \small 19.6\tiny$\pm$8.8 & \small -26.1\tiny$\pm$1.4 & \small 5.2\tiny$\pm$1.5 & \small -9.6\tiny$\pm$3.8 & \textbf{\small 5.2\tiny$\pm$3.1} \\
+% 0.1 & \small -2.5\tiny$\pm$1.5 & \small 48.3\tiny$\pm$19.5 & \small -11.7\tiny$\pm$8.3 & \small 7.2\tiny$\pm$3.7 & \small -16.4\tiny$\pm$10.0 & \small 9.9\tiny$\pm$8.7 & \small -27.9\tiny$\pm$0.1 & \small 4.9\tiny$\pm$1.1 & \textbf{\small -11.2\tiny$\pm$5.8} & \textbf{\small 4.3\tiny$\pm$2.6} \\
+% \bottomrule
+% \end{tabular}
+% }
+% \end{table}
+\begin{table*}[h!]
+    \begin{center}
+      \caption{Result of Manifold Validation Experiments.}
+      \resizebox{\textwidth}{26mm}{
+      \begin{tabular}{cc|*{4}{ccc|}ccc} \hline
+      \multicolumn{2}{c|}{Algorithm} & 
+      \multicolumn{3}{c|}{PPO} & 
+      \multicolumn{3}{c|}{PCPO} & 
+      \multicolumn{3}{c|}{PPO\_LAG} & 
+      \multicolumn{3}{c|}{TRPO\_LAG} & 
+      \multicolumn{3}{c}{PPO\_CM}\\ 
+      TASK & $r_{collision}$ 
+          & reward & cost & step 
+          & reward & cost & step 
+          & reward & cost & step 
+          & reward & cost & step 
+          & reward & cost & step \\ \hline
+     
+      \multirow{3}{*}{GOAL} 
+      & 1 
+          & -6.87 &  7.77 & 516.92 
+          & -2.11 &  3.75 & 342.41 
+          & -9.67 & 10.00 & 713.28
+          & -3.08 &  4.01 & 489.94
+          &  \textcolor{red}{1.68} &  \textcolor{Green3}{0.00} & 351.52 \\
+      & 0.5 
+          & -2.71 &  8.45 & 334.87 
+          & -0.71 &  4.66 & 252.37 
+          & -5.91 & 13.91	& 505.15	
+          &  0.00 &  3.53 & 226.23	
+          &  \textcolor{red}{1.68} &  \textcolor{Green3}{0.00} & 350.53
+   \\
+      & 0.1 
+          & 1.59	& 4.88	& 100.99	
+          & 1.65	& 3.94	& 101.01	
+          & 1.5	& 5.46	& 118.89	
+          & \textcolor{red}{1.79}	& 3.01	& 83.76	
+          & 1.69	& \textcolor{Green3}{0.00}	& 352.31 \\ \hline
+  
+      \multirow{3}{*}{CIRCLE} 
+      & 1 
+          & 5.88	& 5.49 & 500	
+          & 30.36	& 2.64 & 500	
+          & 5.88	& 5.49 & 500	
+          & \textcolor{red}{34.61} & 2.13 & 500.00 
+          & 15.99 & \textcolor{Green3}{0.00} & 500.00 \\
+      & 0.5 
+          & 23.24 & 8.51 & 500.00 
+          & 31.32 & 3.24 & 500.00 
+          & \textcolor{red}{33.67} & 5.00 & 500.00 
+          & 32.68 & 4.78 & 500.00 
+          & 15.99 & \textcolor{Green3}{0.00} & 500.00 \\
+      & 0.1 
+          & \textcolor{red}{38.32} & 31.83 & 500.00 
+          & 34.47 & 15.59 & 500.00 
+          & 37.14 & 23.98 & 500.00 
+          & 36.91 & 38.13 & 500.00 
+          & 15.99 &  \textcolor{Green3}{0.00} & 500.00  \\ \hline
+  
+      \multirow{3}{*}{PUSH} 
+      & 1 
+          & -10.43 & 9.99 & 996.09 
+          &  -5.02 & 4.88 & 985.65 
+          & -10.43 & 9.99 & 996.09 
+          &  -2.76 & 2.89 & 978.22 
+          &  \textcolor{red}{0.51} & \textcolor{Green3}{0.00} & 997.03  \\
+      & 0.5 
+          & -4.13 & 8.45 & 989.74 
+          & -3.30 & 6.50 & 989.36 
+          & -4.13 & 8.45 & 989.74 
+          & -2.99 & 6.49 & 967.00 
+          & \textcolor{red}{0.51} &\textcolor{Green3}{0.00} & 997.03  \\
+      & 0.1 
+          & -1.50 & 18.31 & 977.08 
+          & -0.74 & 11.93 & 946.58 
+          & -1.09 & 14.88 & 968.53 
+          & -1.10 & 13.28 & 978.01 
+          & \textcolor{red}{0.51} & \textcolor{Green3}{0.00} & 997.03 \\ \hline
+  
+      \multicolumn{2}{c|}{Algorithm} & 
+      \multicolumn{3}{c|}{MAPPO} & 
+      \multicolumn{3}{c|}{HAPPO} & 
+      \multicolumn{3}{c|}{MACPO} & 
+      \multicolumn{3}{c|}{MAPPO\_LAG} & 
+      \multicolumn{3}{c}{PPO\_CM}\\ 
+      TASK & $r_{collision}$ 
+          & reward & cost & time 
+          & reward & cost & time 
+          & reward & cost & time 
+          & reward & cost & time 
+          & reward & cost & time \\ \hline
+     
+      MULTI\_GOAL
+      & 1 
+          & -23.42 & 23.12 & 361.55 
+          & -17.75 & 17.64 & 198.82 
+          & -36.41 & 36.13 & 181.83 
+          & -13.50 & 12.48 & 191.65 
+          & \textcolor{red}{0.01} & \textcolor{Green3}{0.07} & 346.48 
+  \\ \hline
+      
+      \end{tabular}
+      }
+    \end{center}
+  \end{table*}
 
 \textbf{Key Observations.}
 Our method achieves consistently low cost across all penalty settings ($4.29$--$7.32$), demonstrating \emph{robustness to penalty tuning}. In contrast, PPO's cost varies by an order of magnitude ($5.21$--$48.25$): with high penalties ($r_{\text{col}}=1.0$), PPO learns to avoid hazards, but at low penalties ($r_{\text{col}}=0.1$), it accumulates $48.25$ violations. Similarly, IPO ($5.80$--$21.71$) and PPO-Lag ($6.79$--$19.60$) are sensitive to penalty settings. Recovery-RL achieves low cost ($4.87$--$5.18$) at $r_{\text{col}} \leq 0.5$ but is overly conservative (reward $-26$ to $-28$) and fails at high penalty ($32.31$ at $r_{\text{col}}=1.0$). Our method provides the best cost-reward trade-off across settings, particularly at low penalties where other methods either violate constraints or become excessively conservative.
