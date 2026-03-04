@@ -307,15 +307,17 @@ def train_noise_adapter(
     train_data: List[Tuple[np.ndarray, np.ndarray, np.ndarray]],
     n_epochs: int = 100,
     learning_rate: float = 1e-3,
+    batch_size: int = 256,
 ) -> List[float]:
     """
-    Train noise adapter network.
+    Train noise adapter network using mini-batch gradient descent.
 
     Args:
         noise_adapter: NoiseAdapter network
         train_data: List of (imu_window, measurement, ground_truth) tuples
         n_epochs: Training epochs
         learning_rate: Learning rate
+        batch_size: Mini-batch size
 
     Returns:
         List of training losses
@@ -323,36 +325,55 @@ def train_noise_adapter(
     if not TORCH_AVAILABLE:
         raise ImportError("PyTorch required for training")
 
+    # Pre-convert to tensors for efficient batching
+    imu_all = torch.FloatTensor(np.array([d[0] for d in train_data]))    # [N, W, 6]
+    meas_all = torch.FloatTensor(np.array([d[1] for d in train_data]))   # [N, 3]
+    gt_all = torch.FloatTensor(np.array([d[2] for d in train_data]))     # [N, 3]
+
+    n_samples = len(train_data)
     optimizer = torch.optim.Adam(noise_adapter.parameters(), lr=learning_rate)
     losses = []
 
     for epoch in range(n_epochs):
         total_loss = 0.0
+        n_batches = 0
 
-        for imu_window, measurement, ground_truth in train_data:
-            imu_tensor = torch.FloatTensor(imu_window).unsqueeze(0)
-            meas_tensor = torch.FloatTensor(measurement)
-            gt_tensor = torch.FloatTensor(ground_truth)
+        indices = np.random.permutation(n_samples)
+
+        for start in range(0, n_samples, batch_size):
+            end = min(start + batch_size, n_samples)
+            idx = indices[start:end]
+
+            imu_batch = imu_all[idx]     # [B, W, 6]
+            meas_batch = meas_all[idx]   # [B, 3]
+            gt_batch = gt_all[idx]       # [B, 3]
 
             # Forward pass
-            z = noise_adapter(imu_tensor)[0]
+            z = noise_adapter(imu_batch)  # [B, 2]
 
-            # Compute predicted noise
-            sigma = 0.1 * (10 ** (2.0 * torch.tanh(z)))
+            # Compute predicted noise per sample
+            sigma = 0.1 * (10 ** (2.0 * torch.tanh(z)))  # [B, 2]
 
-            # Loss: negative log likelihood of measurement error
-            error = meas_tensor - gt_tensor
-            nll = 0.5 * (torch.log(sigma ** 2).sum() +
-                        (error[:2] ** 2 / sigma[0] ** 2).sum() +
-                        (error[2] ** 2 / sigma[1] ** 2))
+            # Measurement error
+            error = meas_batch - gt_batch  # [B, 3]
+
+            # NLL: 0.5 * (log(sigma^2) + error^2/sigma^2), summed over dims
+            nll = 0.5 * (
+                2 * torch.log(sigma[:, 0]) + 2 * torch.log(sigma[:, 0])  # x,y share sigma_lat
+                + torch.log(sigma[:, 1] ** 2)                             # theta uses sigma_up
+                + (error[:, 0] ** 2 + error[:, 1] ** 2) / (sigma[:, 0] ** 2 + 1e-8)
+                + error[:, 2] ** 2 / (sigma[:, 1] ** 2 + 1e-8)
+            )
+            loss = nll.mean()
 
             optimizer.zero_grad()
-            nll.backward()
+            loss.backward()
             optimizer.step()
 
-            total_loss += nll.item()
+            total_loss += loss.item()
+            n_batches += 1
 
-        avg_loss = total_loss / len(train_data)
+        avg_loss = total_loss / max(n_batches, 1)
         losses.append(avg_loss)
 
         if (epoch + 1) % 10 == 0:

@@ -91,24 +91,35 @@ class ManifoldFilter:
             - phi(mu) -> 0 as mu -> 0
             - phi(mu) -> -inf as mu -> inf
         """
-        # Clamp mu to avoid numerical issues
-        mu = np.clip(mu, 1e-6, 10.0)
+        mu = np.clip(mu, 1e-6, None)
+        bmu = self.beta * mu
 
-        # expm1(x) = exp(x) - 1, more accurate for small x
-        exp_term = np.expm1(self.beta * mu)
-
-        # Handle edge cases
-        exp_term = np.clip(exp_term, 1e-10, None)
-
-        return -np.log(exp_term) / self.beta
+        # For large bmu, expm1(bmu) ≈ exp(bmu), so
+        # phi(mu) ≈ -1/beta * ln(exp(bmu)) = -mu
+        # Use this approximation when bmu > 20 to avoid overflow
+        result = np.where(
+            bmu > 20.0,
+            -mu,
+            -np.log(np.clip(np.expm1(np.clip(bmu, None, 20.0)), 1e-10, None)) / self.beta,
+        )
+        return result
 
     def softcorner_derivative(self, mu: np.ndarray) -> np.ndarray:
         """
         Derivative of softcorner: d(phi)/d(mu)
+
+        For large beta*mu, derivative -> -1.
         """
-        mu = np.clip(mu, 1e-6, 10.0)
-        exp_term = np.exp(self.beta * mu)
-        return -exp_term / (exp_term - 1.0 + 1e-10)
+        mu = np.clip(mu, 1e-6, None)
+        bmu = self.beta * mu
+
+        # For large bmu: exp(bmu)/(exp(bmu)-1) -> 1, so derivative -> -1
+        result = np.where(
+            bmu > 20.0,
+            -1.0,
+            -np.exp(np.clip(bmu, None, 20.0)) / (np.exp(np.clip(bmu, None, 20.0)) - 1.0 + 1e-10),
+        )
+        return result
 
     def compute_constraint(
         self,

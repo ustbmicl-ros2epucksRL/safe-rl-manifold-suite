@@ -1,0 +1,193 @@
+#VRML_SIM R2023b utf8
+
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/objects/backgrounds/protos/TexturedBackground.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/objects/backgrounds/protos/TexturedBackgroundLight.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/objects/floors/protos/RectangleArena.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/robots/gctronic/e-puck/protos/E-puck.proto"
+
+WorldInfo {
+  info [
+    "E-puck Navigation Safety Experiment - ROS2 Version"
+    "IROS 2026 - Constraint Manifold Filter with ROS2"
+  ]
+  title "E-puck Safety Navigation (ROS2)"
+  basicTimeStep 64
+}
+
+Viewpoint {
+  orientation -0.5773 0.5773 0.5773 2.094
+  position 0 0 2.5
+}
+
+TexturedBackground {
+}
+
+TexturedBackgroundLight {
+}
+
+RectangleArena {
+  floorSize 2 2
+  floorTileSize 0.25 0.25
+  wallHeight 0.05
+}
+
+# Obstacle 0 (top-left region)
+DEF OBS0 Solid {
+  translation -0.4 0.3 0.05
+  rotation 1 0 0 1.5708
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.8 0.2 0.2
+        metalness 0
+        roughness 0.5
+      }
+      geometry Cylinder {
+        radius 0.1
+        height 0.1
+      }
+    }
+  ]
+  name "obstacle0"
+  boundingObject Cylinder {
+    radius 0.1
+    height 0.1
+  }
+}
+
+# Obstacle 1 (top-right region)
+DEF OBS1 Solid {
+  translation 0.3 0.5 0.05
+  rotation 1 0 0 1.5708
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.8 0.2 0.2
+        metalness 0
+        roughness 0.5
+      }
+      geometry Cylinder {
+        radius 0.1
+        height 0.1
+      }
+    }
+  ]
+  name "obstacle1"
+  boundingObject Cylinder {
+    radius 0.1
+    height 0.1
+  }
+}
+
+# Obstacle 2 (bottom-left region)
+DEF OBS2 Solid {
+  translation -0.3 -0.4 0.05
+  rotation 1 0 0 1.5708
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.8 0.2 0.2
+        metalness 0
+        roughness 0.5
+      }
+      geometry Cylinder {
+        radius 0.1
+        height 0.1
+      }
+    }
+  ]
+  name "obstacle2"
+  boundingObject Cylinder {
+    radius 0.1
+    height 0.1
+  }
+}
+
+# Obstacle 3 (bottom-right region)
+DEF OBS3 Solid {
+  translation 0.5 -0.3 0.05
+  rotation 1 0 0 1.5708
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.8 0.2 0.2
+        metalness 0
+        roughness 0.5
+      }
+      geometry Cylinder {
+        radius 0.1
+        height 0.1
+      }
+    }
+  ]
+  name "obstacle3"
+  boundingObject Cylinder {
+    radius 0.1
+    height 0.1
+  }
+}
+
+# Obstacle 4 (center - forces detour)
+DEF OBS4 Solid {
+  translation 0.0 0.05 0.05
+  rotation 1 0 0 1.5708
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.8 0.2 0.2
+        metalness 0
+        roughness 0.5
+      }
+      geometry Cylinder {
+        radius 0.1
+        height 0.1
+      }
+    }
+  ]
+  name "obstacle4"
+  boundingObject Cylinder {
+    radius 0.1
+    height 0.1
+  }
+}
+
+# Obstacle 5 (upper-center-left - narrows passage)
+DEF OBS5 Solid {
+  translation -0.15 0.55 0.05
+  rotation 1 0 0 1.5708
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.8 0.2 0.2
+        metalness 0
+        roughness 0.5
+      }
+      geometry Cylinder {
+        radius 0.1
+        height 0.1
+      }
+    }
+  ]
+  name "obstacle5"
+  boundingObject Cylinder {
+    radius 0.1
+    height 0.1
+  }
+}
+
+# E-puck Robot with ROS2 extern controller
+DEF EPUCK E-puck {
+  translation -0.7 -0.7 0
+  rotation 0 0 1 0.785
+  name "e-puck"
+  controller "<extern>"
+  supervisor TRUE
+  turretSlot [
+    GPS {
+    }
+    InertialUnit {
+    }
+    Compass {
+    }
+  ]
+}
