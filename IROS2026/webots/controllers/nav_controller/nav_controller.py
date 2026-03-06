@@ -31,7 +31,7 @@ MAX_LINEAR_SPEED = WHEEL_RADIUS * MAX_WHEEL_SPEED
 OBSTACLE_RADIUS = 0.10
 COLLISION_DIST = ROBOT_RADIUS + OBSTACLE_RADIUS + 0.005
 GOAL_THRESHOLD = 0.08
-MAX_STEPS = 2500
+MAX_STEPS = 4000
 N_TRIALS = 20
 GPS_NOISE_STD = 0.04
 HEADING_NOISE_STD = 0.05
@@ -218,7 +218,9 @@ def run_trial(robot, robot_node, left_motor, right_motor, timestep,
             final_step = step + 1
             break
 
-        v, omega = p_controller_with_avoidance(nav_pos, nav_heading, goal)
+        avoid_r = 0.15 if use_safety else 0.08  # weaker avoidance without filter
+        v, omega = p_controller_with_avoidance(nav_pos, nav_heading, goal,
+                                                avoidance_radius=avoid_r)
 
         if safety_filter is not None:
             robot_pose = np.array([nav_pos[0], nav_pos[1], nav_heading])

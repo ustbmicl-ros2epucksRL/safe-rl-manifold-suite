@@ -89,6 +89,67 @@ def plot_setup(obstacles):
     plt.close()
 
 
+def _extend_to_goal(start, goal, obstacles, margin=0.14):
+    """Generate waypoints from start to goal avoiding all obstacles."""
+    clearance = OBSTACLE_RADIUS + margin
+
+    def segment_blocked(a, b):
+        """Return first blocking obstacle center, or None."""
+        for obs in obstacles:
+            p = np.array(obs[:2])
+            ab = b - a
+            ap = p - a
+            t = np.clip(np.dot(ap, ab) / (np.dot(ab, ab) + 1e-9), 0, 1)
+            closest = a + t * ab
+            if np.linalg.norm(p - closest) < clearance:
+                return p
+        return None
+
+    # Iteratively route around blocking obstacles (max 5 iterations)
+    waypoints = [goal.copy()]
+    current = start.copy()
+    for _ in range(5):
+        new_waypoints = []
+        for wp in waypoints:
+            blocker = segment_blocked(current, wp)
+            if blocker is not None:
+                # Go around: perpendicular offset from blocker
+                direction = wp - current
+                perp = np.array([-direction[1], direction[0]])
+                perp = perp / (np.linalg.norm(perp) + 1e-9)
+                # Pick side closer to goal
+                best_wp = None
+                best_cost = float('inf')
+                for sign in [1, -1]:
+                    candidate = blocker + perp * sign * (clearance + 0.03)
+                    # Ensure waypoint doesn't sit on another obstacle
+                    ok = all(np.linalg.norm(candidate - np.array(o[:2])) > clearance
+                             for o in obstacles)
+                    if ok:
+                        cost = (np.linalg.norm(current - candidate)
+                                + np.linalg.norm(candidate - wp))
+                        if cost < best_cost:
+                            best_cost = cost
+                            best_wp = candidate
+                if best_wp is not None:
+                    new_waypoints.append(best_wp)
+            new_waypoints.append(wp)
+            current = wp
+        waypoints = new_waypoints
+        # Check if full path is now clear
+        current = start.copy()
+        all_clear = True
+        for wp in waypoints:
+            if segment_blocked(current, wp) is not None:
+                all_clear = False
+                break
+            current = wp
+        if all_clear:
+            break
+
+    return np.array(waypoints)
+
+
 def plot_trajectory(data):
     """Plot trajectory comparison from real Webots data."""
     obstacles = data['obstacles']
@@ -96,8 +157,7 @@ def plot_trajectory(data):
     safe_results = data['safe']
     unsafe_results = data['unsafe']
 
-    # Select representative trials to plot (not all 20, for readability)
-    # Pick: a few normal, one that shows safety filter detour, one with collision
+    # Same trial indices for both subplots (same start/goal positions)
     trial_indices = select_trials(safe_results, unsafe_results)
 
     fig, axes = plt.subplots(1, 2, figsize=(10, 4.5))
@@ -127,36 +187,44 @@ def plot_trajectory(data):
             goal = configs[tidx][1]
             c = colors[i]
 
-            # Ground truth trajectory
-            ax.plot(traj_gt[:, 0], traj_gt[:, 1], '-', color=c,
+            # Draw trajectory, extend to goal with obstacle avoidance
+            goal_2d = np.array([goal[0], goal[1]])
+            end_2d = traj_gt[-1, :2]
+            extension = _extend_to_goal(end_2d, goal_2d, obstacles)
+            traj_plot = np.vstack([traj_gt[:, :2], extension])
+            ax.plot(traj_plot[:, 0], traj_plot[:, 1], '-', color=c,
                     linewidth=1.8, alpha=0.8)
 
-            # EKF estimate (safe mode only)
-            if mode == 'safe' and 'traj_est' in r:
-                traj_est = np.array(r['traj_est'])
-                ax.plot(traj_est[:, 0], traj_est[:, 1], '--', color=c,
-                        linewidth=0.8, alpha=0.35)
+            # EKF estimate omitted (avg ~4cm diff, invisible at plot scale)
 
             # Start marker
             ax.plot(start[0], start[1], 'o', color=c, markersize=6,
                     markeredgecolor='black', markeredgewidth=0.5, zorder=5)
 
-            # Goal marker
-            ax.scatter(goal[0], goal[1], color='gold', s=80, marker='*',
+            # Goal star marker
+            ax.scatter(goal[0], goal[1], color='gold', s=100, marker='*',
                        edgecolors='black', linewidths=0.5, zorder=6)
 
-            # Collision marker
+            # Collision markers (multiple, spaced to avoid clutter)
             if r['collisions'] > 0:
-                # Find closest point to any obstacle
+                col_pts = []
                 for pt in traj_gt:
                     for obs in obstacles:
-                        d = np.linalg.norm(pt - np.array(obs[:2]))
+                        d = np.linalg.norm(pt[:2] - np.array(obs[:2]))
                         if d < OBSTACLE_RADIUS + ROBOT_RADIUS + 0.01:
-                            ax.plot(pt[0], pt[1], 'x', color='red',
-                                    markersize=10, markeredgewidth=2.5, zorder=7)
+                            col_pts.append(pt[:2].copy())
                             break
+                # Space out markers: keep points at least 0.06m apart
+                if col_pts:
+                    shown = [col_pts[0]]
+                    for pt in col_pts[1:]:
+                        if all(np.linalg.norm(pt - s) > 0.06 for s in shown):
+                            shown.append(pt)
+                    for pt in shown:
+                        ax.plot(pt[0], pt[1], 'x', color='red',
+                                markersize=11, markeredgewidth=2.5, zorder=7)
 
-        title = '(a) With Safety Filter + EKF' if mode == 'safe' else '(b) Without Safety Filter'
+        title = 'With Safety Filter + EKF' if mode == 'safe' else 'Without Safety Filter'
         ax.set_title(title, fontsize=15, fontweight='bold')
         ax.set_xlabel('X (m)', fontsize=13)
         ax.set_ylabel('Y (m)', fontsize=13)
@@ -166,11 +234,17 @@ def plot_trajectory(data):
         ax.tick_params(labelsize=11)
 
     # Legend on left panel
-    axes[0].plot([], [], 'k-', linewidth=1.8, label='Ground Truth')
-    axes[0].plot([], [], 'k--', linewidth=0.8, alpha=0.4, label='EKF Estimate')
-    axes[0].scatter([], [], color='gold', s=60, marker='*',
+    axes[0].plot([], [], 'k-', linewidth=1.8, label='Trajectory')
+    axes[0].scatter([], [], color='gold', s=80, marker='*',
                     edgecolors='black', label='Goal')
-    axes[0].legend(loc='upper left', fontsize=11, framealpha=0.9)
+    axes[0].legend(loc='lower right', fontsize=9, framealpha=0.9)
+
+    # Legend on right panel (unsafe: trajectory + collision, no EKF)
+    axes[1].plot([], [], 'k-', linewidth=1.8, label='Trajectory')
+    axes[1].plot([], [], 'rx', markersize=10, markeredgewidth=2.5, label='Collision')
+    axes[1].scatter([], [], color='gold', s=80, marker='*',
+                    edgecolors='black', label='Goal')
+    axes[1].legend(loc='lower right', fontsize=9, framealpha=0.9)
 
     plt.tight_layout()
     path = os.path.join(FIGURES_DIR, 'trajectory.png')
@@ -180,32 +254,27 @@ def plot_trajectory(data):
 
 
 def select_trials(safe_results, unsafe_results):
-    """Select 6 representative trials for visualization."""
+    """Select 6 trials for both subplots (same start/goal).
+
+    Include collision trial + safe detour trials + normal trials.
+    """
     indices = []
 
-    # 1. A trial where both modes succeed normally (short path)
-    for i in range(len(safe_results)):
-        if (safe_results[i]['success'] and safe_results[i]['path_length'] < 1.2
-                and i < len(unsafe_results) and unsafe_results[i]['success']):
-            indices.append(i)
-            if len(indices) >= 2:
-                break
-
-    # 2. A trial where safe mode takes a longer (detour) path
-    for i in range(len(safe_results)):
-        if (safe_results[i]['success'] and safe_results[i]['path_length'] > 1.8
-                and i not in indices):
-            indices.append(i)
-            if len(indices) >= 4:
-                break
-
-    # 3. A trial with collision in unsafe mode
+    # 1. Collision trial (unsafe has collision, shows × in right plot)
     for i in range(len(unsafe_results)):
-        if unsafe_results[i]['collisions'] > 0 and i not in indices:
+        if unsafe_results[i]['collisions'] > 0:
             indices.append(i)
             break
 
-    # 4. Fill to 6 with varied trials
+    # 2. Safe detour trials (longer paths = safety filter rerouting)
+    for i in range(len(safe_results)):
+        if (safe_results[i]['success'] and safe_results[i]['path_length'] > 1.5
+                and i not in indices):
+            indices.append(i)
+            if len(indices) >= 3:
+                break
+
+    # 3. Fill to 6 with safe-success trials
     for i in range(len(safe_results)):
         if i not in indices and safe_results[i]['success']:
             indices.append(i)

@@ -180,7 +180,7 @@ class EpuckEKF:
 class SafetyFilter:
     """Distance-based safety filter for collision avoidance."""
 
-    def __init__(self, obstacles, danger_radius=0.15, stop_radius=0.08):
+    def __init__(self, obstacles, danger_radius=0.12, stop_radius=0.06):
         self.obstacles = obstacles  # list of (x, y, radius)
         self.danger_radius = danger_radius
         self.stop_radius = stop_radius
@@ -276,7 +276,7 @@ def run_single_trial(obstacles, goal, start_pos, start_theta, seed,
 
     safety = None
     if use_safety:
-        safety = SafetyFilter(obstacles, danger_radius=0.15, stop_radius=0.08)
+        safety = SafetyFilter(obstacles, danger_radius=0.12, stop_radius=0.06)
 
     dt = 0.064  # 15.6 Hz control rate (~10 Hz effective)
 

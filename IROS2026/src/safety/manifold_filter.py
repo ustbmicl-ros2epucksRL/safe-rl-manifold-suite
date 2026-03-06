@@ -5,8 +5,7 @@ Projects RL actions onto the tangent space of the constraint manifold
 using null-space projection, guaranteeing hard constraint satisfaction.
 
 Key equations from paper:
-    - Slack variable: c_bar(s, mu) = c(s) + phi(mu) = 0
-    - Softcorner: phi(mu) = -1/beta * ln(-expm1(beta * mu))
+    - Slack variable: c_bar(s, mu) = c(s) + mu = 0,  mu >= 0
     - Safe action: a_safe = N_c @ alpha - K_c @ J_c^+ @ c_bar - J_c^+ @ J_s @ f(s)
     - Null-space projector: N_c = I - J_c^+ @ J_c
 """
@@ -43,7 +42,6 @@ class ManifoldFilter:
         self,
         n_constraints: int = 8,
         K_c: float = 10.0,
-        beta: float = 10.0,
         epsilon: float = 1e-4,
         d_safe: float = 0.3,
         lambda_calib: float = 0.1,
@@ -52,14 +50,12 @@ class ManifoldFilter:
         Args:
             n_constraints: Number of obstacle constraints
             K_c: Constraint correction gain (exponential convergence rate)
-            beta: Softcorner sharpness parameter
             epsilon: Regularization for pseudoinverse
             d_safe: Minimum safe distance to obstacles
             lambda_calib: Reward calibration weight
         """
         self.n_constraints = n_constraints
         self.K_c = K_c
-        self.beta = beta
         self.epsilon = epsilon
         self.d_safe = d_safe
         self.lambda_calib = lambda_calib
@@ -77,49 +73,9 @@ class ManifoldFilter:
         """
         self._obstacles = obstacles
         n = len(obstacles)
-        # Initialize slack variables (mu > 0)
+        # Initialize slack variables: mu = -c so that c + mu = 0
+        # mu >= 0 guaranteed since c <= 0 for feasible states
         self._mu = np.ones(n) * 0.5
-
-    def softcorner(self, mu: np.ndarray) -> np.ndarray:
-        """
-        Softcorner penalty function.
-
-        phi(mu) = -1/beta * ln(-expm1(beta * mu))
-
-        Properties:
-            - phi(mu) < 0 for all mu > 0
-            - phi(mu) -> 0 as mu -> 0
-            - phi(mu) -> -inf as mu -> inf
-        """
-        mu = np.clip(mu, 1e-6, None)
-        bmu = self.beta * mu
-
-        # For large bmu, expm1(bmu) ≈ exp(bmu), so
-        # phi(mu) ≈ -1/beta * ln(exp(bmu)) = -mu
-        # Use this approximation when bmu > 20 to avoid overflow
-        result = np.where(
-            bmu > 20.0,
-            -mu,
-            -np.log(np.clip(np.expm1(np.clip(bmu, None, 20.0)), 1e-10, None)) / self.beta,
-        )
-        return result
-
-    def softcorner_derivative(self, mu: np.ndarray) -> np.ndarray:
-        """
-        Derivative of softcorner: d(phi)/d(mu)
-
-        For large beta*mu, derivative -> -1.
-        """
-        mu = np.clip(mu, 1e-6, None)
-        bmu = self.beta * mu
-
-        # For large bmu: exp(bmu)/(exp(bmu)-1) -> 1, so derivative -> -1
-        result = np.where(
-            bmu > 20.0,
-            -1.0,
-            -np.exp(np.clip(bmu, None, 20.0)) / (np.exp(np.clip(bmu, None, 20.0)) - 1.0 + 1e-10),
-        )
-        return result
 
     def compute_constraint(
         self,
@@ -211,11 +167,11 @@ class ManifoldFilter:
         c = self.compute_constraint(robot_pos)
 
         # Update slack variables
-        c_bar = c + self.softcorner(self._mu)
+        c_bar = c + self._mu
 
         # Compute Jacobians
         J_s = self.compute_constraint_jacobian(robot_pos)  # [n, 2]
-        J_mu = np.diag(self.softcorner_derivative(self._mu))  # [n, n]
+        J_mu = np.eye(len(self._mu))  # d(c_bar)/d(mu) = I
 
         # Transform action Jacobian for differential drive
         # Action [v, omega] -> Cartesian velocity [vx, vy]
@@ -228,27 +184,18 @@ class ManifoldFilter:
         # Combined Jacobian J_c = [J_s @ G, J_mu]
         J_c = np.hstack([J_s @ G, J_mu])  # [n, 2 + n]
 
-        # Augmented action
-        alpha = np.concatenate([action, np.zeros(len(self._obstacles))])
+        # Construct augmented reference: u_ref = [a_unsafe, 0]
+        u_ref = np.concatenate([action, np.zeros(len(self._obstacles))])
 
-        # Damped pseudoinverse
+        # Damped pseudoinverse (Remark in paper: introduces O(epsilon) residual)
         J_c_pinv = self._damped_pinv(J_c)
 
         # Null-space projector
         N_c = np.eye(J_c.shape[1]) - J_c_pinv @ J_c
 
-        # Compute safe action
-        # Term 1: Null-space projection
-        action_projected = N_c @ alpha
-
-        # Term 2: Constraint correction
-        correction_term = -self.K_c * J_c_pinv @ c_bar
-
-        # Term 3: Drift compensation (simplified - assume no drift)
-        # For Point robot: f(s) = 0
-
-        # Combined
-        action_safe_aug = action_projected + correction_term
+        # Safe action: u_safe = N_c @ u_ref - J_c^+ @ (J_s @ f(s) + K_c * c_bar)
+        # For Point robot: f(s) = 0, so drift term vanishes
+        action_safe_aug = N_c @ u_ref - J_c_pinv @ (self.K_c * c_bar)
 
         # Extract action and slack variable updates
         action_safe = action_safe_aug[:2]
@@ -256,7 +203,7 @@ class ManifoldFilter:
 
         # Update slack variables
         dt = 0.1
-        self._mu = np.clip(self._mu + mu_dot * dt, 0.01, 10.0)
+        self._mu = np.clip(self._mu + mu_dot * dt, 0.0, 10.0)
 
         # Compute correction
         correction = action_safe - action
@@ -315,17 +262,17 @@ class CartesianManifoldFilter(ManifoldFilter):
 
         # Compute constraint
         c = self.compute_constraint(robot_pos)
-        c_bar = c + self.softcorner(self._mu)
+        c_bar = c + self._mu
 
         # Jacobians
         J_s = self.compute_constraint_jacobian(robot_pos)  # [n, 2]
-        J_mu = np.diag(self.softcorner_derivative(self._mu))  # [n, n]
+        J_mu = np.eye(len(self._mu))  # d(c_bar)/d(mu) = I
 
         # For Cartesian: G = I
         J_c = np.hstack([J_s, J_mu])  # [n, 2 + n]
 
-        # Augmented action
-        alpha = np.concatenate([action, np.zeros(len(self._obstacles))])
+        # Construct augmented reference: u_ref = [a_unsafe, 0]
+        u_ref = np.concatenate([action, np.zeros(len(self._obstacles))])
 
         # Damped pseudoinverse
         J_c_pinv = self._damped_pinv(J_c)
@@ -333,10 +280,8 @@ class CartesianManifoldFilter(ManifoldFilter):
         # Null-space projector
         N_c = np.eye(J_c.shape[1]) - J_c_pinv @ J_c
 
-        # Safe action
-        action_projected = N_c @ alpha
-        correction_term = -self.K_c * J_c_pinv @ c_bar
-        action_safe_aug = action_projected + correction_term
+        # Safe action: u_safe = N_c @ u_ref - J_c^+ @ (K_c * c_bar)
+        action_safe_aug = N_c @ u_ref - J_c_pinv @ (self.K_c * c_bar)
 
         # Extract
         action_safe = action_safe_aug[:2]
@@ -344,7 +289,7 @@ class CartesianManifoldFilter(ManifoldFilter):
 
         # Update slack
         dt = 0.1
-        self._mu = np.clip(self._mu + mu_dot * dt, 0.01, 10.0)
+        self._mu = np.clip(self._mu + mu_dot * dt, 0.0, 10.0)
 
         correction = action_safe - action
 
