@@ -41,7 +41,7 @@ Safe Robotic Policy Learning via Manifold Safety Filter and Offline Reachability
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{abstract}
 
-Reinforcement learning enables adaptive robotic control, yet deploying learned policies in safety-critical environments demands provable guarantees. Existing safe RL methods either employ soft constraints whose violation rates are sensitive to penalty hyperparameters, or rely on real-time obstacle detection and tracking that is difficult to guarantee in practice. We propose a unified framework that addresses both limitations. First, we develop a manifold safety filter that projects policy actions onto the tangent space of the constraint manifold via null-space projection, providing provable hard safety guarantees. A dynamic reward calibration mechanism further guides the policy to learn inherently safe behaviors by penalizing the correction magnitude. Second, we introduce offline Hamilton-Jacobi (HJ) reachability analysis to pre-compute environment-aware safe regions: by discretizing the HJ variational inequality into a feasibility Bellman operator and solving it from collected trajectory data, we approximate the backward reachable tube (BRT) value function that adaptively modulates safety margins at deployment without requiring real-time obstacle detection. Third, we design a data-driven Extended Kalman Filter with CNN-learned noise parameters that adapts measurement covariance to motion dynamics, ensuring robust state estimation under velocity-dependent sensor noise. We provide theoretical proof that the manifold projection guarantees constraint satisfaction under mild regularity conditions. Experiments on Safety-Gymnasium demonstrate that our method maintains near-zero constraint violations across Goal, Circle, and Push tasks under varying penalty settings, while baselines exhibit up to $6\times$ cost fluctuation. Ablation studies confirm each component's contribution. To demonstrate policy-agnostic transferability, we deploy the safety filter and EKF on a Webots E-puck robot with a P-controller (not an RL agent), achieving zero collisions with 85\% success rate vs.\ 40\% collision rate without filtering.
+Deploying reinforcement learning policies in safety-critical robotic systems demands provable constraint satisfaction. Existing safe RL methods either use soft penalty-based constraints sensitive to hyperparameter tuning, or require real-time obstacle detection that is difficult to guarantee in practice. We propose a unified framework with three components: (1)~a manifold safety filter that projects policy actions onto the constraint manifold tangent space via null-space projection, providing provable hard safety guarantees; (2)~offline Hamilton-Jacobi reachability analysis that pre-computes environment-aware safe regions from trajectory data, adaptively modulating safety margins at deployment without real-time sensing; and (3)~a data-driven EKF with CNN-learned noise parameters that adapts measurement covariance to velocity-dependent sensor noise. Both the reachability module and noise adapter are computed offline and deployed zero-shot. Experiments on Safety-Gymnasium show near-zero constraint violations across Goal, Circle, and Push tasks under varying penalty settings, while baselines exhibit up to $6\times$ cost fluctuation. Zero-shot deployment on a Webots E-puck robot with a simple P-controller achieves zero collisions across 20 trials, demonstrating policy-agnostic transferability.
 
 \end{abstract}
 
@@ -626,9 +626,6 @@ We presented a unified safe RL framework combining constraint manifold projectio
 \bibitem{gu2024saferl_survey}
 S. Gu \emph{et al.}, ``A review of safe reinforcement learning: Methods, theories and applications,'' \emph{IEEE Trans. Pattern Anal. Mach. Intell.}, 2024.
 
-\bibitem{liu2024safe_survey}
-W. Zhao, T. He, R. Chen, T. Wei, and C. Liu, ``State-wise safe reinforcement learning: A survey,'' in \emph{Proc. IJCAI}, 2023, pp. 6814--6822.
-
 \bibitem{altman1999cmdp}
 E. Altman, \emph{Constrained Markov Decision Processes}. CRC Press, 1999.
 
@@ -644,11 +641,23 @@ Y. Wang \emph{et al.}, ``Enforcing hard constraints with soft barriers: Safe RL 
 \bibitem{dawson2023safe_cbf}
 C. Dawson, S. Gao, and C. Fan, ``Safe control with learned certificates: A survey of neural Lyapunov, barrier, and contraction methods,'' \emph{IEEE Trans. Robot.}, vol. 39, no. 3, pp. 1749--1767, 2023.
 
+\bibitem{as2022cbfrl}
+Y. Emam, G. Notomista, P. Glotfelter, Z. Kira, and M. Egerstedt, ``Safe reinforcement learning using robust control barrier functions,'' \emph{IEEE Robot. Autom. Lett.}, vol. 10, no. 3, pp. 2886--2893, 2025.
+
+\bibitem{thananjeyan2021recovery}
+B. Thananjeyan, A. Balakrishna, S. Nair, \emph{et al.}, ``Recovery RL: Safe reinforcement learning with learned recovery zones,'' \emph{IEEE Robot. Autom. Lett.}, vol. 6, no. 3, pp. 4915--4922, 2021.
+
 \bibitem{liu2022atacom}
 P. Liu, D. Tateo, H. B. Ammar, and J. Peters, ``Robot reinforcement learning on the constraint manifold,'' in \emph{Proc. CoRL}, 2022, pp. 1357--1366.
 
 \bibitem{liu2023safe_manipulation}
 P. Liu, K. Zhang, D. Tateo, \emph{et al.}, ``Safe RL of dynamic high-dimensional robotic tasks: Navigation, manipulation, interaction,'' in \emph{Proc. ICRA}, 2023, pp. 9449--9456.
+
+\bibitem{ji2023safety_gymnasium}
+J. Ji \emph{et al.}, ``Safety-Gymnasium: A unified safe reinforcement learning benchmark,'' in \emph{Proc. NeurIPS Datasets Track}, 2023.
+
+\bibitem{liu2024safe_survey}
+W. Zhao, T. He, R. Chen, T. Wei, and C. Liu, ``State-wise safe reinforcement learning: A survey,'' in \emph{Proc. IJCAI}, 2023, pp. 6814--6822.
 
 \bibitem{bansal2017hj_reachability}
 S. Bansal, M. Chen, S. Herbert, and C. J. Tomlin, ``Hamilton-Jacobi reachability: A brief overview and recent advances,'' in \emph{Proc. CDC}, 2017, pp. 2242--2253.
@@ -659,35 +668,26 @@ K.-C. Hsu, V. Rubies-Royo, C. J. Tomlin, and J. F. Fisac, ``Safety and liveness 
 \bibitem{so2023rtreach}
 O. So, Z. Serlin, B. Mann, \emph{et al.}, ``How to train your neural control barrier function: Learning safety filters for complex input-constrained systems,'' in \emph{Proc. ICRA}, 2024, pp. 11532--11539.
 
+\bibitem{kostrikov2022iql}
+I. Kostrikov, A. Nair, and S. Levine, ``Offline reinforcement learning with implicit Q-learning,'' in \emph{Proc. ICLR}, 2022.
+
 \bibitem{buchanan2022learning_ekf}
 R. Buchanan, V. Agrawal, M. Camurri, F. Dellaert, and M. Fallon, ``Deep IMU bias inference for robust visual-inertial odometry with factor graphs,'' \emph{IEEE Robot. Autom. Lett.}, vol. 8, no. 1, pp. 41--48, 2023.
 
 \bibitem{liu2023denoise_imu}
 W. Liu, D. Caruso, E. Ilg, \emph{et al.}, ``TLIO: Tight learned inertial odometry,'' \emph{IEEE Robot. Autom. Lett.}, vol. 5, no. 4, pp. 5653--5660, 2020.
 
-\bibitem{kostrikov2022iql}
-I. Kostrikov, A. Nair, and S. Levine, ``Offline reinforcement learning with implicit Q-learning,'' in \emph{Proc. ICLR}, 2022.
-
-\bibitem{ji2023safety_gymnasium}
-J. Ji \emph{et al.}, ``Safety-Gymnasium: A unified safe reinforcement learning benchmark,'' in \emph{Proc. NeurIPS Datasets Track}, 2023.
-
-\bibitem{schulman2017ppo}
-J. Schulman, F. Wolski, P. Dhariwal, A. Radford, and O. Klimov, ``Proximal policy optimization algorithms,'' \emph{arXiv preprint arXiv:1707.06347}, 2017.
-
-\bibitem{as2022cbfrl}
-Y. Emam, G. Notomista, P. Glotfelter, Z. Kira, and M. Egerstedt, ``Safe reinforcement learning using robust control barrier functions,'' \emph{IEEE Robot. Autom. Lett.}, vol. 10, no. 3, pp. 2886--2893, 2025.
-
-\bibitem{thananjeyan2021recovery}
-B. Thananjeyan, A. Balakrishna, S. Nair, \emph{et al.}, ``Recovery RL: Safe reinforcement learning with learned recovery zones,'' \emph{IEEE Robot. Autom. Lett.}, vol. 6, no. 3, pp. 4915--4922, 2021.
-
-\bibitem{webots2004}
-O. Michel, ``Cyberbotics Ltd. Webots: Professional mobile robot simulation,'' \emph{Int. J. Adv. Robot. Syst.}, vol.~1, no.~1, pp.~39--42, 2004.
-
 \bibitem{revach2022kalmannet}
 G. Revach, N. Shlezinger, X. Ni, A. L. Escoriza, R. J. G. van Sloun, and Y. C. Eldar, ``KalmanNet: Neural network aided Kalman filtering for partially known dynamics,'' \emph{IEEE Trans. Signal Process.}, vol. 70, pp. 1532--1547, 2022.
 
 \bibitem{levy2024akit}
 A. Levy and I. Klein, ``A-KIT: Adaptive Kalman-informed transformer,'' \emph{Eng. Appl. Artif. Intell.}, vol. 145, p. 110193, 2025.
+
+\bibitem{webots2004}
+O. Michel, ``Cyberbotics Ltd. Webots: Professional mobile robot simulation,'' \emph{Int. J. Adv. Robot. Syst.}, vol.~1, no.~1, pp.~39--42, 2004.
+
+\bibitem{schulman2017ppo}
+J. Schulman, F. Wolski, P. Dhariwal, A. Radford, and O. Klimov, ``Proximal policy optimization algorithms,'' \emph{arXiv preprint arXiv:1707.06347}, 2017.
 
 \bibitem{yang2020pcpo}
 T.-Y. Yang, J. Rosca, T. Narasimhan, and P. J. Ramadge, ``Projection-based constrained policy optimization,'' in \emph{Proc. ICLR}, 2020.
