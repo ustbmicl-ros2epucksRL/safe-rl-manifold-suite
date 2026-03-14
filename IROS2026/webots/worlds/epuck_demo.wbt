@@ -1,0 +1,138 @@
+#VRML_SIM R2023b utf8
+
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/objects/backgrounds/protos/TexturedBackground.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/objects/backgrounds/protos/TexturedBackgroundLight.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/objects/floors/protos/RectangleArena.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/robots/gctronic/e-puck/protos/E-puck.proto"
+
+WorldInfo {
+  info [
+    "E-puck Safety Navigation Demo"
+  ]
+  title "Safety Filter Demo"
+  basicTimeStep 64
+}
+
+Viewpoint {
+  orientation -0.5773 0.5773 0.5773 2.094
+  position 0 0 2.5
+}
+
+TexturedBackground {
+}
+
+TexturedBackgroundLight {
+}
+
+RectangleArena {
+  floorSize 2 2
+  floorTileSize 0.25 0.25
+  wallHeight 0.05
+}
+
+# Obstacle 0 - on diagonal near start
+DEF OBS0 Solid {
+  translation -0.1 -0.1 0.05
+  rotation 1 0 0 1.5708
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.8 0.2 0.2
+        metalness 0
+        roughness 0.5
+      }
+      geometry Cylinder {
+        radius 0.1
+        height 0.1
+      }
+    }
+  ]
+  name "obstacle0"
+  boundingObject Cylinder {
+    radius 0.1
+    height 0.1
+  }
+}
+
+# Obstacle 1 - on diagonal mid-path
+DEF OBS1 Solid {
+  translation 0.2 0.2 0.05
+  rotation 1 0 0 1.5708
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.8 0.2 0.2
+        metalness 0
+        roughness 0.5
+      }
+      geometry Cylinder {
+        radius 0.1
+        height 0.1
+      }
+    }
+  ]
+  name "obstacle1"
+  boundingObject Cylinder {
+    radius 0.1
+    height 0.1
+  }
+}
+
+# Goal marker (green)
+DEF GOAL Solid {
+  translation 0.5 0.5 0.01
+  rotation 1 0 0 1.5708
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.2 0.8 0.2
+        metalness 0
+        roughness 0.5
+        emissiveColor 0.1 0.4 0.1
+      }
+      geometry Cylinder {
+        radius 0.05
+        height 0.02
+      }
+    }
+  ]
+  name "goal_marker"
+}
+
+# Start marker (blue)
+DEF START_MARKER Solid {
+  translation -0.7 -0.7 0.01
+  rotation 1 0 0 1.5708
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.2 0.2 0.8
+        metalness 0
+        roughness 0.5
+        emissiveColor 0.1 0.1 0.4
+      }
+      geometry Cylinder {
+        radius 0.05
+        height 0.02
+      }
+    }
+  ]
+  name "start_marker"
+}
+
+# E-puck Robot
+DEF EPUCK E-puck {
+  translation -0.7 -0.7 0
+  rotation 0 0 1 0.785
+  name "e-puck"
+  controller "demo_controller"
+  supervisor TRUE
+  turretSlot [
+    GPS {
+    }
+    InertialUnit {
+    }
+    Compass {
+    }
+  ]
+}

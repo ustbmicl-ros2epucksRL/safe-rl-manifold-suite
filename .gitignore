@@ -28,3 +28,6 @@ config.yaml
 
 # Large folders (manage separately)
 paper/
+
+# T-RO journal submission (not for public repo)
+TRO/
