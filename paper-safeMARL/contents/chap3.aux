@@ -1,0 +1,248 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\@writefile{toc}{\contentsline {chapter}{\numberline {\bfseries  3\hspace  {.3em}}不确定环境下安全约束方法}{10}{chapter.3}\protected@file@percent }
+\@writefile{lof}{\addvspace {10\p@ }}
+\@writefile{lot}{\addvspace {10\p@ }}
+\@writefile{lof2}{\addvspace {10\p@ }}
+\@writefile{lot2}{\addvspace {10\p@ }}
+\@writefile{toc}{\contentsline {section}{\numberline {3.1}问题定义}{10}{section.3.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3{}-1}{\ignorespaces framework\relax }}{11}{figure.caption.4}\protected@file@percent }
+\providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
+\newlabel{fig:placeholder}{{3{}-1}{11}{framework\relax }{figure.caption.4}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {3.2}约束流形方法}{12}{section.3.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2.1}松弛变量}{12}{subsection.3.2.1}\protected@file@percent }
+\newlabel{eq:slack}{{3-1}{12}{松弛变量}{equation.3.2.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2.2}零空间投影}{12}{subsection.3.2.2}\protected@file@percent }
+\newlabel{eq:constraint_deriv}{{3-3}{13}{零空间投影}{equation.3.2.3}{}}
+\newlabel{eq:safe_action}{{3-5}{13}{零空间投影}{equation.3.2.5}{}}
+\newlabel{thm:safety}{{3.1}{13}{安全性保证}{theorem.3.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2.3}奖励修正}{14}{subsection.3.2.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3.3}安全可达性分析}{14}{section.3.3}\protected@file@percent }
+\@writefile{loa}{\contentsline {algorithm}{\numberline {1}{\ignorespaces Policy Iteration with Constraints\relax }}{15}{algorithm.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3.1}从 HJ 偏微分方程到可行性值函数}{15}{subsection.3.3.1}\protected@file@percent }
+\newlabel{eq:hj_vi}{{3-8}{15}{从 HJ 偏微分方程到可行性值函数}{equation.3.3.8}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3.2}离线近似}{16}{subsection.3.3.2}\protected@file@percent }
+\newlabel{eq:bellman}{{3-12}{16}{离线近似}{equation.3.3.12}{}}
+\newlabel{eq:loss_v}{{3-13}{16}{离线近似}{equation.3.3.13}{}}
+\newlabel{eq:loss_q}{{3-14}{16}{离线近似}{equation.3.3.14}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3.3}与安全过滤器的集成}{17}{subsection.3.3.3}\protected@file@percent }
+\newlabel{eq:danger_radius}{{3-16}{17}{与安全过滤器的集成}{equation.3.3.16}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {3.4}数据驱动的状态估计}{17}{section.3.4}\protected@file@percent }
+\newlabel{eq:vel_noise}{{3-17}{17}{数据驱动的状态估计}{equation.3.4.17}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4.1}扩展卡尔曼滤波}{18}{subsection.3.4.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4.2}噪声参数适配器}{18}{subsection.3.4.2}\protected@file@percent }
+\newlabel{eq:noise_cnn}{{3-22}{18}{噪声参数适配器}{equation.3.4.22}{}}
+\newlabel{eq:learned_R}{{3-24}{19}{噪声参数适配器}{equation.3.4.24}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4.3}离线预训练}{19}{subsection.3.4.3}\protected@file@percent }
+\newlabel{eq:nll_loss}{{3-25}{19}{离线预训练}{equation.3.4.25}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {3.5}实验}{19}{section.3.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.5.1}安全可达空间实验}{19}{subsection.3.5.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3{}-2}{\ignorespaces 安全空间分布图。蓝色曲线所包围的区域（安全值 > 0）表示危险区域，其余区域为安全区域。安全域会随着输入速度和方向的变化而发生改变。\relax }}{20}{figure.caption.5}\protected@file@percent }
+\newlabel{fig:safety_space}{{3{}-2}{20}{安全空间分布图。蓝色曲线所包围的区域（安全值 > 0）表示危险区域，其余区域为安全区域。安全域会随着输入速度和方向的变化而发生改变。\relax }{figure.caption.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.5.2}对比实验}{20}{subsection.3.5.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3{}-3}{\ignorespaces 不同任务场景图\relax }}{21}{figure.caption.6}\protected@file@percent }
+\@writefile{lof}{\contentsline {subfigure}{\numberline{(a)}{\ignorespaces {Goal Task}}}{21}{subfigure.3.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {subfigure}{\numberline{(b)}{\ignorespaces {Circle Task}}}{21}{subfigure.3.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {subfigure}{\numberline{(c)}{\ignorespaces {Push Task}}}{21}{subfigure.3.3}\protected@file@percent }
+\@writefile{lof}{\contentsline {subfigure}{\numberline{(d)}{\ignorespaces {MultiGoal Task}}}{21}{subfigure.3.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{基线方法}{21}{figure.caption.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{评估指标与实现细节}{21}{figure.caption.6}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {3{}-1}{\ignorespaces 所有实验使用的超参数。\relax }}{22}{table.caption.7}\protected@file@percent }
+\newlabel{tab:hyperparams}{{3{}-1}{22}{所有实验使用的超参数。\relax }{table.caption.7}{}}
+\@writefile{toc}{\contentsline {subsubsection}{实验结果}{22}{table.caption.7}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {3{}-2}{\ignorespaces Safety-Gymnasium 在不同任务和惩罚系数设置下的结果。单智能体（上）：Goal、Circle、Push，且 $r_{col} \in {1.0, 0.5, 0.1}$。多智能体（下）：Multi-Goal。红色加粗表示最优奖励，绿色字体表示最低代价。基线方法报告均值；PPO\_CM 报告 3 个随机种子下的均值$\pm $标准差。训练步数为 $10^5$。 \relax }}{23}{table.caption.8}\protected@file@percent }
+\newlabel{tab:main_results}{{3{}-2}{23}{Safety-Gymnasium 在不同任务和惩罚系数设置下的结果。单智能体（上）：Goal、Circle、Push，且 $r_{col} \in {1.0, 0.5, 0.1}$。多智能体（下）：Multi-Goal。红色加粗表示最优奖励，绿色字体表示最低代价。基线方法报告均值；PPO\_CM 报告 3 个随机种子下的均值$\pm $标准差。训练步数为 $10^5$。 \relax }{table.caption.8}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {3{}-3}{\ignorespaces Goal 任务上的消融实验。结果为 3 个随机种子、$10^5$ 训练步以及 50 个评估回合的平均值。完整系统在速度相关传感器噪声条件下运行（$\sigma _{\text  {base}} = 0.1$m，$k=5$）。\relax }}{23}{table.caption.9}\protected@file@percent }
+\newlabel{tab:ablation}{{3{}-3}{23}{Goal 任务上的消融实验。结果为 3 个随机种子、$10^5$ 训练步以及 50 个评估回合的平均值。完整系统在速度相关传感器噪声条件下运行（$\sigma _{\text {base}} = 0.1$m，$k=5$）。\relax }{table.caption.9}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.5.3}消融实验}{23}{subsection.3.5.3}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3{}-4}{\ignorespaces 学习曲线展示了各组件的贡献。(a) 不同配置下的回合奖励；(b) 回合 cost（安全违规次数）随着组件的逐步加入而持续下降，并且完整系统在存在传感器噪声的情况下仍能保持较低的 cost。\relax }}{24}{figure.caption.10}\protected@file@percent }
+\newlabel{fig:training_curves}{{3{}-4}{24}{学习曲线展示了各组件的贡献。(a) 不同配置下的回合奖励；(b) 回合 cost（安全违规次数）随着组件的逐步加入而持续下降，并且完整系统在存在传感器噪声的情况下仍能保持较低的 cost。\relax }{figure.caption.10}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {3{}-4}{\ignorespaces 在传感器噪声条件下（$\sigma _{\text  {base}}{=}0.1$m，$k{=}5$）Goal 任务上的 EKF 对比实验。5 个随机种子，50 个评估回合。\relax }}{24}{table.caption.11}\protected@file@percent }
+\newlabel{tab:ekf_comparison}{{3{}-4}{24}{在传感器噪声条件下（$\sigma _{\text {base}}{=}0.1$m，$k{=}5$）Goal 任务上的 EKF 对比实验。5 个随机种子，50 个评估回合。\relax }{table.caption.11}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.5.4}噪声实验}{24}{subsection.3.5.4}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3{}-5}{\ignorespaces ROS2 集成架构。安全过滤器与 EKF 作为独立的 ROS2 节点（safety\_nav\_node）部署，从 webots\_ros2\_driver 订阅传感器话题，并通过 ros2\_control 的差速驱动接口发布安全速度指令。\relax }}{25}{figure.caption.12}\protected@file@percent }
+\newlabel{fig:ros2arch}{{3{}-5}{25}{ROS2 集成架构。安全过滤器与 EKF 作为独立的 ROS2 节点（safety\_nav\_node）部署，从 webots\_ros2\_driver 订阅传感器话题，并通过 ros2\_control 的差速驱动接口发布安全速度指令。\relax }{figure.caption.12}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.5.5}WEbots平台实验}{25}{subsection.3.5.5}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {3{}-5}{\ignorespaces Webots E-puck 实验验证（20 次实验）。P 控制器，6 个障碍物，GPS 噪声 $\sigma =0.04$m。安全过滤器与 EKF 直接零样本部署。\relax }}{26}{table.caption.13}\protected@file@percent }
+\newlabel{tab:webots}{{3{}-5}{26}{Webots E-puck 实验验证（20 次实验）。P 控制器，6 个障碍物，GPS 噪声 $\sigma =0.04$m。安全过滤器与 EKF 直接零样本部署。\relax }{table.caption.13}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3{}-6}{\ignorespaces Webots 中 E-puck 实验验证。(a) 含 6 个障碍物的实验环境。(b) 轨迹对比：带安全过滤器 + EKF（左）与无过滤（右，$\times $ 表示碰撞）。\relax }}{26}{figure.caption.14}\protected@file@percent }
+\newlabel{fig:ros}{{3{}-6}{26}{Webots 中 E-puck 实验验证。(a) 含 6 个障碍物的实验环境。(b) 轨迹对比：带安全过滤器 + EKF（左）与无过滤（右，$\times $ 表示碰撞）。\relax }{figure.caption.14}{}}
+\@writefile{lof}{\contentsline {subfigure}{\numberline{(a)}{\ignorespaces {实验环境}}}{26}{subfigure.6.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {subfigure}{\numberline{(b)}{\ignorespaces {轨迹对比}}}{26}{subfigure.6.2}\protected@file@percent }
+\@setckpt{contents/chap3}{
+\setcounter{page}{27}
+\setcounter{equation}{26}
+\setcounter{enumi}{0}
+\setcounter{enumii}{0}
+\setcounter{enumiii}{0}
+\setcounter{enumiv}{0}
+\setcounter{footnote}{0}
+\setcounter{mpfootnote}{0}
+\setcounter{part}{0}
+\setcounter{chapter}{3}
+\setcounter{section}{5}
+\setcounter{subsection}{5}
+\setcounter{subsubsection}{0}
+\setcounter{paragraph}{0}
+\setcounter{subparagraph}{0}
+\setcounter{figure}{6}
+\setcounter{table}{5}
+\setcounter{Item}{0}
+\setcounter{Hfootnote}{0}
+\setcounter{Hy@AnnotLevel}{0}
+\setcounter{bookmark@seq@number}{38}
+\setcounter{nlinenum}{0}
+\setcounter{LT@tables}{0}
+\setcounter{LT@chunks}{0}
+\setcounter{caption@flags}{0}
+\setcounter{continuedfloat}{0}
+\setcounter{figureEng}{0}
+\setcounter{tableEng}{0}
+\setcounter{definition}{0}
+\setcounter{lemma}{0}
+\setcounter{theorem}{1}
+\setcounter{corollary}{0}
+\setcounter{proposition}{0}
+\setcounter{assumption}{0}
+\setcounter{float@type}{8}
+\setcounter{algorithm}{1}
+\setcounter{ALC@unique}{12}
+\setcounter{ALC@line}{12}
+\setcounter{ALC@rem}{0}
+\setcounter{ALC@depth}{0}
+\setcounter{tabx@nest}{0}
+\setcounter{listtotal}{0}
+\setcounter{listcount}{0}
+\setcounter{liststart}{0}
+\setcounter{liststop}{0}
+\setcounter{citecount}{0}
+\setcounter{citetotal}{0}
+\setcounter{multicitecount}{0}
+\setcounter{multicitetotal}{0}
+\setcounter{instcount}{85}
+\setcounter{maxnames}{1}
+\setcounter{minnames}{1}
+\setcounter{maxitems}{1}
+\setcounter{minitems}{1}
+\setcounter{citecounter}{0}
+\setcounter{maxcitecounter}{0}
+\setcounter{savedcitecounter}{0}
+\setcounter{uniquelist}{0}
+\setcounter{uniquename}{0}
+\setcounter{refsection}{0}
+\setcounter{refsegment}{0}
+\setcounter{maxextratitle}{0}
+\setcounter{maxextratitleyear}{0}
+\setcounter{maxextraname}{6}
+\setcounter{maxextradate}{0}
+\setcounter{maxextraalpha}{0}
+\setcounter{abbrvpenalty}{50}
+\setcounter{highnamepenalty}{50}
+\setcounter{lownamepenalty}{25}
+\setcounter{maxparens}{3}
+\setcounter{parenlevel}{0}
+\setcounter{blx@maxsection}{0}
+\setcounter{blx@maxsegment@0}{0}
+\setcounter{blx@sectionciteorder@0}{68}
+\setcounter{mincomprange}{10}
+\setcounter{maxcomprange}{100000}
+\setcounter{mincompwidth}{1}
+\setcounter{afterword}{0}
+\setcounter{savedafterword}{0}
+\setcounter{annotator}{0}
+\setcounter{savedannotator}{0}
+\setcounter{author}{0}
+\setcounter{savedauthor}{0}
+\setcounter{bookauthor}{0}
+\setcounter{savedbookauthor}{0}
+\setcounter{commentator}{0}
+\setcounter{savedcommentator}{0}
+\setcounter{editor}{0}
+\setcounter{savededitor}{0}
+\setcounter{editora}{0}
+\setcounter{savededitora}{0}
+\setcounter{editorb}{0}
+\setcounter{savededitorb}{0}
+\setcounter{editorc}{0}
+\setcounter{savededitorc}{0}
+\setcounter{foreword}{0}
+\setcounter{savedforeword}{0}
+\setcounter{holder}{0}
+\setcounter{savedholder}{0}
+\setcounter{introduction}{0}
+\setcounter{savedintroduction}{0}
+\setcounter{namea}{0}
+\setcounter{savednamea}{0}
+\setcounter{nameb}{0}
+\setcounter{savednameb}{0}
+\setcounter{namec}{0}
+\setcounter{savednamec}{0}
+\setcounter{translator}{0}
+\setcounter{savedtranslator}{0}
+\setcounter{shortauthor}{0}
+\setcounter{savedshortauthor}{0}
+\setcounter{shorteditor}{0}
+\setcounter{savedshorteditor}{0}
+\setcounter{labelname}{0}
+\setcounter{savedlabelname}{0}
+\setcounter{institution}{0}
+\setcounter{savedinstitution}{0}
+\setcounter{lista}{0}
+\setcounter{savedlista}{0}
+\setcounter{listb}{0}
+\setcounter{savedlistb}{0}
+\setcounter{listc}{0}
+\setcounter{savedlistc}{0}
+\setcounter{listd}{0}
+\setcounter{savedlistd}{0}
+\setcounter{liste}{0}
+\setcounter{savedliste}{0}
+\setcounter{listf}{0}
+\setcounter{savedlistf}{0}
+\setcounter{location}{0}
+\setcounter{savedlocation}{0}
+\setcounter{organization}{0}
+\setcounter{savedorganization}{0}
+\setcounter{origlocation}{0}
+\setcounter{savedoriglocation}{0}
+\setcounter{origpublisher}{0}
+\setcounter{savedorigpublisher}{0}
+\setcounter{publisher}{0}
+\setcounter{savedpublisher}{0}
+\setcounter{language}{0}
+\setcounter{savedlanguage}{0}
+\setcounter{origlanguage}{0}
+\setcounter{savedoriglanguage}{0}
+\setcounter{pageref}{0}
+\setcounter{savedpageref}{0}
+\setcounter{textcitecount}{0}
+\setcounter{textcitetotal}{0}
+\setcounter{textcitemaxnames}{0}
+\setcounter{biburlbigbreakpenalty}{100}
+\setcounter{biburlbreakpenalty}{200}
+\setcounter{biburlnumpenalty}{100}
+\setcounter{biburlucpenalty}{100}
+\setcounter{biburllcpenalty}{100}
+\setcounter{smartand}{1}
+\setcounter{bbx:relatedcount}{0}
+\setcounter{bbx:relatedtotal}{0}
+\setcounter{gbnamefmtcase}{0}
+\setcounter{gbalignlabel}{0}
+\setcounter{gbcitelocalcase}{0}
+\setcounter{gbbiblocalcase}{0}
+\setcounter{lanordernum}{0}
+\setcounter{cbx@tempcnta}{0}
+\setcounter{cbx@tempcntb}{70}
+\setcounter{cbx@tempcntc}{0}
+\setcounter{cbx@tempcntd}{-1}
+\setcounter{gbrefcompress}{2}
+\setcounter{parentequation}{0}
+\setcounter{KVtest}{1}
+\setcounter{subfigure}{0}
+\setcounter{subfigure@save}{2}
+\setcounter{lofdepth}{1}
+\setcounter{subtable}{0}
+\setcounter{subtable@save}{0}
+\setcounter{lotdepth}{1}
+\setcounter{section@level}{0}
+}

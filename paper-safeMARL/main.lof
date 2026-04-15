@@ -1,0 +1,29 @@
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {3{}-1}{\ignorespaces framework\relax }}{11}{figure.caption.4}%
+\contentsline {figure}{\numberline {3{}-2}{\ignorespaces 安全空间分布图。蓝色曲线所包围的区域（安全值 > 0）表示危险区域，其余区域为安全区域。安全域会随着输入速度和方向的变化而发生改变。\relax }}{20}{figure.caption.5}%
+\contentsline {figure}{\numberline {3{}-3}{\ignorespaces 不同任务场景图\relax }}{21}{figure.caption.6}%
+\contentsline {subfigure}{\numberline {(a)}{\ignorespaces {Goal Task}}}{21}{subfigure.3.1}%
+\contentsline {subfigure}{\numberline {(b)}{\ignorespaces {Circle Task}}}{21}{subfigure.3.2}%
+\contentsline {subfigure}{\numberline {(c)}{\ignorespaces {Push Task}}}{21}{subfigure.3.3}%
+\contentsline {subfigure}{\numberline {(d)}{\ignorespaces {MultiGoal Task}}}{21}{subfigure.3.4}%
+\contentsline {figure}{\numberline {3{}-4}{\ignorespaces 学习曲线展示了各组件的贡献。(a) 不同配置下的回合奖励；(b) 回合 cost（安全违规次数）随着组件的逐步加入而持续下降，并且完整系统在存在传感器噪声的情况下仍能保持较低的 cost。\relax }}{24}{figure.caption.10}%
+\contentsline {figure}{\numberline {3{}-5}{\ignorespaces ROS2 集成架构。安全过滤器与 EKF 作为独立的 ROS2 节点（safety\_nav\_node）部署，从 webots\_ros2\_driver 订阅传感器话题，并通过 ros2\_control 的差速驱动接口发布安全速度指令。\relax }}{25}{figure.caption.12}%
+\contentsline {figure}{\numberline {3{}-6}{\ignorespaces Webots 中 E-puck 实验验证。(a) 含 6 个障碍物的实验环境。(b) 轨迹对比：带安全过滤器 + EKF（左）与无过滤（右，$\times $ 表示碰撞）。\relax }}{26}{figure.caption.14}%
+\contentsline {subfigure}{\numberline {(a)}{\ignorespaces {实验环境}}}{26}{subfigure.6.1}%
+\contentsline {subfigure}{\numberline {(b)}{\ignorespaces {轨迹对比}}}{26}{subfigure.6.2}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {4{}-1}{\ignorespaces GCPL 算法框架\relax }}{28}{figure.caption.15}%
+\contentsline {figure}{\numberline {4{}-2}{\ignorespaces GCPL任务树\relax }}{29}{figure.caption.16}%
+\contentsline {figure}{\numberline {4{}-3}{\ignorespaces Enter Caption\relax }}{40}{figure.caption.17}%
+\contentsline {figure}{\numberline {4{}-4}{\ignorespaces GCPL 实验验证。其中蓝色表示mappo算法下的实验结果，黑色表示添加 GCPL 后的实验结果。(a) 训练过程中的reward (b) 训练过程产生的cost（表示碰撞次数）。\relax }}{43}{figure.caption.18}%
+\contentsline {subfigure}{\numberline {(a)}{\ignorespaces {reward}}}{43}{subfigure.4.1}%
+\contentsline {subfigure}{\numberline {(b)}{\ignorespaces {cost}}}{43}{subfigure.4.2}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {5{}-1}{\ignorespaces Enter Caption\relax }}{45}{figure.caption.19}%
+\contentsline {figure}{\numberline {5{}-2}{\ignorespaces 任务管理界面\relax }}{49}{figure.caption.20}%
+\contentsline {figure}{\numberline {5{}-3}{\ignorespaces 实验界面\relax }}{49}{figure.caption.21}%
+\contentsline {figure}{\numberline {5{}-4}{\ignorespaces 系统数据链路图\relax }}{53}{figure.caption.22}%
+\addvspace {10\p@ }
+\contentsfinish 

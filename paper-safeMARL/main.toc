@@ -1,0 +1,104 @@
+\contentsline {chapter}{摘要}{I}{chapter*.1}%
+\contentsline {chapter}{ABSTRACT}{III}{chapter*.1}%
+\contentsline {chapter}{目录}{V}{chapter*.2}%
+\contentsline {chapter}{插图和附表清单}{IX}{chapter*.3}%
+\contentsline {chapter}{\numberline {\bfseries 1\hspace {.3em}}引言}{1}{chapter.1}%
+\contentsline {section}{\numberline {1.1}研究背景}{1}{section.1.1}%
+\contentsline {section}{\numberline {1.2}研究意义}{2}{section.1.2}%
+\contentsline {section}{\numberline {1.3}研究内容}{2}{section.1.3}%
+\contentsline {chapter}{\numberline {\bfseries 2\hspace {.3em}}文献综述}{5}{chapter.2}%
+\contentsline {section}{\numberline {2.1}安全强化学习研究现状}{5}{section.2.1}%
+\contentsline {subsection}{\numberline {2.1.1}基于代价的方法}{5}{subsection.2.1.1}%
+\contentsline {subsection}{\numberline {2.1.2}基于状态约束的方法}{6}{subsection.2.1.2}%
+\contentsline {subsection}{\numberline {2.1.3}多智能体强化学习}{6}{subsection.2.1.3}%
+\contentsline {section}{\numberline {2.2}Hamilton–Jacobi 可达性分析}{7}{section.2.2}%
+\contentsline {section}{\numberline {2.3}学习型状态估计}{7}{section.2.3}%
+\contentsline {section}{\numberline {2.4}多智能体编队研究现状}{8}{section.2.4}%
+\contentsline {subsection}{\numberline {2.4.1}基于强化学习的编队控制}{8}{subsection.2.4.1}%
+\contentsline {subsection}{\numberline {2.4.2}多智能体安全强化学习}{9}{subsection.2.4.2}%
+\contentsline {chapter}{\numberline {\bfseries 3\hspace {.3em}}不确定环境下安全约束方法}{10}{chapter.3}%
+\contentsline {section}{\numberline {3.1}问题定义}{10}{section.3.1}%
+\contentsline {section}{\numberline {3.2}约束流形方法}{12}{section.3.2}%
+\contentsline {subsection}{\numberline {3.2.1}松弛变量}{12}{subsection.3.2.1}%
+\contentsline {subsection}{\numberline {3.2.2}零空间投影}{12}{subsection.3.2.2}%
+\contentsline {subsection}{\numberline {3.2.3}奖励修正}{14}{subsection.3.2.3}%
+\contentsline {section}{\numberline {3.3}安全可达性分析}{14}{section.3.3}%
+\contentsline {subsection}{\numberline {3.3.1}从 HJ 偏微分方程到可行性值函数}{15}{subsection.3.3.1}%
+\contentsline {subsection}{\numberline {3.3.2}离线近似}{16}{subsection.3.3.2}%
+\contentsline {subsection}{\numberline {3.3.3}与安全过滤器的集成}{17}{subsection.3.3.3}%
+\contentsline {section}{\numberline {3.4}数据驱动的状态估计}{17}{section.3.4}%
+\contentsline {subsection}{\numberline {3.4.1}扩展卡尔曼滤波}{18}{subsection.3.4.1}%
+\contentsline {subsection}{\numberline {3.4.2}噪声参数适配器}{18}{subsection.3.4.2}%
+\contentsline {subsection}{\numberline {3.4.3}离线预训练}{19}{subsection.3.4.3}%
+\contentsline {section}{\numberline {3.5}实验}{19}{section.3.5}%
+\contentsline {subsection}{\numberline {3.5.1}安全可达空间实验}{19}{subsection.3.5.1}%
+\contentsline {subsection}{\numberline {3.5.2}对比实验}{20}{subsection.3.5.2}%
+\contentsline {subsubsection}{基线方法}{21}{figure.caption.6}%
+\contentsline {subsubsection}{评估指标与实现细节}{21}{figure.caption.6}%
+\contentsline {subsubsection}{实验结果}{22}{table.caption.7}%
+\contentsline {subsection}{\numberline {3.5.3}消融实验}{23}{subsection.3.5.3}%
+\contentsline {subsection}{\numberline {3.5.4}噪声实验}{24}{subsection.3.5.4}%
+\contentsline {subsection}{\numberline {3.5.5}WEbots平台实验}{25}{subsection.3.5.5}%
+\contentsline {chapter}{\numberline {\bfseries 4\hspace {.3em}}基于几何约束的策略学习方法}{27}{chapter.4}%
+\contentsline {section}{\numberline {4.1}方法框架}{27}{section.4.1}%
+\contentsline {section}{\numberline {4.2}系统建模}{29}{section.4.2}%
+\contentsline {subsection}{\numberline {4.2.1}状态与控制输入建模}{29}{subsection.4.2.1}%
+\contentsline {subsection}{\numberline {4.2.2}编队的图建模}{30}{subsection.4.2.2}%
+\contentsline {subsubsection}{不同编队形状的图结构构造}{31}{equation.4.2.13}%
+\contentsline {paragraph}{1) 直线编队（Line Formation）}{31}{equation.4.2.13}%
+\contentsline {paragraph}{2) 楔形编队（Wedge Formation）}{31}{equation.4.2.15}%
+\contentsline {paragraph}{3) 圆形编队（Circle Formation）}{32}{equation.4.2.18}%
+\contentsline {section}{\numberline {4.3}强化学习层}{32}{section.4.3}%
+\contentsline {subsection}{\numberline {4.3.1}强化学习与几何控制的协同机制}{33}{subsection.4.3.1}%
+\contentsline {subsubsection}{几何叶节点设计}{33}{subsection.4.3.1}%
+\contentsline {section}{\numberline {4.4}几何过滤层}{34}{section.4.4}%
+\contentsline {subsection}{\numberline {4.4.1}碰撞避免节点}{34}{subsection.4.4.1}%
+\contentsline {subsection}{\numberline {4.4.2}编队保持节点}{35}{subsection.4.4.2}%
+\contentsline {subsubsection}{距离保持节点}{36}{subsection.4.4.2}%
+\contentsline {subsubsection}{方向保持节点}{37}{equation.4.4.48}%
+\contentsline {subsubsection}{联合编队节点}{37}{equation.4.4.54}%
+\contentsline {subsection}{\numberline {4.4.3}根节点解析}{38}{subsection.4.4.3}%
+\contentsline {subsection}{\numberline {4.4.4}差速系统映射}{38}{subsection.4.4.4}%
+\contentsline {section}{\numberline {4.5}实验}{39}{section.4.5}%
+\contentsline {subsection}{\numberline {4.5.1}实验设置}{39}{subsection.4.5.1}%
+\contentsline {subsection}{\numberline {4.5.2}任务描述}{39}{subsection.4.5.2}%
+\contentsline {subsection}{\numberline {4.5.3}评价指标}{39}{subsection.4.5.3}%
+\contentsline {subsubsection}{奖励设置}{40}{subsection.4.5.3}%
+\contentsline {paragraph}{目标导航奖励}{40}{subsection.4.5.3}%
+\contentsline {paragraph}{编队保持奖励}{40}{subsection.4.5.3}%
+\contentsline {subparagraph}{距离保持奖励项}{41}{subsection.4.5.3}%
+\contentsline {subparagraph}{形状辅助奖励项}{41}{subsection.4.5.3}%
+\contentsline {paragraph}{碰撞惩罚}{42}{subsection.4.5.3}%
+\contentsline {subsubsection}{代价设置}{42}{subsection.4.5.3}%
+\contentsline {subsection}{\numberline {4.5.4}实验结果}{43}{subsection.4.5.4}%
+\contentsline {chapter}{\numberline {\bfseries 5\hspace {.3em}}机器人安全验证平台}{44}{chapter.5}%
+\contentsline {section}{\numberline {5.1}平台层次架构}{44}{section.5.1}%
+\contentsline {section}{\numberline {5.2}核心机制设计}{45}{section.5.2}%
+\contentsline {subsection}{\numberline {5.2.1}容器化与并行调度机制}{46}{subsection.5.2.1}%
+\contentsline {subsection}{\numberline {5.2.2}双通道可视化机制}{46}{subsection.5.2.2}%
+\contentsline {subsection}{\numberline {5.2.3}安全评估验证机制}{47}{subsection.5.2.3}%
+\contentsline {section}{\numberline {5.3}系统实现}{47}{section.5.3}%
+\contentsline {subsection}{\numberline {5.3.1}机器人仿真模块}{47}{subsection.5.3.1}%
+\contentsline {subsection}{\numberline {5.3.2}前端交互模块}{48}{subsection.5.3.2}%
+\contentsline {subsubsection}{任务管理界面}{48}{subsection.5.3.2}%
+\contentsline {subsubsection}{任务运行界面}{49}{figure.caption.20}%
+\contentsline {paragraph}{代码编辑区}{49}{figure.caption.21}%
+\contentsline {paragraph}{可视化展示区}{50}{figure.caption.21}%
+\contentsline {paragraph}{终端调试区}{50}{figure.caption.21}%
+\contentsline {subsection}{\numberline {5.3.3}后端服务模块}{50}{subsection.5.3.3}%
+\contentsline {subsubsection}{实验任务管理}{50}{subsection.5.3.3}%
+\contentsline {subsubsection}{API 服务提供}{51}{subsection.5.3.3}%
+\contentsline {subsubsection}{数据库管理}{51}{subsection.5.3.3}%
+\contentsline {subsubsection}{系统调度与控制}{52}{subsection.5.3.3}%
+\contentsline {subsection}{\numberline {5.3.4}机器人通信模块}{52}{subsection.5.3.4}%
+\contentsline {section}{\numberline {5.4}本章小结}{53}{section.5.4}%
+\contentsline {chapter}{\numberline {\bfseries 6\hspace {.3em}}结论与展望}{55}{chapter.6}%
+\contentsline {section}{\numberline {6.1}结论}{55}{section.6.1}%
+\contentsline {section}{\numberline {6.2}展望}{56}{section.6.2}%
+\contentsline {chapter}{参考文献}{57}{chapter*.23}%
+\contentsline {chapter}{致谢}{64}{chapter*.24}%
+\contentsline {chapter}{作者简历及在学研究成果}{65}{chapter*.25}%
+\contentsline {chapter}{独创性说明}{66}{chapter*.26}%
+\contentsline {chapter}{关于论文使用授权的说明}{67}{chapter*.27}%
+\contentsline {chapter}{学位论文数据集}{68}{chapter*.28}%
+\contentsfinish 

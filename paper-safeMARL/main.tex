@@ -1,0 +1,141 @@
+\documentclass{ustbthesis}
+
+
+\usepackage[backend=biber,
+style=gb7714-2015,%utf8,
+    sortcites=true,autocite=inline,autopunct=true,hyperref=true,  
+    natbib
+    ]{biblatex}
+
+\hypersetup{hidelinks,colorlinks=false,citecolor=black}
+\addbibresource{myrefs.bib}
+%\usepackage[numbers,super]{gbt7714}
+%\newcommand{\upcite}[1]{\textsuperscript{\textsuperscript{\cite{#1}}}}
+%\bibliography{myrefs}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{tabularx}
+% \usepackage{algorithm}
+% \usepackage{algpseudocode}
+\usepackage{longtable}
+\usepackage{multirow}
+% \usepackage{subfig}
+\usepackage{graphicx}
+% \usepackage[dvipsnames, svgnames, x11names]{xcolor}
+% \usepackage{colortbl}
+\usepackage[labelfont=bf,textfont=bf,font=small]{subfig}
+\newcommand{\figref}[1]{~\ref{#1}~}
+\newcommand{\tabref}[1]{~\ref{#1}~}
+
+\newcolumntype{P}[1]{>{\centering\arraybackslash}p{#1}}
+%\addbibresource{myrefs.bib}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%封面信息%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% 作者
+\Author{成孜卓}
+\EnglishAuthor{}
+%% 标题
+\Title{不确定环境下多机器人的强化学习安全策略研究}
+\EnglishTitle{Safe Reinforcement Learning Strategies for Multi-Robot Systems in Uncertain Environments}
+% \Subtitle{酵母菌催化反应机理和咪唑类离子液体酸度的研究}
+% \EnglishSubtitle{Mechanistic Aspects of Baker's Yeast Mediated Reduction and Measurements of Acidity of Imidazolium Ionic Liquids}
+%% 日期
+\Date{2026年 04月 22日}
+\EnglishDate{April, 2026}
+%% 学院
+\College{计算机与通信工程学院}
+\EnglishCollege{School of Computer and Communication Engineering}
+%% 地址
+\Address{海淀区学院路30号}
+\EnglishAddress{30 Xueyuan Road，Haidian District}
+%%培养单位（所在单位、学位授予单位）%%
+\Affiliation{北京科技大学}
+\EnglishAffiliation{University of Science and Technology Beijing}
+%% 邮编
+\Postcode{100083}
+%\nglishPostcode{30 Xueyuan Road，Haidian District}
+%% 城市
+\City{北京}
+\EnglishCity{Beijing}
+%% 国家
+\Country{中国}
+\EnglishCountry{P.R.CHINA}
+%%学号%%
+\StudentCode{M202310641}
+%%专业%%
+\Major{计算机科学与技术}
+\EnglishMajor{Computer Science and Technology}
+%%研究方向%%
+\Direction{安全多智能体强化学习方向}
+\EnglishDirection{Artificial Intelligence}
+%%导师%%
+\Supervisor{万亚东}
+\EnglishSupervisor{}
+
+\DegreeType{学术型}
+\EnglishDegreeType{Science}
+
+%%中图分类号%%
+\CLCNumber{TP319}
+%%UDC分类号%%
+\UDCNumber{620}
+%%学校代码%%
+\UniversityCode{10008}
+\UniversityLogoFile{images/ustb.png}
+%% 密级
+\SecurityLevel{公开}
+%% 提交日期
+\SubmissionDate{2026年 04月 22日}
+\EnglishSubmissionDate{April, 2026}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%封面信息%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+
+\definecolor{lgray}{RGB}{240,240,240}
+
+\TitlePage
+
+\SecondPage
+
+\ThirdPage
+
+\pagestyle{fancy}
+
+%% 中英文摘要
+\include{contents/abstract}
+%% 序言
+% \include{contents/preclude}
+%% 目录
+\tableofcontents
+
+\include{contents/list}
+
+
+\mainmatter
+\pagenumbering{arabic}\setcounter{page}{1}
+\pagestyle{fancy}
+
+\include{contents/chap1}
+\include{contents/chap2}
+\include{contents/chap3}
+\include{contents/chap4}
+\include{contents/chap5}
+\include{contents/chap6}
+
+
+\chapter*{参考文献}\addcontentsline{toc}{chapter}{参考文献}
+
+\printbibliography[heading=none]
+
+
+%% 附录
+% \include{contents/appendix}
+%% 致谢
+\include{contents/thanks}
+%% 作者简历及在学研究成果
+\include{contents/mresume}
+%% 关于论文使用授权的说明
+\postDeclarations
+%% 学位论文数据集
+\include{contents/dataset}
+
+\end{document}
