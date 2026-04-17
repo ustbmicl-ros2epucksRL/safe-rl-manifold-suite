@@ -1,4 +1,7 @@
 \chapter{基于几何约束的策略学习方法}
+第三章围绕智能体强化学习在复杂环境中的安全性问题，构建了基于约束流行的安全过滤机制，在一定程度上缓解了机器人在运动过程中的风险行为。然而，在多机器人协同任务中，系统不仅需要满足个体层面的安全可行性，还需在群体层面同时维持编队拓扑、相对位姿关系与任务协同效率，这使得控制目标由单一安全约束扩展为多任务耦合下的结构化优化问题。
+
+基于此，第四章在第三章安全约束思想的基础上进一步强化与拓展，将安全约束从个体避碰推广至多机器人几何关系保持，使强化学习策略能够在满足安全边界的前提下，更有效地利用编队结构先验实现协同决策。由此，本章旨在继承第三章安全保证能力的同时，提升多机器人系统在复杂任务中的组织性、稳定性与控制性能。
 \section{方法框架}
 本文提出一种基于几何约束的策略学习方法（Geo-Constrained Policy Learning, GCPL），
 通过融合强化学习与几何结构约束，实现多机器人系统在复杂环境中的安全协同与编队控制，系统整体控制流程可划分为候选动作生成、安全修正、解析合成、环境交互以及策略更新五个阶段。
@@ -81,7 +84,7 @@ GCPL 是在配置空间加速度层进行多任务融合的几何控制框架，
 
 定义编队拓扑图为
 \begin{equation}
-    \mathcal{G} = (\mathcal{V}, \mathcal{E}),
+    \mathcal{G} = (\mathcal{V}, \mathcal{E})
 \end{equation}
 其中节点集合 $\mathcal{V} = \{0,1,\ldots,N-1\}$ 表示机器人个体，边集合 $\mathcal{E} \subseteq \mathcal{V} \times \mathcal{V}$ 表示需要维持相对几何约束的机器人对。对于每一条边 $(i,j) \in \mathcal{E}$，指定期望的相对距离 $d_{ij}^* > 0$。
 
@@ -299,7 +302,7 @@ GCPL 通过度量矩阵实现任务优先级的动态调节。为使机器人在
     f_z = 4\alpha z^{-9} - \eta\,G(z,\dot z)\,\dot z.
 \end{equation}
  
-该力在机器人接近安全边界时趋于无穷大，形成软几何屏障，从力学原理上保证无碰撞。
+该力在机器人接近安全边界时趋于无穷大，形成几何屏障，从力学原理上保证无碰撞。
 
 为将任务空间力与度量映射回机器人配置空间，采用基于功率守恒的 pullback 操作。
 
@@ -492,10 +495,10 @@ GCPL 根节点解析输出的是机器人世界坐标系下的二维加速度 $a
 为了评估本章所提出的 GCPL 方法在复杂多智能体编队导航任务中的有效性，本章的围绕以下四个方向展开实验:
 \begin{itemize}
     \item 整体性能：对比本方法与基线方法在不同数量的机器人及不同编队形状下导航任务中的安全性与任务完成度。
-    \item 消融实验：对比仅采用 mappo 强化学习方法和融合方法在任务中的表现。同时对比关键超参数对模型性能产生的的影响。
+    \item 消融实验：以 mappo 强化学习方法作为基线，对比增加编队节点、增加避碰节点，以及同时增加的任务完成情况。
 \end{itemize}
 
-采用的基线方法包括 mappo、happo、macpo、mappo\_lag。
+采用的基线方法包括 mappo、mappo\_lag。
 
 实验中采用的参数如表所示
 
@@ -520,15 +523,13 @@ GCPL 根节点解析输出的是机器人世界坐标系下的二维加速度 $a
 \subsection{评价指标}
 为了全面评估算法性能，本文采用以下指标：
 1）累计奖励（Total Reward）
-统计策略在一个完整 episode 中获得的累计奖励：$R = \sum_t r_t$，该指标反映策略整体行为质量。
+统计策略在一个完整 episode 中获得的累计奖励：$R = \sum_t r_t$，反映策略整体行为质量。
 2）安全代价（Collision Cost）
-统计系统运行过程中产生的累计安全代价：$C = \sum_t c_t$，
-该指标用于评估系统安全性。
+统计策略在一个完整 episode 中产生的累计安全代价：$C = \sum_t c_t$，用于评估系统安全性。
 3）任务成功率（Success Rate）
 成功率定义为：
 \[SR = \frac{N_{success}}{N_{total}}\]
-其中：$N_{success}$ 为成功到达目标且未发生碰撞的 episode 数；$N_{total}$ 为总测试 episode 数
-该指标反映策略在复杂环境中的任务完成能力。
+其中：$N_{success}$ 为成功到达目标且未发生碰撞的 episode 数；$N_{total}$ 为总测试 episode 数，该指标反映策略在复杂环境中的任务完成能力。
 
 \subsubsection{奖励设置}
 强化学习部分主要负责提供目标驱动和整体行为优化能力，因此设计了一系列奖励函数以引导策略学习合理的导航行为。
@@ -549,7 +550,7 @@ GCPL 根节点解析输出的是机器人世界坐标系下的二维加速度 $a
 p = (p_0, p_1, \ldots, p_{N-1}), \quad p_i \in \mathbb{R}^2.
 \]
 
-当前编队形状由无向图 $\mathcal{G}=(\mathcal{V},\mathcal{E})$)描述，其中每条边 $(i,j)\in\mathcal{E}$ 表示机器人 i 与机器人 j 之间需要保持期望距离 $d_{ij}^*$。该图结构与 GCPL 中用于构建编队保持节点的拓扑保持一致。
+当前编队形状由无向图 $\mathcal{G}=(\mathcal{V},\mathcal{E})$ 描述，其中每条边 $(i,j)\in\mathcal{E}$ 表示机器人 i 与机器人 j 之间需要保持期望距离 $d_{ij}^*$。该图结构与 GCPL 中用于构建编队保持节点的拓扑保持一致。
 
 \subparagraph{距离保持奖励项}
 对于任意约束边 $(i,j)$，定义其距离误差为
@@ -632,10 +633,37 @@ r_{\mathrm{form}}^k = r_{\mathrm{dist}} + r_{\mathrm{aux}},
 其中： $d_{safe}$ 为机器人间安全距离；$\beta_c$ 为代价权重； $\phi(\cdot)$ 为ReLU 或 barrier 函数。
 当机器人距离小于安全距离时，代价增加，从而反映系统风险。
 
+\subsection{参数设置}
+\begin{table}[htbp]
+\centering
+\small
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{p{0.22\linewidth} p{0.2\linewidth}|p{0.22\linewidth} p{0.2\linewidth}}
+\hline
+\multicolumn{2}{c|}{\textbf{训练参数}} & \multicolumn{2}{c}{\textbf{GCPL参数}} \\
+\hline
+\textbf{参数} & \textbf{参数大小} & \textbf{参数} & \textbf{参数大小} \\
+\hline
+总环境步数 & $10^8$ & 编队目标间距 & 0.5 \\
+隐层宽度 & 512 &  直线编队轴向 & x \\
+MLP层数 & 2 & 楔形半角（度） & 35.0 \\
+折扣因子 & 0.96 & 期望编队方向 & [0.0, 1.0] \\
+GAE系数$\lambda$ & 0.95 & 方向叶$\alpha_\theta$ & 1.0 \\
+PPO裁剪系数 & 0.2 & 方向叶$\eta_\theta$ & 2.0 \\
+mini-batch数量 & 1  & 方向叶度量$c_\theta$ & 10.0 \\
+策略学习率 & $9\times10^{-5}$ & 碰撞安全半径 & 0.3 \\
+价值学习率 & $5\times10^{-3}$ & 融合权重 & 1 \\
+
+\hline
+\end{tabular}
+\caption{训练参数与GCPL参数}
+\label{tab:train-rmp-cn}
+\end{table}
 
 \subsection{实验结果}
 实验结果如图 ~\ref{fig:rmp_result}所示，可以看到在训练过程中，相比于 MAPPO，添加 GCPL 的方法 cost 明显降低，意味着机器人碰撞次数明显下降，安全性更好；同时reward 明显提升，在任务中表现更加出色。
-同时，我们对训练结果进行了评估，分别用 MAPPO 和我们的方法完成 20 轮次的任务，结果同样显示出我们的方法 reward 更高和 cost 更低的结果。
+同时，我们对训练结果进行了评估，分别用 MAPPO、MAPPO\_Lag 和我们的方法完成 20 轮次的任务，结果同样显示出我们的方法 reward 更高和 cost 更低，同时在20次任务中成功率更高。
 \begin{figure*}[t]
 \centering
 \subfloat[reward]{\includegraphics[height=4cm]{images/rmp_reward.png}}
@@ -645,3 +673,22 @@ r_{\mathrm{form}}^k = r_{\mathrm{dist}} + r_{\mathrm{aux}},
 \label{fig:rmp_result}
 \end{figure*}
 
+\begin{table}[htbp]
+    \centering
+    \caption{Experimental Results on SafetyPointMultiFormationGoal0-v0}
+    \begin{tabular}{l c c c}
+    \hline
+    \textbf{Algorithm} & \textbf{Reward} & \textbf{Cost} & \textbf{Success Rate} \\
+    \hline
+    
+    MAPPO      & $-21.46 \pm 3.43$ & $124.17 \pm 32.17$ & $0.13 \pm 0.09$ \\
+    
+    RMPflow  & $3.71 \pm 6.24$   & $22.85 \pm 19.37$  & $0.35 \pm 0.11$ \\
+    
+    MAPPO-Lag  & $-13.26 \pm 6.17$ & $125.96 \pm 34.05$ & $0.27 \pm 0.06$ \\
+
+    GCPL  & $7.83 \pm 8.76$   & $27.15 \pm 14.51$  & $0.65 \pm 0.16$ \\
+    
+    \hline
+    \end{tabular}
+    \end{table}
