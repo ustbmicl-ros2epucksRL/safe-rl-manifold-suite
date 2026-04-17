@@ -31,3 +31,22 @@ paper/
 
 # T-RO journal submission (not for public repo)
 TRO/
+
+# LaTeX build files
+*.aux
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.bbl
+*.blg
+*.bcf
+*.run.xml
+*.synctex.gz
+*.fdb_latexmk
+*.fls
+*.xdv
+
+# PDF output
+*.pdf

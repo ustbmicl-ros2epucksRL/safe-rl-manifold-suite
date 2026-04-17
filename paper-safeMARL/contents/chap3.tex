@@ -185,7 +185,7 @@ Hamilton–Jacobi 变分不等式（HJ-VI）刻画了后向可达管（Backward 
 对于策略 $\pi$ 的可行区域定义为 $S^{\pi}_f:=\{s|V^{\pi}_c(s) \leq 0\}$ ，即策略 $\pi$ 能够满足硬约束的状态集合。最大可行区域（viability kernel）定义为 $S^*_f:=\{s|V^*_c(s) \leq 0\}$ ，即包括所有存在至少一个满足硬约束策略的状态。 对于状态 $s$ ，可行策略集合定义为 $\Pi_{f(s)}:=\{\pi |V^{\pi}_c(s) \leq 0\}$ ，即包含所有从状态 出发能够满足硬约束的策略。
 
 \subsection{离线近似}
-HJ 可达性分析在计算最优可行值函数需要通过与环境交互进行蒙特卡罗估计，这在离线设置中是不可行的。为了保证 Bellman 算子的收敛性，我们引入折扣因子 $\gamma \in (0, 1)$。通过反复利用带有折扣因子 $γ→1$的可行 Bellman 算子来获得近似的最优可行值。与 BRT 不动点对应的折扣可行 Bellman 算子定义为：
+HJ 可达性分析在计算最优可行值函数需要通过与环境交互进行蒙特卡罗估计，这在离线设置中是不可行的。为了保证 Bellman 算子的收敛性，我们引入折扣因子 $\gamma \in (0, 1)$。通过反复利用带有折扣因子 $\gamma\to 1$的可行 Bellman 算子来获得近似的最优可行值。与 BRT 不动点对应的折扣可行 Bellman 算子定义为：
 \begin{equation}
 \mathcal{T}^* Q_c(s, a) := (1{-}\gamma) c(s) + \gamma \max{c(s), V_c(s')}
 \label{eq:bellman}

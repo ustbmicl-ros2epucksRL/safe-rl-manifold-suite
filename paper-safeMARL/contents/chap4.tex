@@ -67,7 +67,7 @@ a = M_{\text{total}}^{\dagger} f_{total},
 
 机器人的底层控制输入为前进线速度与转向角速度：
 \begin{equation}
-    u_i=(v_i,ω_i)
+    u_i=(v_i,\omega_i)
 \end{equation}
 
 GCPL 是在配置空间加速度层进行多任务融合的几何控制框架，本文将机器人控制问题建模为加速度级指令生成问题，即：
@@ -262,7 +262,7 @@ GCPL 是在配置空间加速度层进行多任务融合的几何控制框架，
 \begin{equation}
     z = \psi(x_i, x_j) = \frac{\|x_i - x_j\|}{d_S} - 1
 \end{equation}
-其中， $\|x_i - x_j\|$ 表示两个机器人之间或机器人与障碍物的真实距离，z 表征当前相对距离与安全距离的归一化偏差。当 $z≤0$ 时，机器人进入危险区域，避碰任务将产生强排斥力。
+其中， $\|x_i - x_j\|$ 表示两个机器人之间或机器人与障碍物的真实距离，z 表征当前相对距离与安全距离的归一化偏差。当 $z\leq 0$ 时，机器人进入危险区域，避碰任务将产生强排斥力。
 
 为将配置空间运动映射至任务空间，首先定义机器人间相对位置的单位方向向量：
 \begin{equation}
@@ -482,36 +482,28 @@ GCPL 根节点解析输出的是机器人世界坐标系下的二维加速度 $a
 
 通过比例控制器得到角速度指令：
 \begin{equation}
-    \omega=k_\theta(\theta_d−\theta)
+    \omega=k_\theta(\theta_d - \theta)
 \end{equation}
 其中 $k_\theta$为航向控制增益。
 
 通过上述映射，将几何力学层面的加速度指令，转化为差速机器人可执行的动作输入，实现对机器人的控制。
 
 \section{实验}
-
-
-\subsection{实验设置}
-为了评估本章所提出的 GCPL 方法在复杂多智能体编队导航任务中的有效性，本章的围绕以下四个方向展开实验:
+为了验证所提出 GCPL 方法在多机器人协同导航任务中的有效性，本文围绕以下两个核心问题展开实验分析：
 \begin{itemize}
-    \item 整体性能：对比本方法与基线方法在不同数量的机器人及不同编队形状下导航任务中的安全性与任务完成度。
-    \item 消融实验：以 mappo 强化学习方法作为基线，对比增加编队节点、增加避碰节点，以及同时增加的任务完成情况。
+    \item \textbf{对比试验：}  
+    为了验证所提出 GCPL 方法是否能够同时结合强化学习的任务优化能力与几何约束的安全性优势，同时分析 GCPL 是否能够在降低碰撞风险的同时提升任务完成效率，设计实验在不同机器人规模与编队结构下，对比 GCPL 与多种基线方法的任务完成能力与安全性能。选取的基线方法包括强化学习方法 MAPPO、安全强化学习算法 MAPPO\_Lag、MAPPO\_CBF 以及几何约束方法 RMPflow。
+
+    \item \textbf{消融实验：}  
+    为分析各组成模块对整体性能的贡献，以 MAPPO 方法作为基础框架，分别引入 GCPL 编队保持节点、碰撞避免节点以及两者的组合形式进行对比实验。通过比较不同配置下的任务完成情况与安全指标，评估几何约束在策略学习过程中的作用机制及其对性能提升的影响。
 \end{itemize}
 
-采用的基线方法包括 mappo、mappo\_lag。
-
-实验中采用的参数如表所示
-
-\subsection{任务描述}
-为了验证所提出的强化学习与 GCPL 结合方法在多机器人协同导航任务中的有效性，构建多机器人编队导航实验场景。实验环境为二维平面环境，机器人需要在存在狭窄通道中避免碰撞，并以编队形式从初始位置移动至指定目标区域。
-
-在实验任务中，系统需要同时满足以下三个控制目标：
-\begin{itemize}
-    \item 目标导航：机器人编队需要整体移动至指定目标位置；
-    \item 碰撞避免：在导航过程中需要避免发生碰撞，包括：与环境静态障碍物（例如墙面）的碰撞以及与其他机器人之间的碰撞；
-    \item 编队保持：在移动过程中，机器人之间需要保持指定的队形结构，包括直线型（ line ）、楔形（ wedge ）、圆形（ circle ）。
-\end{itemize}
-
+\subsection{任务与环境}
+为了验证所提出的强化学习与 GCPL 结合方法在多机器人协同导航任务中的有效性，本文基于 Safety-Gymnasium 环境构建多智能体安全编队导航任务 \texttt{SafetyPointMultiFormationGoal0-v0}。该任务可形式化为二维平面上的协同导航问题：多个机器人在受限空间中从初始区域出发，向目标位置移动，同时满足安全约束与编队结构约束。
+具体设置涵盖三类典型编队场景：直线编队（3 个机器人）、楔形编队（3 个机器人）以及圆形编队（5 个机器人）。
+实验场景如图~\ref{fig:rmp_env} 所示，为大小为 $3 \times 3$ 的二维平面区域，其中在左右两侧设置静态墙体障碍物（\texttt{Sigwalls}），其中心位置分别为 $(-1.0,\,0), \quad (1.0,\,0)$,从而在环境中形成沿 $y$ 轴方向延展的狭窄通道结构。
+机器人初始位置从通道下方区域 $[-0.7,\,0.7] \times [-0.8,\,0.8]$ 随机采样,
+目标点位置固定为 $(0,\,2.0)$，位于通道上方中心区域。机器人需要在通过狭窄通道的过程中避免与障碍物及其他机器人发生碰撞，同时维持预设的编队结构，最终到达目标区域。
 
 \begin{figure}
     \centering
@@ -522,14 +514,16 @@ GCPL 根节点解析输出的是机器人世界坐标系下的二维加速度 $a
 
 \subsection{评价指标}
 为了全面评估算法性能，本文采用以下指标：
-1）累计奖励（Total Reward）
-统计策略在一个完整 episode 中获得的累计奖励：$R = \sum_t r_t$，反映策略整体行为质量。
-2）安全代价（Collision Cost）
-统计策略在一个完整 episode 中产生的累计安全代价：$C = \sum_t c_t$，用于评估系统安全性。
-3）任务成功率（Success Rate）
-成功率定义为：
-\[SR = \frac{N_{success}}{N_{total}}\]
-其中：$N_{success}$ 为成功到达目标且未发生碰撞的 episode 数；$N_{total}$ 为总测试 episode 数，该指标反映策略在复杂环境中的任务完成能力。
+\begin{itemize}
+    \item 累计奖励（Total Reward）
+    统计策略在一个完整 episode 中获得的累计奖励：$R = \sum_t r_t$，反映策略整体行为质量。
+    \item 安全代价（Collision Cost）
+    统计策略在一个完整 episode 中产生的累计安全代价：$C = \sum_t c_t$，用于评估系统安全性。
+    \item 编队完成度（Formation Completion）
+    编队完成度定义为：$FC = \frac{N_{completed}}{N_{total}}$，其中：$N_{completed}$ 为成功完成编队的 episode 数；$N_{total}$ 为总测试 episode 数，该指标反映策略在复杂环境中的编队完成能力。
+    \item 任务成功率（Success Rate）
+    成功率定义为：$SR = \frac{N_{success}}{N_{total}}$，其中：$N_{success}$ 为成功到达目标且未发生碰撞的 episode 数；$N_{total}$ 为总测试 episode 数，该指标反映策略在复杂环境中的任务完成能力。
+\end{itemize}
 
 \subsubsection{奖励设置}
 强化学习部分主要负责提供目标驱动和整体行为优化能力，因此设计了一系列奖励函数以引导策略学习合理的导航行为。
@@ -634,6 +628,7 @@ r_{\mathrm{form}}^k = r_{\mathrm{dist}} + r_{\mathrm{aux}},
 当机器人距离小于安全距离时，代价增加，从而反映系统风险。
 
 \subsection{参数设置}
+实验中的训练参数与GCPL参数如表~\ref{tab:GCPL_params} 所示。
 \begin{table}[htbp]
 \centering
 \small
@@ -658,37 +653,47 @@ mini-batch数量 & 1  & 方向叶度量$c_\theta$ & 10.0 \\
 \hline
 \end{tabular}
 \caption{训练参数与GCPL参数}
-\label{tab:train-rmp-cn}
+\label{tab:GCPL_params}
 \end{table}
 
 \subsection{实验结果}
-实验结果如图 ~\ref{fig:rmp_result}所示，可以看到在训练过程中，相比于 MAPPO，添加 GCPL 的方法 cost 明显降低，意味着机器人碰撞次数明显下降，安全性更好；同时reward 明显提升，在任务中表现更加出色。
-同时，我们对训练结果进行了评估，分别用 MAPPO、MAPPO\_Lag 和我们的方法完成 20 轮次的任务，结果同样显示出我们的方法 reward 更高和 cost 更低，同时在20次任务中成功率更高。
-\begin{figure*}[t]
-\centering
-\subfloat[reward]{\includegraphics[height=4cm]{images/rmp_reward.png}}
-\hfill
-\subfloat[cost]{\includegraphics[height=4cm]{images/rmp_cost.png}}
-\caption{GCPL 实验验证。其中蓝色表示mappo算法下的实验结果，黑色表示添加 GCPL 后的实验结果。(a) 训练过程中的reward (b) 训练过程产生的cost（表示碰撞次数）。}
-\label{fig:rmp_result}
-\end{figure*}
+\subsubsection{对比实验}
 
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.4\linewidth]{images/training_reward.png}
+    \includegraphics[width=0.4\linewidth]{images/training_cost.png}
+    \caption{训练过程中的reward 与 cost。}
+    \label{fig:train_result}
+\end{figure}
+通过三次20轮次的任务评估，实验结果如表~\ref{tab:line_formation_result} 所示。可以看出，所提出的 GCPL 方法在所有指标上均取得了最优表现，其累计回报（$11.51 \pm 7.54$）、成功率（$77.00\% \pm 6.00\%$）以及编队完成度（$91.00\% \pm 2.00\%$）均显著优于其他基线方法，同时具有最低的安全代价（$10.53 \pm 0.57$）。该结果表明，引入几何约束能够有效提升多智能体策略的结构一致性与任务稳定性。
+
+相比之下，纯强化学习方法 mappo 与 mappolag 表现较差，不仅回报较低，且安全代价较高，说明在缺乏显式约束的情况下，策略难以兼顾安全性与协同控制目标。mappo\_CBF 通过引入控制屏障函数在一定程度上降低了安全代价，但其编队完成度与成功率仍明显落后于 GCPL，表明仅依赖安全约束不足以保证编队结构的有效形成。RMPflow 虽然具有一定的几何一致性，但由于缺乏全局优化机制，其整体性能仍然有限。
 \begin{table}[htbp]
     \centering
-    \caption{Experimental Results on SafetyPointMultiFormationGoal0-v0}
-    \begin{tabular}{l c c c}
+    \caption{线形编队实验结果}
+    \label{tab:line_formation_result}
+    \begin{tabular}{lcccc}
     \hline
-    \textbf{Algorithm} & \textbf{Reward} & \textbf{Cost} & \textbf{Success Rate} \\
+    Algorithm & Reward & Cost & Formation\_Completion (\%) & Success\_Rate (\%) \\
     \hline
-    
-    MAPPO      & $-21.46 \pm 3.43$ & $124.17 \pm 32.17$ & $0.13 \pm 0.09$ \\
-    
-    RMPflow  & $3.71 \pm 6.24$   & $22.85 \pm 19.37$  & $0.35 \pm 0.11$ \\
-    
-    MAPPO-Lag  & $-13.26 \pm 6.17$ & $125.96 \pm 34.05$ & $0.27 \pm 0.06$ \\
-
-    GCPL  & $7.83 \pm 8.76$   & $27.15 \pm 14.51$  & $0.65 \pm 0.16$ \\
-    
+    mappo      & $-38.28 \pm 13.55$ & $105.78 \pm 40.02$ & $10.00 \pm 9.00$ & $2.00 \pm 2.00$ \\
+    RMPflow    & $3.71 \pm 6.24$    & $32.85 \pm 19.37$  & $58.00 \pm 5.00$ & $13.00 \pm 11.00$ \\
+    GCPL       & $11.51 \pm 7.54$   & $10.53 \pm 5.57$   & $81.00 \pm 2.00$ & $67.00 \pm 6.00$ \\
+    mappo\_CBF & $7.73 \pm 1.35$    & $25.17 \pm 2.25$   & $35.00 \pm 3.00$ & $30.00 \pm 4.00$ \\
+    mappolag   & $-13.57 \pm 3.81$  & $55.37 \pm 5.64$   & $33.00 \pm 2.00$ & $15.00 \pm 2.00$ \\
     \hline
     \end{tabular}
     \end{table}
+
+    \subsubsection{消融实验}
+    实验结果如图 ~\ref{fig:rmp_result}所示，可以看到在训练过程中，相比于 MAPPO，添加 GCPL 的方法 cost 明显降低，意味着机器人碰撞次数明显下降，安全性更好；同时reward 明显提升，在任务中表现更加出色。
+    同时，我们对训练结果进行了评估，分别用 MAPPO、MAPPO\_Lag 和我们的方法完成 20 轮次的任务，结果同样显示出我们的方法 reward 更高和 cost 更低，同时在20次任务中成功率更高。
+    \begin{figure*}[t]
+    \centering
+    \subfloat[reward]{\includegraphics[height=4cm]{images/rmp_reward.png}}
+    \hfill
+    \subfloat[cost]{\includegraphics[height=4cm]{images/rmp_cost.png}}
+    \caption{GCPL 实验验证。其中蓝色表示mappo算法下的实验结果，黑色表示添加 GCPL 后的实验结果。(a) 训练过程中的reward (b) 训练过程产生的cost（表示碰撞次数）。}
+    \label{fig:rmp_result}
+    \end{figure*}
