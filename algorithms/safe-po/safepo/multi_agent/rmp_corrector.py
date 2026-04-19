@@ -26,7 +26,27 @@ import torch
 
 from safepo.multi_agent.formation_spec import build_formation_edges
 
-sys.path.insert(0, '/workspace/multi-robot-rmpflow')
+# [MOD 2026-04-18] 支持本地/容器两种运行环境:
+#   1. 环境变量 MULTI_ROBOT_RMPFLOW_PATH 最高优先级
+#   2. Docker 容器默认路径 /workspace/multi-robot-rmpflow
+#   3. 相对于本文件的 submodule 路径 <repo>/algorithms/multi-robot-rmpflow (本地开发)
+import os as _os
+_rmp_candidates = []
+if _os.environ.get('MULTI_ROBOT_RMPFLOW_PATH'):
+    _rmp_candidates.append(_os.environ['MULTI_ROBOT_RMPFLOW_PATH'])
+_rmp_candidates.append('/workspace/multi-robot-rmpflow')
+_rmp_candidates.append(
+    _os.path.abspath(
+        _os.path.join(
+            _os.path.dirname(__file__), '..', '..', '..', 'multi-robot-rmpflow'
+        )
+    )
+)
+for _p in _rmp_candidates:
+    if _os.path.isdir(_p) and _os.path.isfile(_os.path.join(_p, 'rmp.py')):
+        sys.path.insert(0, _p)
+        break
+
 try:
     from rmp import RMPRoot, RMPNode
     from rmp_leaf import (
@@ -34,6 +54,7 @@ try:
         CollisionAvoidanceDecentralized,
         FormationDecentralized,
         FormationOrientationDecentralized,
+        RLLeaf,  # [ADD 2026-04-18] path A: RL-as-leaf integration
     )
     RMP_AVAILABLE = True
 except ImportError:
@@ -117,15 +138,40 @@ class RMPCorrector:
         self.formation_orientation_eta = self.config.get('formation_orientation_eta', 2.0)
         self.formation_orientation_c_metric = self.config.get('formation_orientation_c_metric', 10.0)
         self.collision_safety_radius = self.config.get('collision_safety_radius', 0.3)
-        # 提高 RMP 修正在最终动作中的权重（默认从 0.1 提高到 0.5）
+        # [DEPRECATED 2026-04-18] rmp_weight 仅在 additive 融合模式下生效;
+        # 路径 A 启用后 RL 作为叶节点参与 pullback, 融合权重由 rl_leaf_weight 控制.
         self.rmp_weight = self.config.get('rmp_weight', 1)
-        
+        # [ADD 2026-04-18] 融合模式与 RL 叶节点权重
+        #   fusion_mode = 'leaf'     : RL 作为 RMP 叶节点参与 pushforward/pullback/resolve (默认, 路径 A)
+        #   fusion_mode = 'additive' : 旧版 a_final = a_RL + rmp_weight * a_RMP 线性加权 (回退)
+        self.fusion_mode = str(self.config.get('fusion_mode', 'leaf')).strip().lower()
+        self.rl_leaf_weight = float(self.config.get('rl_leaf_weight', 10.0))
+        # [ADD 2026-04-18 sweep] 环境变量覆盖 (run_chap4.sh sweep 模式用):
+        #   CHAP4_FUSION_MODE_OVERRIDE       ∈ {"leaf", "additive"}
+        #   CHAP4_RL_LEAF_WEIGHT_OVERRIDE    ∈ float (e.g. 10.0 for GCPL, 0.01 for RMPflow-only)
+        _env_fm = _os.environ.get('CHAP4_FUSION_MODE_OVERRIDE', '').strip().lower()
+        if _env_fm in ('leaf', 'additive'):
+            self.fusion_mode = _env_fm
+        _env_w = _os.environ.get('CHAP4_RL_LEAF_WEIGHT_OVERRIDE', '').strip()
+        if _env_w:
+            try:
+                self.rl_leaf_weight = float(_env_w)
+            except ValueError:
+                pass
+        # [ADD 2026-04-18 缺口 1] chap4.4.4 差速映射
+        #   RMP resolve 输出是世界坐标 (ax, ay); Point agent 的动作空间是机体系 (v, omega).
+        #   paper 4.4.4 给出映射: v = cos(θ)ax + sin(θ)ay,  omega = k_θ(atan2(ay,ax) - θ).
+        #   开启后在 fusion_mode='leaf' 下对 resolve 输出做此转换, 再送给 env.
+        self.use_diff_drive_mapping = bool(self.config.get('use_diff_drive_mapping', True))
+        self.diff_drive_k_theta = float(self.config.get('diff_drive_k_theta', 1.0))
+
         # 初始化 RMP 树
         self.rmp_trees = None
         self.rmp_robots = None
         self.rmp_collision_nodes = None
         self.rmp_formation_nodes = None
         self.rmp_sigwall_nodes = None
+        self.rmp_rl_nodes = None  # [ADD 2026-04-18] 每环境 x 每机器人 的 RLLeaf
         self.formation_edges = []
 
         if self.rmp_enabled:
@@ -146,7 +192,12 @@ class RMPCorrector:
                     f"formation_nodes={'on' if self.use_rmp_formation else 'off'}, "
                     f"n_formation_edges={len(self.formation_edges)}, "
                     f"spacing={self.formation_target_distance}, "
-                    f"collision_radius={self.collision_safety_radius}, weight={self.rmp_weight}"
+                    f"collision_radius={self.collision_safety_radius}, "
+                    f"fusion_mode={self.fusion_mode}, "
+                    f"rl_leaf_weight={self.rl_leaf_weight}, "
+                    f"diff_drive_mapping={self.use_diff_drive_mapping} "
+                    f"(k_theta={self.diff_drive_k_theta}), "
+                    f"legacy_rmp_weight={self.rmp_weight}"
                 )
             except Exception as e:
                 print(f"Warning: Failed to initialize RMP trees: {e}. RMP will be disabled.")
@@ -165,7 +216,8 @@ class RMPCorrector:
         self.rmp_collision_nodes = []
         self.rmp_formation_nodes = []
         self.rmp_sigwall_nodes = []
-        
+        self.rmp_rl_nodes = []  # [ADD 2026-04-18]
+
         for env_idx in range(self.num_envs):
             # 为每个环境创建 RMP 树
             r = RMPRoot('root_env_' + str(env_idx))
@@ -234,8 +286,11 @@ class RMPCorrector:
                     formation_nodes.append(fo)
 
             # 创建与 Sigwalls 碰撞避免的节点（静态障碍物）
-            # MultiFormationGoalLevel0 中 sigwalls.locations 固定为 [(-0.8, 0), (0.8, 0)]
-            sigwall_centers = [np.array([-0.8, 0.0]), np.array([0.8, 0.0])]
+            # MultiFormationGoalLevel0 中 sigwalls.locations 实际为 [(-1.0, 0), (1.0, 0)]
+            # 支持通过 config["sigwall_centers"] 覆盖；若未提供则使用任务默认值
+            _default_sigwall_centers = [[-1.0, 0.0], [1.0, 0.0]]
+            _cfg_sigwall_centers = self.config.get('sigwall_centers', _default_sigwall_centers)
+            sigwall_centers = [np.asarray(c, dtype=np.float64) for c in _cfg_sigwall_centers]
             sigwall_radius = self.collision_safety_radius
             sigwall_nodes = []
             if self.use_rmp_collision:
@@ -253,26 +308,44 @@ class RMPCorrector:
                         )
                         sigwall_nodes.append(ca_wall)
             
+            # [ADD 2026-04-18] 为每个机器人挂一个 RL 叶节点
+            # 任务空间 = 机器人自身的 2D 位置 (与论文 4.3.1 一致: psi=I, J=I, M=w*I)
+            # 初始 a_RL = 0, 每步由 apply_correction 调用 rl_leaf.set_action() 更新
+            rl_nodes = []
+            if self.fusion_mode == 'leaf':
+                for i in range(self.num_agents):
+                    rl_leaf = RLLeaf(
+                        f'rl_env{env_idx}_robot_{i}',
+                        robots[i],
+                        w=self.rl_leaf_weight,
+                        dim=2,
+                    )
+                    rl_nodes.append(rl_leaf)
+
             self.rmp_trees.append(r)
             self.rmp_robots.append(robots)
             self.rmp_collision_nodes.append(collision_nodes)
             self.rmp_formation_nodes.append(formation_nodes)
             self.rmp_sigwall_nodes.append(sigwall_nodes)
+            self.rmp_rl_nodes.append(rl_nodes)  # [ADD 2026-04-18]
     
     def apply_correction(
         self,
         actions: list,
         agent_positions: list,
-        agent_velocities: list
+        agent_velocities: list,
+        agent_headings: list = None,  # [ADD 2026-04-18 缺口 1] 每 agent 航向 (shape [n_envs])
     ) -> list:
         """
         使用 RMP 修正动作
-        
+
         参数:
             actions: List[torch.Tensor], 每个 agent 的动作 [n_envs, action_dim]
             agent_positions: List[np.ndarray], 每个 agent 的位置 [n_envs, 2]
             agent_velocities: List[np.ndarray], 每个 agent 的速度 [n_envs, 2]
-        
+            agent_headings: 可选, List[np.ndarray], 每个 agent 的航向 θ [n_envs].
+                若为 None 且 use_diff_drive_mapping=True, 降级使用速度方向估计.
+
         返回:
             corrected_actions: List[torch.Tensor], 修正后的动作
         """
@@ -299,11 +372,22 @@ class RMPCorrector:
                 x[2*i:2*i+2, 0] = pos[:2]  # 只取 x, y
                 x_dot[2*i:2*i+2, 0] = vel[:2] if len(vel) >= 2 else np.zeros(2)
             
+            # [ADD 2026-04-18] 若 fusion_mode='leaf', 先把当前 RL 动作注入各 RL 叶节点
+            # —— 论文 4.3.1 对应实现: RL 叶节点参与根节点 pullback 合成
+            if self.fusion_mode == 'leaf' and self.rmp_rl_nodes is not None:
+                for i in range(self.num_agents):
+                    a_rl_i = actions[i][env_idx]
+                    if isinstance(a_rl_i, torch.Tensor):
+                        a_rl_i = a_rl_i.detach().cpu().numpy()
+                    a_rl_i = np.asarray(a_rl_i, dtype=np.float64).reshape(-1)
+                    # RL 叶节点的任务空间 dim=2 (2D 位置加速度)
+                    self.rmp_rl_nodes[env_idx][i].set_action(a_rl_i[:2])
+
             # 更新 RMP 树
             r = self.rmp_trees[env_idx]
             r.set_root_state(x, x_dot)
             r.pushforward()
-            
+
             # 更新碰撞和编队节点
             for node in self.rmp_collision_nodes[env_idx]:
                 node.update()
@@ -311,34 +395,74 @@ class RMPCorrector:
                 node.update()
             # Sigwalls 为静态障碍物，其 psi/J 在初始化时已固定，
             # 这里只依赖于机器人位姿，因此无需在每步单独更新参数。
-            
+            # [ADD 2026-04-18] RL 叶节点的 psi/J 为常数 (identity),
+            # 只需每步通过 set_action 更新 a_RL, 无需调用 update_params.
+
             r.pullback()
-            
-            # 解析得到加速度修正
+
+            # [MOD 2026-04-18] 解析得到合成加速度
+            #   fusion_mode='leaf'     : resolve() 已将 RL 与几何力在根节点上同度量加权合成,
+            #                            直接取对应机器人的分量作为最终动作.
+            #   fusion_mode='additive' : 回退到旧版行为 (a_final = a_RL + rmp_weight * a_RMP).
             try:
                 acceleration_correction = r.resolve()  # [2*num_agents, 1]
-                
-                # 将加速度修正转换为动作修正（假设动作是速度指令）
-                # 对于每个 agent，取对应的加速度修正
+
                 env_corrected_actions = []
                 for i in range(self.num_agents):
                     accel_corr = acceleration_correction[2*i:2*i+2, 0]
-                    # 将加速度修正添加到原始动作（假设动作空间是速度）
+
                     original_action = actions[i][env_idx]
                     if isinstance(original_action, torch.Tensor):
-                        original_action = original_action.cpu().numpy()
-                    
-                    # 限制修正幅度，避免过大
-                    corrected_action = original_action + self.rmp_weight * accel_corr[:len(original_action)]
-                    env_corrected_actions.append(torch.from_numpy(corrected_action).to(self.device))
-                
+                        original_action = original_action.detach().cpu().numpy()
+
+                    if self.fusion_mode == 'leaf':
+                        # resolve() 输出 2D 世界坐标加速度 (ax, ay).
+                        # [ADD 2026-04-18 缺口 1] 对接 chap4.4.4 差速映射:
+                        #   env Point agent 的动作是机体系 (v, omega), 因此对 world-frame
+                        #   (ax, ay) 做如下投影/朝向控制:
+                        #     v = cos(θ) ax + sin(θ) ay
+                        #     θ_d = atan2(ay, ax)
+                        #     omega = k_θ * wrap(θ_d - θ)
+                        if self.use_diff_drive_mapping and len(original_action) == 2:
+                            ax = float(accel_corr[0])
+                            ay = float(accel_corr[1])
+                            # 获取当前航向 θ: 优先使用调用方传入的 agent_headings,
+                            # 降级用速度方向估计 (静止时为 0, 由于 P 控器不会发散, 可接受)
+                            if agent_headings is not None and len(agent_headings) > i:
+                                th_arr = agent_headings[i]
+                                theta = float(th_arr[env_idx]) if th_arr is not None and len(th_arr) > env_idx else 0.0
+                            else:
+                                vx, vy = float(agent_velocities[i][env_idx][0]), float(agent_velocities[i][env_idx][1])
+                                theta = float(np.arctan2(vy, vx)) if (vx * vx + vy * vy) > 1e-6 else 0.0
+                            v_cmd = np.cos(theta) * ax + np.sin(theta) * ay
+                            # 仅当 (ax, ay) 模值非零时才取 atan2 (否则方向不定, 保持当前 θ)
+                            if ax * ax + ay * ay > 1e-8:
+                                theta_d = float(np.arctan2(ay, ax))
+                                theta_err = (theta_d - theta + np.pi) % (2.0 * np.pi) - np.pi
+                            else:
+                                theta_err = 0.0
+                            omega_cmd = self.diff_drive_k_theta * theta_err
+                            # env action 空间通常是 [-1, 1], 做饱和保护
+                            v_cmd = float(np.clip(v_cmd, -1.0, 1.0))
+                            omega_cmd = float(np.clip(omega_cmd, -1.0, 1.0))
+                            final_np = np.array([v_cmd, omega_cmd], dtype=original_action.dtype)
+                        else:
+                            # 映射关闭或动作维度非 2, 直接返回 resolve 输出
+                            final_np = accel_corr[:len(original_action)].astype(original_action.dtype, copy=True)
+                    else:
+                        # 回退: 线性加权叠加 (legacy 行为)
+                        final_np = original_action + self.rmp_weight * accel_corr[:len(original_action)]
+
+                    env_corrected_actions.append(torch.from_numpy(final_np).to(self.device))
+
                 if env_idx == 0:
                     corrected_actions = [[ac] for ac in env_corrected_actions]
                 else:
                     for i in range(self.num_agents):
                         corrected_actions[i].append(env_corrected_actions[i])
             except Exception as e:
-                # 如果 RMP 求解失败，使用原始动作
+                # 若 RMP 求解失败 (奇异/数值异常), 回退到原始 RL 动作并打印警告
+                print(f"Warning: RMP resolve failed at env {env_idx}: {e}. Using raw RL action.")
                 if env_idx == 0:
                     corrected_actions = [[actions[i][env_idx]] for i in range(self.num_agents)]
                 else:
@@ -365,7 +489,8 @@ class RMPCorrector:
         """
         agent_positions = []
         agent_velocities = []
-        
+        agent_headings = []  # [ADD 2026-04-18 缺口 1] 每 agent 的 θ, 用于差速映射
+
         # 对于向量化环境，从每个子环境获取位置
         if hasattr(envs, 'envs') and len(envs.envs) > 0:
             # 向量化环境
@@ -375,6 +500,7 @@ class RMPCorrector:
                     agent = env.env.task.agent
                     env_positions = []
                     env_velocities = []
+                    env_headings = []
                     for i in range(self.num_agents):
                         # 获取 agent 位置（pos_0, pos_1, ...）
                         pos_attr = getattr(agent, f'pos_{i}', None)
@@ -382,34 +508,46 @@ class RMPCorrector:
                             pos = pos_attr[:2]  # 只取 x, y
                         else:
                             pos = np.zeros(2)
-                        
+
                         # 获取 agent 速度（vel_0, vel_1, ...）
                         vel_attr = getattr(agent, f'vel_{i}', None)
                         if vel_attr is not None:
                             vel = vel_attr[:2]  # 只取 x, y 方向速度
                         else:
                             vel = np.zeros(2)
-                        
+
+                        # [ADD 2026-04-18 缺口 1] 航向 θ = atan2(mat[1,0], mat[0,0])
+                        mat_attr = getattr(agent, f'mat_{i}', None)
+                        if mat_attr is not None:
+                            theta = float(np.arctan2(mat_attr[1][0], mat_attr[0][0]))
+                        else:
+                            theta = 0.0
+
                         env_positions.append(pos)
                         env_velocities.append(vel)
-                    
+                        env_headings.append(theta)
+
                     if env_idx == 0:
                         agent_positions = [[pos] for pos in env_positions]
                         agent_velocities = [[vel] for vel in env_velocities]
+                        agent_headings = [[th] for th in env_headings]
                     else:
                         for i in range(self.num_agents):
                             agent_positions[i].append(env_positions[i])
                             agent_velocities[i].append(env_velocities[i])
-            
+                            agent_headings[i].append(env_headings[i])
+
             # 转换为 numpy 数组
             for i in range(self.num_agents):
                 agent_positions[i] = np.array(agent_positions[i])
                 agent_velocities[i] = np.array(agent_velocities[i])
+                agent_headings[i] = np.array(agent_headings[i])
         else:
             # 如果无法获取，使用零向量作为占位符
             for i in range(self.num_agents):
                 agent_positions.append(np.zeros((n_envs, 2)))
                 agent_velocities.append(np.zeros((n_envs, 2)))
-        
-        return agent_positions, agent_velocities
+                agent_headings.append(np.zeros((n_envs,)))
+
+        return agent_positions, agent_velocities, agent_headings
 

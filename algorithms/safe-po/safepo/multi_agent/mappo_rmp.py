@@ -240,6 +240,9 @@ class Runner:
         if not os.path.exists(self.save_dir):
             os.makedirs(self.save_dir)
 
+        # [ADD 2026-04-18] 把 num_agents 写入 config.json, 评估时才能还原
+        # 训练用的 MultiFormationNavEnv (N 可变, 需显式传参重建)
+        config.setdefault('num_agents', self.num_agents)
         self.logger.save_config(config)
         
         # 为每个 agent 创建策略、训练器和缓冲区（每个机器人都做强化学习）
@@ -302,14 +305,18 @@ class Runner:
 
                 dones_env = torch.all(dones, dim=1)
 
-                reward_env = torch.mean(rewards, dim=1).flatten()
-                cost_env = torch.mean(costs, dim=1).flatten()
+                # envs.step() 返回 CPU tensor; train_episode_* 在 self.config["device"] 上.
+                # GPU 模式下需显式对齐设备, 否则 += 会触发 cuda vs cpu 不匹配.
+                _dev = train_episode_rewards.device
+                reward_env = torch.mean(rewards, dim=1).flatten().to(_dev)
+                cost_env = torch.mean(costs, dim=1).flatten().to(_dev)
+                dones_env_cpu = dones_env.to("cpu")
 
                 train_episode_rewards += reward_env
                 train_episode_costs += cost_env
 
                 for t in range(self.config["n_rollout_threads"]):
-                    if dones_env[t]:
+                    if dones_env_cpu[t]:
                         done_episodes_rewards.append(train_episode_rewards[:, t].clone())
                         train_episode_rewards[:, t] = 0
                         done_episodes_costs.append(train_episode_costs[:, t].clone())
@@ -424,14 +431,14 @@ class Runner:
         # 应用 RMP 修正（如果启用）
         if self.rmp_corrector.rmp_enabled:
             try:
-                # 从环境中获取 agent 位置和速度
-                agent_positions, agent_velocities = self.rmp_corrector.get_agent_positions_from_env(
+                # [MOD 2026-04-18 缺口 1] 现在同时返回 agent_headings, 供差速映射使用
+                agent_positions, agent_velocities, agent_headings = self.rmp_corrector.get_agent_positions_from_env(
                     self.envs, n_envs
                 )
-                
+
                 # 应用 RMP 修正
                 action_collector = self.rmp_corrector.apply_correction(
-                    action_collector, agent_positions, agent_velocities
+                    action_collector, agent_positions, agent_velocities, agent_headings
                 )
             except Exception as e:
                 # 如果 RMP 修正失败，使用原始动作
@@ -568,14 +575,14 @@ class Runner:
             # 应用 RMP 修正（如果启用）
             if self.rmp_corrector.rmp_enabled:
                 try:
-                    # 从环境中获取 agent 位置和速度
-                    agent_positions, agent_velocities = self.rmp_corrector.get_agent_positions_from_env(
+                    # [MOD 2026-04-18 缺口 1] 同步传 headings 支持差速映射
+                    agent_positions, agent_velocities, agent_headings = self.rmp_corrector.get_agent_positions_from_env(
                         self.eval_envs, self.config["n_eval_rollout_threads"]
                     )
-                    
+
                     # 应用 RMP 修正
                     eval_actions_collector = self.rmp_corrector.apply_correction(
-                        eval_actions_collector, agent_positions, agent_velocities
+                        eval_actions_collector, agent_positions, agent_velocities, agent_headings
                     )
                 except Exception as e:
                     # 如果 RMP 修正失败，使用原始动作
@@ -585,13 +592,15 @@ class Runner:
                 eval_actions_collector
             )
 
-            reward_env = torch.mean(eval_rewards, dim=1).flatten()
-            cost_env = torch.mean(eval_costs, dim=1).flatten()
+            # 对齐 eval_* (cpu from env) 与 one_episode_* (device 由 config 指定) 的设备.
+            _dev_eval = one_episode_rewards.device
+            reward_env = torch.mean(eval_rewards, dim=1).flatten().to(_dev_eval)
+            cost_env = torch.mean(eval_costs, dim=1).flatten().to(_dev_eval)
 
             one_episode_rewards += reward_env
             one_episode_costs += cost_env
 
-            eval_dones_env = torch.all(eval_dones, dim=1)
+            eval_dones_env = torch.all(eval_dones, dim=1).to(_dev_eval)
 
             eval_rnn_states[eval_dones_env == True] = torch.zeros(
                 (eval_dones_env == True).sum(), self.num_agents, self.config["recurrent_N"], self.config["hidden_size"], device=self.config["device"])

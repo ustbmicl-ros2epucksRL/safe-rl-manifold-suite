@@ -507,3 +507,76 @@ class Damper(RMPLeaf):
             return (f, M)
 
         RMPLeaf.__init__(self, name, parent, None, psi, J, J_dot, RMP_func)
+
+
+# [ADD 2026-04-18] RL-as-leaf node for chap4 4.3.1 (真正实现 RL 叶节点参与 pullback)
+class RLLeaf(RMPLeaf):
+    """
+    Reinforcement Learning policy leaf for RMPflow.
+
+    Injects an externally-provided RL action (expected acceleration in the
+    parent's task space) into the RMP computation graph as a proper leaf node,
+    so the RL intent participates in the standard pushforward / pullback /
+    resolve flow alongside geometric leaves (collision, formation, ...).
+
+    Task mapping (identity):
+        psi(y) = y,  J(y) = I,  J_dot = 0
+
+    Natural-form RMP:
+        M_RL = w * I
+        f_RL = M_RL @ a_RL        (where a_RL is the current RL action)
+
+    After `set_action(a_rl)`, the leaf's (f, M) reflects the new target at the
+    next pushforward/pullback cycle. Combined with geometric leaves at the
+    root, the resolved acceleration becomes
+
+        a = (w*I + sum M_geo)^{-1} (w*a_RL + sum f_geo),
+
+    recovering pure RL when geometric forces vanish and geometric guidance
+    when they dominate.
+
+    Args:
+        name:   Unique node name for debugging/logging.
+        parent: RMPNode this leaf attaches to (typically a robot node whose
+                x is the 2D world position of that robot).
+        w:      Scalar metric weight w_RL on identity metric. Larger = more
+                faithful to RL; smaller = geometric leaves dominate.
+        dim:    Task-space dimensionality (=2 for planar robots).
+    """
+
+    def __init__(self, name, parent, w=1.0, dim=2):
+        self._w = float(w)
+        self._dim = int(dim)
+        self._a_rl = np.zeros((self._dim, 1), dtype=np.float64)
+
+        psi = lambda y: y
+        J = lambda y, d=self._dim: np.eye(d, dtype=np.float64)
+        J_dot = lambda y, y_dot, d=self._dim: np.zeros((d, d), dtype=np.float64)
+
+        # Closure over self so RMP_func re-reads self._a_rl each call.
+        def RMP_func(x, x_dot):
+            M = self._w * np.eye(self._dim, dtype=np.float64)
+            f = M @ self._a_rl
+            return (f, M)
+
+        RMPLeaf.__init__(self, name, parent, None, psi, J, J_dot, RMP_func)
+
+    def set_action(self, a_rl):
+        """Set the RL action (expected acceleration) for the next cycle.
+
+        Args:
+            a_rl: array-like of shape (dim,) or (dim, 1).
+        """
+        a = np.asarray(a_rl, dtype=np.float64).reshape(-1)
+        assert a.shape[0] == self._dim, (
+            f"RLLeaf '{self.name}' expected dim={self._dim}, got {a.shape[0]}"
+        )
+        self._a_rl = a.reshape(self._dim, 1)
+
+    def set_weight(self, w):
+        """Optionally tune w_RL online (e.g., curriculum scheduling)."""
+        self._w = float(w)
+
+    def update_params(self):
+        """RL leaf parameters (a_rl) are set externally via set_action; nothing here."""
+        pass
