@@ -1,0 +1,4 @@
+algorithm	task	seed	episode	noise	reward	cost	success	success_rate
+rmpflow_only	SafetyPointMultiFormationGoal0-v0	seed_dir	RUN1	-	28.67	0.0	0/20	0.00%
+rmpflow_only	SafetyPointMultiFormationGoal0-v0	seed_dir	RUN2	-	3.72	24.3	0/20	0.00%
+rmpflow_only	SafetyPointMultiFormationGoal0-v0	seed_dir	RUN3	-	27.59	0.0	0/20	0.00%

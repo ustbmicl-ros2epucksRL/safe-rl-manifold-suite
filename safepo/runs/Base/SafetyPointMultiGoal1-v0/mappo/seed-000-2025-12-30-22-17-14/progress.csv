@@ -1,0 +1,2 @@
+Metrics/EpRet,Metrics/EpRet/Min,Metrics/EpRet/Max,Metrics/EpRet/Std,Metrics/EpCost,Metrics/EpCost/Min,Metrics/EpCost/Max,Metrics/EpCost/Std,Eval/EpRet,Eval/EpCost,Train/Epoch,Train/TotalSteps,Loss/Loss_reward_critic,Loss/Loss_actor,Misc/Reward_critic_norm,Misc/Entropy,Misc/Ratio,Time/Total,Time/FPS
+-0.3576641082763672,-0.3576641082763672,-0.3576641082763672,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0,1000,0.02804035460576415,-0.009662695660069432,0.6994681812822818,0.8250115633010864,0.999935632944107,9.340980291366577,107

@@ -177,6 +177,8 @@ def single_agent_args():
     # Parse arguments
 
     args = parser.parse_args()
+    # Disable file-based terminal log redirection across entrypoints.
+    args.write_terminal = True
     cfg_env={}
     base_path = os.path.dirname(os.path.abspath(__file__)).replace("utils", "multi_agent")
     if args.task in isaac_gym_map.keys():
@@ -186,6 +188,7 @@ def single_agent_args():
             raise Exception("Please install isaacgym to run Isaac Gym tasks!")
         args = gymutil.parse_arguments(description="RL Policy", custom_parameters=issac_parameters)
         args.device = args.sim_device_type if args.use_gpu_pipeline else 'cpu'
+        args.write_terminal = True
         cfg_env_path = "marl_cfg/{}.yaml".format(isaac_gym_map[args.task])
         with open(os.path.join(base_path, cfg_env_path), 'r') as f:
             cfg_env = yaml.load(f, Loader=yaml.SafeLoader)
@@ -251,6 +254,8 @@ def multi_agent_args(algo):
     # Parse arguments
 
     args = parser.parse_args()
+    # Disable file-based terminal log redirection across entrypoints.
+    args.write_terminal = True
 
     if args.task in isaac_gym_map.keys():
         try:
@@ -259,6 +264,7 @@ def multi_agent_args(algo):
             raise Exception("Please install isaacgym to run Isaac Gym tasks!")
         args = gymutil.parse_arguments(description="RL Policy", custom_parameters=issac_parameters)
         args.device = args.sim_device_type if args.use_gpu_pipeline else 'cpu'
+        args.write_terminal = True
     cfg_train_path = "marl_cfg/{}/config.yaml".format(algo)
     base_path = os.path.dirname(os.path.abspath(__file__)).replace("utils", "multi_agent")
     with open(os.path.join(base_path, cfg_train_path), 'r') as f:
