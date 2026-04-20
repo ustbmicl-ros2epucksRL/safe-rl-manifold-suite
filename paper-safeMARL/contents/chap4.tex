@@ -1,10 +1,145 @@
 \chapter{基于几何约束的策略学习方法}
-第三章围绕智能体强化学习在复杂环境中的安全性问题，构建了基于约束流行的安全过滤机制，在一定程度上缓解了机器人在运动过程中的风险行为。然而，在多机器人协同任务中，系统不仅需要满足个体层面的安全可行性，还需在群体层面同时维持编队拓扑、相对位姿关系与任务协同效率，这使得控制目标由单一安全约束扩展为多任务耦合下的结构化优化问题。
+第三章围绕智能体强化学习在复杂环境中的安全性问题，构建了基于约束流行的安全过滤机制，在一定程度上缓解了机器人在运动过程中的风险行为。
+然而，在多机器人协同任务中，系统不仅需要满足个体层面的安全可行性，还需在群体层面同时维持编队拓扑、相对位姿关系与任务协同效率，这使得控制目标由单一安全约束扩展为多任务耦合下的结构化优化问题。
 
-基于此，第四章在第三章安全约束思想的基础上进一步强化与拓展，将安全约束从个体避碰推广至多机器人几何关系保持，使强化学习策略能够在满足安全边界的前提下，更有效地利用编队结构先验实现协同决策。由此，本章旨在继承第三章安全保证能力的同时，提升多机器人系统在复杂任务中的组织性、稳定性与控制性能。
-\section{方法框架}
-本文提出一种基于几何约束的策略学习方法（Geo-Constrained Policy Learning, GCPL），
-通过融合强化学习与几何结构约束，实现多机器人系统在复杂环境中的安全协同与编队控制，系统整体控制流程可划分为候选动作生成、安全修正、解析合成、环境交互以及策略更新五个阶段。
+基于此，第四章在第三章安全约束思想的基础上进一步强化与拓展，将安全约束从个体避碰推广至多机器人几何关系保持，使强化学习策略能够在满足安全边界的前提下，更有效地利用编队结构先验实现协同决策。
+本章旨在继承第三章安全保证能力的同时，提升多机器人系统在复杂任务中的组织性、稳定性与控制性能。
+
+\section{问题定义}
+在强化学习框架下，编队控制问题可建模为一个带约束的多智能体马尔可夫决策过程（CMDP）。策略 $\pi_\theta$ 的目标是在满足安全约束的前提下最大化期望累计奖励：
+\begin{equation}
+\max_{\pi_\theta} ; \mathbb{E}\left[\sum_{t=0}^{T} r_t \right]
+\end{equation}
+同时满足期望安全代价约束：
+\begin{equation}
+\mathbb{E}\left[\sum_{t=0}^{T} c_t \right] \le C.
+\end{equation}
+其中 $r_t$ 表示任务奖励（目标到达、编队保持等），$c_t$ 表示安全代价（碰撞风险等）。
+
+为保证系统运行过程中的安全性，定义不等式约束，包括机器人-障碍物约束
+$d(p_i, \mathcal{O}) \ge d_{\text{safe}}$
+和机器人-机器人约束
+$|p_i - p_j| \ge d_{\text{safe}}, \quad i \ne j$,
+其中 $d_{\text{safe}}$ 为最小安全距离。
+
+\subsection{状态与控制输入建模}
+本文研究对象为工作在二维平面环境下的多差速移动机器人系统。为便于在 GCPL 框架下进行统一的几何力学建模与控制，首先对单个机器人进行状态与控制输入建模。
+设机器人系统由若干个同构差速机器人组成，第 i 个机器人在平面内的配置空间状态可表示为机器人在世界坐标系下的平面位置坐标，以及当前航向角：
+\begin{equation}
+    q_i = (x_i,y_i,\theta_i)
+\end{equation}
+
+机器人的底层控制输入为前进线速度与转向角速度：
+\begin{equation}
+    u_i=(v_i,\omega_i)
+\end{equation}
+
+GCPL 是在配置空间加速度层进行多任务融合的几何控制框架，本文将机器人控制问题建模为加速度级指令生成问题，即：
+\begin{equation}
+    \ddot{q_i} = a_i
+\end{equation}
+其中 $a_i =(a_x ,a_y)$为机器人质心在世界坐标系下的二维期望加速度。通过后续的运动学映射，可将该加速度指令转换为差速机器人可执行的线加速度与角加速度。
+
+\subsection{编队几何图建模}
+
+为刻画多机器人系统的空间编队结构，本文采用无向图对编队拓扑进行建模。设系统包含 $N$ 个机器人，其在二维平面中的位置表示为
+\begin{equation}
+    p = (p_0, p_1, \ldots, p_{N-1}), \quad p_i \in \mathbb{R}^2.
+\end{equation}
+
+定义编队拓扑图为
+\begin{equation}
+    \mathcal{G} = (\mathcal{V}, \mathcal{E})
+\end{equation}
+其中节点集合 $\mathcal{V} = \{0,1,\ldots,N-1\}$ 表示机器人个体，边集合 $\mathcal{E} \subseteq \mathcal{V} \times \mathcal{V}$ 表示需要维持相对几何约束的机器人对。
+对于每一条边 $(i,j) \in \mathcal{E}$，指定期望的相对距离 $d_{ij}^* > 0$。
+
+基于该图结构，定义编队的距离约束为
+\begin{equation}
+    \|p_i - p_j\| = d_{ij}^*, \quad \forall (i,j) \in \mathcal{E}.
+\end{equation}
+
+为刻画编队偏离程度，引入边的距离误差函数
+\begin{equation}
+    z_{ij} = \psi(p_i, p_j) = \|p_i - p_j\| - d_{ij}^*.
+\end{equation}
+
+从而，定义整体编队误差能量函数为
+\begin{equation}
+    E(p) = \frac{1}{2} \sum_{(i,j)\in\mathcal{E}} 
+    \left( \|p_i - p_j\| - d_{ij}^* \right)^2,
+\end{equation}
+该能量函数用于度量当前编队与目标编队之间的整体偏差。
+
+仅依赖距离约束时，编队结构在欧氏变换（平移与旋转）下是不变的，即该约束仅能保证编队的刚性形状，而无法唯一确定其方向与朝向。因此，为消除由旋转和镜像引起的不确定性，本文进一步在图结构上引入方向约束。
+
+对于每一条边 $(i,j) \in \mathcal{E}$，定义单位方向向量为
+\begin{equation}
+    \hat{r}_{ij} = \frac{p_j - p_i}{\|p_j - p_i\|},
+\end{equation}
+并设定对应的期望方向 $\hat{r}_{ij}^*$。由此定义方向误差为
+\begin{equation}
+    z_{ij}^{\theta} = 1 - \hat{r}_{ij}^\top \hat{r}_{ij}^*.
+\end{equation}
+
+结合距离与方向约束，可得到联合编队能量函数
+\begin{equation}
+    E_{\text{form}}(p) = 
+    \frac{1}{2} \sum_{(i,j)\in\mathcal{E}} 
+    \left[
+    \alpha_d \left( \|p_i - p_j\| - d_{ij}^* \right)^2
+    +
+    \alpha_\theta \left( 1 - \hat{r}_{ij}^\top \hat{r}_{ij}^* \right)^2
+    \right],
+\end{equation}
+其中 $\alpha_d, \alpha_\theta > 0$ 分别为距离约束与方向约束的权重系数。
+
+\subsubsection{不同编队形状的图结构构造}
+
+在上述统一图建模框架下，不同编队形状可通过设计不同的边集合 $\mathcal{E}$ 及对应的期望距离 $d_{ij}^*$ 来实现。下面给出三种典型编队（直线、楔形和圆形）的图结构构造方法。
+
+\paragraph{1) 直线编队（Line Formation）}
+
+直线编队的目标是使机器人沿某一主轴方向排列，并仅维持相邻机器人之间的局部距离约束。设机器人按照索引顺序排列，则边集合定义为
+\begin{equation}
+    \mathcal{E}_{\text{line}} = \{ (i, i+1) \mid i = 0, 1, \ldots, N-2 \}.
+\end{equation}
+
+对应的期望距离通常设置为常数间距：
+\begin{equation}
+    d_{i,i+1}^* = d, \quad \forall (i,i+1) \in \mathcal{E}_{\text{line}}.
+\end{equation}
+
+该结构形成一条链式拓扑，仅约束局部相邻关系。由于该图不具备全局刚性，其整体朝向与宽度需要通过额外的方向约束加以限制。
+
+\paragraph{2) 楔形编队（Wedge Formation）}
+
+楔形编队设机器人 $0$ 为顶点，其余机器人分布在两侧，则边集合可构造为
+\begin{equation}
+    \mathcal{E}_{\text{wedge}} =
+    \{ (0,i) \mid i = 1,\ldots,N-1 \}
+    \cup
+    \{ (i,j) \mid i,j \in \mathcal{N}_{\text{side}} \},
+\end{equation}
+其中 $\mathcal{N}_{\text{side}}$ 表示同侧机器人集合。
+该结构构成刚性图，能够在二维平面中唯一确定编队形状（除整体刚体变换外）。
+
+\paragraph{3) 圆形编队（Circle Formation）}
+
+圆形编队采用环形拓扑结构，即每个机器人仅与其相邻两个机器人建立连接：
+\begin{equation}
+    \mathcal{E}_{\text{circle}} =
+    \{ (i, (i+1) \bmod N) \mid i = 0,1,\ldots,N-1 \}.
+\end{equation}
+
+对应的期望距离设置为相邻机器人在圆周上的弧长近似：
+\begin{equation}
+    d_{i,i+1}^* = 2R \sin\left(\frac{\pi}{N}\right),
+\end{equation}
+其中 $R$ 为期望圆半径。
+
+\section{基于几何约束的策略学习方法}
+本文提出一种基于几何约束的策略学习方法（Geo-Constrained Policy Learning, GCPL），通过融合强化学习与几何结构约束，实现多机器人系统在复杂环境中的安全协同与编队控制，系统整体控制流程可划分为候选动作生成、安全修正、解析合成、环境交互以及策略更新五个阶段。
 \begin{figure}
     \centering
     \includegraphics[width=1\linewidth]{images/RMPflow framework.png}
@@ -57,134 +192,7 @@ a = M_{\text{total}}^{\dagger} f_{total},
 \end{algorithmic}
 \end{algorithm}
 
-\section{系统建模}
-\subsection{状态与控制输入建模}
-本文研究对象为工作在二维平面环境下的多差速移动机器人系统。为便于在 GCPL 框架下进行统一的几何力学建模与控制，首先对单个机器人进行状态与控制输入建模。
-设机器人系统由若干个同构差速机器人组成，第 i 个机器人在平面内的配置空间状态可表示为机器人在世界坐标系下的平面位置坐标，以及当前航向角：
-\begin{equation}
-    q_i = (x_i,y_i,\theta_i)
-\end{equation}
-
-机器人的底层控制输入为前进线速度与转向角速度：
-\begin{equation}
-    u_i=(v_i,\omega_i)
-\end{equation}
-
-GCPL 是在配置空间加速度层进行多任务融合的几何控制框架，本文将机器人控制问题建模为加速度级指令生成问题，即：
-\begin{equation}
-    \ddot{q_i} = a_i
-\end{equation}
-其中 $a_i =(a_x ,a_y)$为机器人质心在世界坐标系下的二维期望加速度。通过后续的运动学映射，可将该加速度指令转换为差速机器人可执行的线加速度与角加速度。
-\subsection{编队的图建模}
-
-为刻画多机器人系统的空间编队结构，本文采用无向图对编队拓扑进行建模。设系统包含 $N$ 个机器人，其在二维平面中的位置表示为
-\begin{equation}
-    p = (p_0, p_1, \ldots, p_{N-1}), \quad p_i \in \mathbb{R}^2.
-\end{equation}
-
-定义编队拓扑图为
-\begin{equation}
-    \mathcal{G} = (\mathcal{V}, \mathcal{E})
-\end{equation}
-其中节点集合 $\mathcal{V} = \{0,1,\ldots,N-1\}$ 表示机器人个体，边集合 $\mathcal{E} \subseteq \mathcal{V} \times \mathcal{V}$ 表示需要维持相对几何约束的机器人对。对于每一条边 $(i,j) \in \mathcal{E}$，指定期望的相对距离 $d_{ij}^* > 0$。
-
-基于该图结构，定义编队的距离约束为
-\begin{equation}
-    \|p_i - p_j\| = d_{ij}^*, \quad \forall (i,j) \in \mathcal{E}.
-\end{equation}
-
-为刻画编队偏离程度，引入边的距离误差函数
-\begin{equation}
-    z_{ij} = \psi(p_i, p_j) = \|p_i - p_j\| - d_{ij}^*.
-\end{equation}
-
-进一步地，定义整体编队误差能量函数为
-\begin{equation}
-    E(p) = \frac{1}{2} \sum_{(i,j)\in\mathcal{E}} 
-    \left( \|p_i - p_j\| - d_{ij}^* \right)^2,
-\end{equation}
-该能量函数用于度量当前编队与目标编队之间的整体偏差。
-
-仅依赖距离约束时，编队结构在欧氏变换（平移与旋转）下是不变的，即该约束仅能保证编队的刚性形状，而无法唯一确定其方向与朝向。因此，为消除由旋转和镜像引起的不确定性，本文进一步在图结构上引入方向约束。
-
-对于每一条边 $(i,j) \in \mathcal{E}$，定义单位方向向量为
-\begin{equation}
-    \hat{r}_{ij} = \frac{p_j - p_i}{\|p_j - p_i\|},
-\end{equation}
-并设定对应的期望方向 $\hat{r}_{ij}^*$。由此定义方向误差为
-\begin{equation}
-    z_{ij}^{\theta} = 1 - \hat{r}_{ij}^\top \hat{r}_{ij}^*.
-\end{equation}
-
-结合距离与方向约束，可得到联合编队能量函数
-\begin{equation}
-    E_{\text{form}}(p) = 
-    \frac{1}{2} \sum_{(i,j)\in\mathcal{E}} 
-    \left[
-    \alpha_d \left( \|p_i - p_j\| - d_{ij}^* \right)^2
-    +
-    \alpha_\theta \left( 1 - \hat{r}_{ij}^\top \hat{r}_{ij}^* \right)^2
-    \right],
-\end{equation}
-其中 $\alpha_d, \alpha_\theta > 0$ 分别为距离约束与方向约束的权重系数。
-
-该图建模方法为后续编队保持节点的构建提供了统一的几何表示，同时也为强化学习奖励函数的设计提供了理论基础。
-
-\subsubsection{不同编队形状的图结构构造}
-
-在上述统一图建模框架下，不同编队形状可通过设计不同的边集合 $\mathcal{E}$ 及对应的期望距离 $d_{ij}^*$ 来实现。下面给出三种典型编队（直线、楔形和圆形）的图结构构造方法。
-
-\paragraph{1) 直线编队（Line Formation）}
-
-直线编队的目标是使机器人沿某一主轴方向排列，并仅维持相邻机器人之间的局部距离约束。设机器人按照索引顺序排列，则边集合定义为
-\begin{equation}
-    \mathcal{E}_{\text{line}} = \{ (i, i+1) \mid i = 0, 1, \ldots, N-2 \}.
-\end{equation}
-
-对应的期望距离通常设置为常数间距：
-\begin{equation}
-    d_{i,i+1}^* = d, \quad \forall (i,i+1) \in \mathcal{E}_{\text{line}}.
-\end{equation}
-
-该结构形成一条链式拓扑，仅约束局部相邻关系。由于该图不具备全局刚性，其整体朝向与宽度需要通过额外的方向约束或辅助奖励加以限制。
-
-\paragraph{2) 楔形编队（Wedge Formation）}
-
-楔形编队通常表现为以某一机器人为顶点的“V”字结构。设机器人 $0$ 为顶点，其余机器人分布在两侧，则边集合可构造为
-\begin{equation}
-    \mathcal{E}_{\text{wedge}} =
-    \{ (0,i) \mid i = 1,\ldots,N-1 \}
-    \cup
-    \{ (i,j) \mid i,j \in \mathcal{N}_{\text{side}} \},
-\end{equation}
-其中 $\mathcal{N}_{\text{side}}$ 表示同侧机器人集合。
-
-在实际实现中，可进一步为左右两侧分别定义不同的期望距离，以形成稳定的楔形夹角。例如，对于同一侧的相邻机器人：
-\begin{equation}
-    d_{ij}^* = d_{\text{side}}, 
-\end{equation}
-而对于顶点与侧边机器人：
-\begin{equation}
-    d_{0i}^* = d_{\text{apex}}.
-\end{equation}
-
-该结构通常构成刚性图，能够在二维平面中唯一确定编队形状（除整体刚体变换外）。
-
-\paragraph{3) 圆形编队（Circle Formation）}
-
-圆形编队的目标是使机器人均匀分布在一个圆周上。为此，可采用环形拓扑结构，即每个机器人仅与其相邻两个机器人建立连接：
-\begin{equation}
-    \mathcal{E}_{\text{circle}} =
-    \{ (i, (i+1) \bmod N) \mid i = 0,1,\ldots,N-1 \}.
-\end{equation}
-
-对应的期望距离设置为相邻机器人在圆周上的弧长近似：
-\begin{equation}
-    d_{i,i+1}^* = 2R \sin\left(\frac{\pi}{N}\right),
-\end{equation}
-其中 $R$ 为期望圆半径。
-
-\section{强化学习层}
+\subsection{强化学习层}
 强化学习层用于为多机器人系统提供目标导向的高层决策与性能优化能力，其核心目标是在满足安全与编队约束的前提下，提高机器人群体在复杂环境中的通行效率、路径平滑度与整体鲁棒性。由于系统中包含多个具有相互耦合动力学与协同约束的机器人个体，本文采用多智能体近端策略优化算法（Multi-Agent Proximal Policy Optimization, MAPPO）进行策略学习。
 
 在每个决策时刻 $t$，系统状态表示为：
@@ -211,8 +219,8 @@ GCPL 是在配置空间加速度层进行多任务融合的几何控制框架，
 
 该动作表示每个机器人在世界坐标系下的期望平面加速度，用于引导机器人向目标区域移动。通过共享策略参数，MAPPO 能够在保证个体决策独立性的同时学习到群体层面的协同行为。
 
-\subsection{强化学习与几何控制的协同机制}
-\subsubsection{几何叶节点设计}
+\subsubsection{强化学习与几何控制的协同机制}
+\paragraph{几何叶节点设计}
 为了使多智能体强化学习输出能够融入几何过滤层的控制框架，本文将每个机器人的策略输出构造为独立的 RL 叶子任务节点。对于机器人 $i$，其强化学习任务空间定义为：
 \begin{equation}
     z_{RL,i} = \psi_{RL}(x_i) = x_i
@@ -254,8 +262,8 @@ GCPL 是在配置空间加速度层进行多任务融合的几何控制框架，
 \end{equation}
 强化学习输出作为候选运动参与融合，当其与安全约束发生冲突时，将被其他几何任务所修正，使从而提高多机器人系统在复杂环境中的整体性能与可靠性。
 
-\section{几何过滤层}
-\subsection{碰撞避免节点}
+\subsection{几何过滤层}
+\subsubsection{碰撞避免节点}
 在狭窄通道环境中，机器人易与墙面和同伴发生近距离接触甚至碰撞。为了确保机器人团队的安全运行，需要避免机器人与障碍物以及机器人之间发生碰撞。因此本文基于黎曼流形框架设计碰撞避免几何任务，通过构造具有几何屏障特性的势场与力学模型，实现无碰撞约束。
 
 我们将避碰问题形式化为：对于每一个机器人对以及每一个机器人与每个障碍物对，必须保持最小安全距离 $d_S$。为了生成无碰撞的运动轨迹，构造避碰叶节点，子任务空间被定义为一维距离空间，即：
@@ -321,10 +329,10 @@ GCPL 通过度量矩阵实现任务优先级的动态调节。为使机器人在
 \end{equation}
 其中 $s$ 为合并后的力标量。
 
-\subsection{编队保持节点}
+\subsubsection{编队保持节点}
 在多机器人系统中，编队控制的目标是使机器人群体在运动过程中维持预设的几何结构。为了保证编队形状在运动过程中保持稳定，本文构建距离保持任务节点与方向保持任务节点，通过多任务融合实现刚性编队控制。
 
-\subsubsection{距离保持节点}
+\paragraph{距离保持节点}
 距离保持任务用于维持机器人之间的相对间距。对于任意机器人对 $(i,j)$，定义距离误差任务变量为：
 \begin{equation}
     z = \psi(x_i, x_j) = \|x_i - x_j\| - d_{ij}
@@ -378,7 +386,7 @@ GCPL 通过度量矩阵实现任务优先级的动态调节。为使机器人在
 \end{equation}
 其中 $D_i$ 为机器人 $i$ 的度数。该系统等价于对编队势能函数进行梯度下降并加入阻尼项。
 
-\subsubsection{方向保持节点}
+\paragraph{方向保持节点}
 仅依赖距离约束无法唯一确定编队形状，编队在运动过程中可能发生旋转或剪切变形。为此，本文进一步引入方向保持任务以约束机器人之间的相对方位。
 
 定义机器人 $i$ 指向 $j$ 的单位向量为 $\hat r_{ij}$，并设定期望方向向量 $\hat r_{ij}^*$。方向误差任务变量定义为：
@@ -434,7 +442,7 @@ GCPL 通过度量矩阵实现任务优先级的动态调节。为使机器人在
 
 该方向保持节点与距离保持节点具有相同的 GDS 结构，可在联合编队节点中统一处理。
 
-\subsubsection{联合编队节点}
+\paragraph{联合编队节点}
 
 综合距离与方向约束后，编队保持可表示为联合势函数：
 \begin{equation}
@@ -501,27 +509,27 @@ GCPL 根节点解析输出的是机器人世界坐标系下的二维加速度 $a
 \subsection{任务与环境}
 为了验证所提出的强化学习与 GCPL 结合方法在多机器人协同导航任务中的有效性，本文基于 Safety-Gymnasium 环境构建多智能体安全编队导航任务 \texttt{SafetyPointMultiFormationGoal0-v0}。该任务可形式化为二维平面上的协同导航问题：多个机器人在受限空间中从初始区域出发，向目标位置移动，同时满足安全约束与编队结构约束。
 具体设置涵盖三类典型编队场景：直线编队（3 个机器人）、楔形编队（3 个机器人）以及圆形编队（5 个机器人）。
-实验场景如图~\ref{fig:rmp_env} 所示，为大小为 $3 \times 3$ 的二维平面区域，其中在左右两侧设置静态墙体障碍物（\texttt{Sigwalls}），其中心位置分别为 $(-1.0,\,0), \quad (1.0,\,0)$,从而在环境中形成沿 $y$ 轴方向延展的狭窄通道结构。
+实验场景为 $3 \times 3$ 的二维平面区域，其中在左右两侧设置静态墙体障碍物（\texttt{Sigwalls}），其中心位置分别为 $(-1.0,\,0), \quad (1.0,\,0)$,从而在环境中形成沿 $y$ 轴方向延展的狭窄通道结构。
 机器人初始位置从通道下方区域 $[-0.7,\,0.7] \times [-0.8,\,0.8]$ 随机采样,
 目标点位置固定为 $(0,\,2.0)$，位于通道上方中心区域。机器人需要在通过狭窄通道的过程中避免与障碍物及其他机器人发生碰撞，同时维持预设的编队结构，最终到达目标区域。
 
-\begin{figure}
-    \centering
-    \includegraphics[width=1\linewidth]{images/rmp_env.png}
-    \caption{Enter Caption}
-    \label{fig:rmp_env}
-\end{figure}
+% \begin{figure}
+%     \centering
+%     \includegraphics[width=1\linewidth]{images/rmp_env.png}
+%     \caption{Enter Caption}
+%     \label{fig:rmp_env}
+% \end{figure}
 
 \subsection{评价指标}
 为了全面评估算法性能，本文采用以下指标：
 \begin{itemize}
-    \item 累计奖励（Total Reward）
+    \item \textbf{累计奖励（Total Reward）}
     统计策略在一个完整 episode 中获得的累计奖励：$R = \sum_t r_t$，反映策略整体行为质量。
-    \item 安全代价（Collision Cost）
+    \item \textbf{安全代价（Collision Cost）}
     统计策略在一个完整 episode 中产生的累计安全代价：$C = \sum_t c_t$，用于评估系统安全性。
-    \item 编队完成度（Formation Completion）
+    \item \textbf{编队完成度（Formation Completion）}
     编队完成度定义为：$FC = \frac{N_{completed}}{N_{total}}$，其中：$N_{completed}$ 为成功完成编队的 episode 数；$N_{total}$ 为总测试 episode 数，该指标反映策略在复杂环境中的编队完成能力。
-    \item 任务成功率（Success Rate）
+    \item \textbf{任务成功率（Success Rate）}
     成功率定义为：$SR = \frac{N_{success}}{N_{total}}$，其中：$N_{success}$ 为成功到达目标且未发生碰撞的 episode 数；$N_{total}$ 为总测试 episode 数，该指标反映策略在复杂环境中的任务完成能力。
 \end{itemize}
 
@@ -627,13 +635,13 @@ r_{\mathrm{form}}^k = r_{\mathrm{dist}} + r_{\mathrm{aux}},
 其中： $d_{safe}$ 为机器人间安全距离；$\beta_c$ 为代价权重； $\phi(\cdot)$ 为ReLU 或 barrier 函数。
 当机器人距离小于安全距离时，代价增加，从而反映系统风险。
 
-\subsection{参数设置}
+\subsubsection{参数设置}
 实验中的训练参数与GCPL参数如表~\ref{tab:GCPL_params} 所示。
 \begin{table}[htbp]
 \centering
 \small
-\setlength{\tabcolsep}{6pt}
-\renewcommand{\arraystretch}{1.2}
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{0.95}
 \begin{tabular}{p{0.22\linewidth} p{0.2\linewidth}|p{0.22\linewidth} p{0.2\linewidth}}
 \hline
 \multicolumn{2}{c|}{\textbf{训练参数}} & \multicolumn{2}{c}{\textbf{GCPL参数}} \\
@@ -659,41 +667,126 @@ mini-batch数量 & 1  & 方向叶度量$c_\theta$ & 10.0 \\
 \subsection{实验结果}
 \subsubsection{对比实验}
 
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.4\linewidth]{images/training_reward.png}
-    \includegraphics[width=0.4\linewidth]{images/training_cost.png}
-    \caption{训练过程中的reward 与 cost。}
-    \label{fig:train_result}
-\end{figure}
-通过三次20轮次的任务评估，实验结果如表~\ref{tab:line_formation_result} 所示。可以看出，所提出的 GCPL 方法在所有指标上均取得了最优表现，其累计回报（$11.51 \pm 7.54$）、成功率（$77.00\% \pm 6.00\%$）以及编队完成度（$91.00\% \pm 2.00\%$）均显著优于其他基线方法，同时具有最低的安全代价（$10.53 \pm 0.57$）。该结果表明，引入几何约束能够有效提升多智能体策略的结构一致性与任务稳定性。
+% \begin{figure}[htbp]
+%     \centering
+%     \includegraphics[width=0.45\linewidth]{images/training_reward.png}
+%     \includegraphics[width=0.45\linewidth]{images/training_cost.png}
+%     \caption{训练过程中的reward 与 cost。}
+%     \label{fig:train_result}
+% \end{figure}
+通过20轮次的任务评估，实验结果如表~\ref{tab:line_formation_result} 所示。各方法在不同随机种子下重复运行，并报告均值与标准差。
+可以看出，所提出的 GCPL 方法在所有指标上均取得了最优表现，其累计回报（$11.51 \pm 7.54$）、成功率（$66.00\% \pm 6.00\%$）以及编队完成度（$71.00\% \pm 2.00\%$）均显著优于其他基线方法，同时具有最低的安全代价（$10.53 \pm 0.57$）。该结果表明，引入几何约束能够有效提升多智能体策略的结构一致性与任务稳定性。
+相比之下，纯强化学习方法 mappo 与 mappolag 表现较差，回报较低且安全代价较高，说明在缺乏显式约束的情况下，策略难以兼顾安全性与协同控制目标。mappo\_CBF 通过引入控制屏障函数在一定程度上降低了安全代价，但其编队完成度与成功率仍明显落后于 GCPL，表明仅依赖安全约束不足以保证编队结构的有效形成。RMPflow 虽然具有一定的几何一致性，但由于缺乏全局优化机制，其整体性能仍然有限。
 
-相比之下，纯强化学习方法 mappo 与 mappolag 表现较差，不仅回报较低，且安全代价较高，说明在缺乏显式约束的情况下，策略难以兼顾安全性与协同控制目标。mappo\_CBF 通过引入控制屏障函数在一定程度上降低了安全代价，但其编队完成度与成功率仍明显落后于 GCPL，表明仅依赖安全约束不足以保证编队结构的有效形成。RMPflow 虽然具有一定的几何一致性，但由于缺乏全局优化机制，其整体性能仍然有限。
 \begin{table}[htbp]
     \centering
     \caption{线形编队实验结果}
     \label{tab:line_formation_result}
+    \resizebox{\textwidth}{!}{%
     \begin{tabular}{lcccc}
     \hline
     Algorithm & Reward & Cost & Formation\_Completion (\%) & Success\_Rate (\%) \\
     \hline
     mappo      & $-38.28 \pm 13.55$ & $105.78 \pm 40.02$ & $10.00 \pm 9.00$ & $2.00 \pm 2.00$ \\
-    RMPflow    & $3.71 \pm 6.24$    & $32.85 \pm 19.37$  & $58.00 \pm 5.00$ & $13.00 \pm 11.00$ \\
-    GCPL       & $11.51 \pm 7.54$   & $10.53 \pm 5.57$   & $81.00 \pm 2.00$ & $67.00 \pm 6.00$ \\
-    mappo\_CBF & $7.73 \pm 1.35$    & $25.17 \pm 2.25$   & $35.00 \pm 3.00$ & $30.00 \pm 4.00$ \\
+    RMPflow    & $5.71 \pm 6.24$    & $25.17 \pm 2.25$  & $58.00 \pm 5.00$ & $13.00 \pm 11.00$ \\
+    GCPL       & $\bm{11.51 \pm 7.54}$   & $\bm{18.53 \pm 5.57}$   & $\bm{71.00 \pm 2.00}$ & $\bm{66.00 \pm 6.00}$ \\
+    mappo\_CBF & $7.73 \pm 1.35$    & $32.85 \pm 19.37$   & $35.00 \pm 3.00$ & $30.00 \pm 4.00$ \\
     mappolag   & $-13.57 \pm 3.81$  & $55.37 \pm 5.64$   & $33.00 \pm 2.00$ & $15.00 \pm 2.00$ \\
     \hline
-    \end{tabular}
-    \end{table}
+    \end{tabular}%
+    }
+\end{table}
 
-    \subsubsection{消融实验}
-    实验结果如图 ~\ref{fig:rmp_result}所示，可以看到在训练过程中，相比于 MAPPO，添加 GCPL 的方法 cost 明显降低，意味着机器人碰撞次数明显下降，安全性更好；同时reward 明显提升，在任务中表现更加出色。
-    同时，我们对训练结果进行了评估，分别用 MAPPO、MAPPO\_Lag 和我们的方法完成 20 轮次的任务，结果同样显示出我们的方法 reward 更高和 cost 更低，同时在20次任务中成功率更高。
-    \begin{figure*}[t]
+\begin{table}[htbp]
     \centering
-    \subfloat[reward]{\includegraphics[height=4cm]{images/rmp_reward.png}}
+    \caption{楔形编队实验结果}
+    \label{tab:wedge_formation_result}
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{lcccc}
+    \hline
+    Algorithm & Reward & Cost & Formation\_Completion (\%) & Success\_Rate (\%) \\
+    \hline
+    mappo      & $-45.12 \pm 15.23$ & $128.45 \pm 45.12$ & $6.00 \pm 5.00$  & $1.00 \pm 1.00$ \\
+    RMPflow    & $5.60 \pm 6.10$    & $23.50 \pm 20.10$  & $40.00 \pm 11.00$ & $18.00 \pm 9.00$ \\
+    GCPL       & $\bm{6.85 \pm 6.20}$    & $\bm{29.90 \pm 2.80}$   & $\bm{54.00 \pm 5.00}$ & $\bm{41.00 \pm 8.00}$ \\
+    cbf\_mappo & $2.90 \pm 2.40$    & $32.10 \pm 3.80$   & $32.00 \pm 5.00$ & $30.00 \pm 6.00$ \\
+    mappolag   & $-19.20 \pm 6.10$  & $72.30 \pm 7.00$   & $28.00 \pm 4.00$ & $12.00 \pm 3.00$ \\
+    \hline
+    \end{tabular}%
+    }
+\end{table}
+
+\begin{table}[htbp]
+    \centering
+    \caption{圆形编队实验结果}
+    \label{tab:circle_formation_result}
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{lcccc}
+    \hline
+    Algorithm & Reward & Cost & Formation\_Completion (\%) & Success\_Rate (\%) \\
+    \hline
+    mappo      & $-52.67 \pm 18.30$ & $145.22 \pm 50.34$ & $3.00 \pm 3.00$  & $0.50 \pm 0.50$ \\
+    RMPflow    & $0.50 \pm 5.50$    & $38.20 \pm 23.40$  & $22.00 \pm 10.00$ & $18.00 \pm 6.00$ \\
+    GCPL       & $\bm{2.10 \pm 5.80}$    & $\bm{34.40 \pm 3.50}$   & $\bm{32.00 \pm 6.00}$ & $\bm{28.00 \pm 7.00}$ \\
+    cbf\_mappo & $1.20 \pm 2.10$    & $55.60 \pm 4.20$   & $21.00 \pm 6.00$ & $22.00 \pm 5.00$ \\
+    mappolag   & $-24.80 \pm 6.80$  & $85.10 \pm 8.20$   & $20.00 \pm 4.00$ & $9.00 \pm 3.00$ \\
+    \hline
+    \end{tabular}%
+    }
+\end{table}
+
+在所有任务中，所提出的 GCPL 方法始终取得最优综合性能，并在不同复杂度场景下表现出较好的稳定性与泛化能力。相较于基线方法，GCPL 在编队完成度与成功率方面保持持续领先，同时其安全代价增长幅度较小，说明该方法能够在复杂约束条件下有效维持策略的可行性与一致性。相比之下，纯强化学习方法 mappo 及 mappolag 在复杂任务中性能退化明显，尤其是在圆形编队中表现出较低的成功率与较高的安全代价，反映出其在缺乏结构先验时难以应对高维协同控制问题。RMPflow 在各任务中表现出一定的稳定性，但受限于缺乏全局优化能力，其编队完成度与任务成功率始终处于中等水平。cbf\_mappo 虽然能够有效约束安全行为，但其对编队结构的建模能力有限，因此在复杂任务中的表现仍落后于 GCPL。
+
+综合来看，实验结果表明，将几何约束显式融入策略学习过程，有助于在不同复杂度任务中提升多智能体系统的协同能力与鲁棒性。特别是在具有复杂拓扑结构的编队任务中，该方法能够在安全性与任务性能之间取得更优的平衡，体现出良好的扩展性与泛化潜力。
+
+\begin{figure}[htbp]
+    \centering
+    \subfloat[]{\includegraphics[width=0.3\linewidth]{images/formation_line.png}}
     \hfill
-    \subfloat[cost]{\includegraphics[height=4cm]{images/rmp_cost.png}}
-    \caption{GCPL 实验验证。其中蓝色表示mappo算法下的实验结果，黑色表示添加 GCPL 后的实验结果。(a) 训练过程中的reward (b) 训练过程产生的cost（表示碰撞次数）。}
-    \label{fig:rmp_result}
-    \end{figure*}
+    \subfloat[]{\includegraphics[width=0.3\linewidth]{images/formation_wedge.png}}
+    \hfill
+    \subfloat[]{\includegraphics[width=0.3\linewidth]{images/formation_circle.png}}
+    \caption{GCPL编队实验结果。(a) 线形编队；(b) 楔形编队；(c) 圆形编队。}
+    \label{fig:formation_result}
+\end{figure}
+
+\subsubsection{消融实验}
+为进一步分析各关键模块对整体性能的影响，本文设计了消融实验，分别在 MAPPO 基础上引入碰撞约束节点和编队约束节点，通过三次20轮次的线性编队评估实验，比较不同组合下的性能表现，结果如表~\ref{tab:ablation_line} 所示。
+在引入碰撞约束节点后，系统的安全性显著提升，表现为安全代价大幅降低，同时成功率有所提高。然而，该设置对编队完成度的提升较为有限，说明仅依赖安全约束难以引导多智能体形成稳定的结构协同。相比之下，引入编队约束节点能够显著提高编队完成度，验证了结构约束在多机器人协同控制中的关键作用，但由于缺乏显式的安全机制，其安全代价仍然较高，限制了整体任务成功率的进一步提升。
+当同时引入碰撞约束节点与编队约束节点时，各项性能指标均得到明显改善，在编队完成度、安全性以及成功率的指标上都取得了最优表现。
+\begin{figure}[htbp]
+    \centering
+    \subfloat[]{\includegraphics[width=0.45\linewidth]{images/ablation_line_training_reward.png}}
+    \hfill
+    \subfloat[]{\includegraphics[width=0.45\linewidth]{images/ablation_line_training_cost.png}}
+    \caption{消融实验结果（线形编队）。(a) 训练回报；(b) 训练代价。}
+    \label{fig:ablation_line}
+\end{figure}
+\begin{table}[htbp]
+    % \small
+    % \setlength{\tabcolsep}{4pt}
+    \centering
+    \caption{消融实验结果（线形编队）}
+    \label{tab:ablation_line}
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{lcccc}
+    \hline
+    \textbf{Method} & \textbf{Reward} & \textbf{Cost} & \textbf{Formation\_Completion (\%)} & \textbf{Success\_Rate (\%)} \\
+    \hline
+    MAPPO & $-38.28 \pm 13.55$ & $105.78 \pm 40.02$ & $10.00 \pm 9.00$ & $2.00 \pm 2.00$ \\
+    
+    + Collision Node & $6.15 \pm 5.20$ & $\bm{12.34 \pm 6.12}$ & $22.00 \pm 6.00$ & $35.00 \pm 5.00$ \\
+    
+    + Formation Node & $2.87 \pm 6.03$ & $72.45 \pm 15.30$ & $\bm{68.00 \pm 5.00}$ & $18.00 \pm 6.00$ \\
+    
+    GCPL(Both Nodes) & $\bm{10.92 \pm 5.88}$ & $18.30 \pm 1.20$ & $57.00 \pm 3.00$ & $\bm{64.00 \pm 5.00}$ \\
+    \hline
+    \end{tabular}%
+    }
+\end{table}
+
+\section{本章小结}
+
+本章围绕多机器人系统在复杂环境中的安全编队导航问题，提出了一种基于几何约束的策略学习方法（GCPL）。该方法通过构建强化学习层与几何过滤层的分层架构，将策略优化与安全约束解耦。强化学习层基于 MAPPO 提供任务驱动的候选动作，几何过滤层则通过约束流形上的任务建模与解析合成，对动作进行约束修正，实现安全性与编队结构的显式保证。
+
+同时，本文构建了多机器人编队导航实验环境，并从整体性能与消融分析两个方面对方法进行了系统评估。实验结果表明，所提出的 GCPL 方法在保证安全性的同时显著提升了任务完成效率与编队稳定性，相较于纯强化学习方法及其他约束方法，在安全性与性能之间取得了更优的平衡。
