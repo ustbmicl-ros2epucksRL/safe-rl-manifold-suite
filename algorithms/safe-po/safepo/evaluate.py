@@ -17,6 +17,8 @@ import argparse
 from datetime import datetime
 from distutils.util import strtobool
 import os
+import re
+from typing import Optional
 import shutil
 import sys
 import tempfile
@@ -102,6 +104,15 @@ def _to_float_or_none(v):
         return float(v)
     except (TypeError, ValueError):
         return None
+
+
+def _resolve_eval_render_mode(render: bool, render_mode: Optional[str]) -> Optional[str]:
+    """Pick Gymnasium ``render_mode`` for evaluation (explicit mode wins over ``--render``)."""
+    if render_mode is not None and str(render_mode).strip() != "":
+        return str(render_mode).strip()
+    if render:
+        return "human"
+    return None
 
 
 def _extract_formation_completion_score(info_obj, error_threshold: float):
@@ -313,12 +324,25 @@ def eval_single_agent(eval_dir, eval_episodes):
     return avg_reward, avg_cost, success_rate, success_count, episode_results
 
 
-def eval_multi_agent(eval_dir, eval_episodes, config_overrides=None):
-    """Evaluate multi-agent policy. ``config_overrides`` is merged into the run's ``config.json`` (e.g. ``num_agents``)."""
+def eval_multi_agent(
+    eval_dir,
+    eval_episodes,
+    config_overrides=None,
+    *,
+    render: bool = False,
+    render_mode: Optional[str] = None,
+):
+    """Evaluate multi-agent policy. ``config_overrides`` is merged into the run's ``config.json`` (e.g. ``num_agents``).
+
+    For formation tasks, ``render`` / ``render_mode`` are passed to ``make_formation_nav_env`` and the
+    custom evaluation loop calls ``eval_envs.render()`` each step when a render mode is active.
+    """
     config_path = eval_dir + '/config.json'
     config = json.load(open(config_path, 'r'))
     if config_overrides:
         config = {**config, **config_overrides}
+
+    eval_render_mode = _resolve_eval_render_mode(render, render_mode)
 
     model_dir = eval_dir + f"/models_seed{config['seed']}"
     env_name = config['env_name']
@@ -354,7 +378,7 @@ def eval_multi_agent(eval_dir, eval_episodes, config_overrides=None):
             seed=np.random.randint(0, 1000),
             num_agents=num_agents,
             cfg_train=config,
-            render_mode=None,
+            render_mode=eval_render_mode,
         )
     else:
         eval_env = make_ma_multi_goal_env(
@@ -367,6 +391,7 @@ def eval_multi_agent(eval_dir, eval_episodes, config_overrides=None):
     eval_config = config.copy()
     eval_config["log_dir"] = tempfile.mkdtemp(prefix="eval_")
     eval_config["use_tensorboard"] = False  # 评估时无需 TensorBoard
+    eval_config["render"] = eval_render_mode is not None and eval_render_mode == "human"
     algo = config['algorithm_name']
     if algo == 'macpo':
         from safepo.multi_agent.macpo import Runner
@@ -454,6 +479,11 @@ def eval_multi_agent(eval_dir, eval_episodes, config_overrides=None):
                     eval_obs, _, eval_rewards, eval_costs, eval_dones, eval_infos, _ = runner.eval_envs.step(
                         eval_actions_collector,
                     )
+                    if eval_render_mode is not None:
+                        try:
+                            runner.eval_envs.render()
+                        except Exception:
+                            pass
                 reward_env = torch.mean(eval_rewards, dim=1).flatten()
                 cost_env = torch.mean(eval_costs, dim=1).flatten()
                 one_episode_rewards += reward_env
@@ -523,14 +553,25 @@ def eval_multi_agent(eval_dir, eval_episodes, config_overrides=None):
             shutil.rmtree(eval_config["log_dir"], ignore_errors=True)
 
 
-def single_runs_eval(eval_dir, eval_episodes, config_overrides=None):
+def single_runs_eval(
+    eval_dir,
+    eval_episodes,
+    config_overrides=None,
+    *,
+    render: bool = False,
+    render_mode: Optional[str] = None,
+):
 
     config_path = eval_dir + '/config.json'
     config = json.load(open(config_path, 'r'))
     env = config['task'] if 'task' in config.keys() else config['env_name']
     if env in multi_agent_velocity_map.keys() or env in multi_agent_goal_tasks or env in multi_agent_formation_tasks:
         reward, cost, success_rate, success_count, formation_completion_rate = eval_multi_agent(
-            eval_dir, eval_episodes, config_overrides=config_overrides,
+            eval_dir,
+            eval_episodes,
+            config_overrides=config_overrides,
+            render=render,
+            render_mode=render_mode,
         )
         return reward, cost, success_rate, success_count, None, formation_completion_rate  # 多智能体暂无逐 episode 详细结果
     else:
@@ -589,6 +630,24 @@ def benchmark_eval():
         type=lambda x: bool(strtobool(x)),
         default=None,
         help="Override RMP formation-node switch during evaluation",
+    )
+    parser.add_argument(
+        "--render",
+        type=lambda x: bool(strtobool(x)),
+        default=False,
+        help="Enable on-screen rendering during evaluation when supported (formation: human if mode unset)",
+    )
+    parser.add_argument(
+        "--render-mode",
+        type=str,
+        default=None,
+        help="Gymnasium render_mode (e.g. human, rgb_array). If set, overrides the default implied by --render",
+    )
+    parser.add_argument(
+        "--latest-models",
+        type=int,
+        default=3,
+        help="Evaluate only the latest N seed directories per algorithm (set <=0 to evaluate all)",
     )
 
     # 解析参数
@@ -652,12 +711,25 @@ def benchmark_eval():
             cur_algo = algo
             algo_path = os.path.join(env_path, algo)
             # 列出当前算法下的所有种子
-            seeds = os.listdir(algo_path)
+            seeds = [s for s in os.listdir(algo_path) if os.path.isdir(os.path.join(algo_path, s))]
+            # 按目录名中的时间戳（seed-xxx-YYYY-mm-dd-HH-MM-SS）排序，回退到目录修改时间
+            def _seed_sort_key(seed_name: str):
+                m = re.search(r"(\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2})$", seed_name)
+                if m:
+                    return (1, m.group(1))
+                try:
+                    mtime = os.path.getmtime(os.path.join(algo_path, seed_name))
+                except OSError:
+                    mtime = 0.0
+                return (0, f"{mtime:020.6f}")
+
+            seeds = sorted(seeds, key=_seed_sort_key, reverse=True)
+            if args.latest_models > 0:
+                seeds = seeds[: args.latest_models]
             rewards, costs, success_rates, success_counts, formation_completion_rates = [], [], [], [], []
+            evaluated_seed_names = []
             for seed in seeds:
                 seed_path = os.path.join(algo_path, seed)
-                if not os.path.isdir(seed_path):
-                    continue
                 # 检查是否有可用的模型文件（跳过空或未完成的训练目录）
                 config_path = os.path.join(seed_path, "config.json")
                 if not os.path.exists(config_path):
@@ -678,10 +750,15 @@ def benchmark_eval():
                         continue
                 record_data['seed'] = seed
                 reward, cost, success_rate, success_count, episode_results, formation_completion_rate = single_runs_eval(
-                    seed_path, eval_episodes, config_overrides=config_overrides or None,
+                    seed_path,
+                    eval_episodes,
+                    config_overrides=config_overrides or None,
+                    render=args.render,
+                    render_mode=args.render_mode,
                 )
                 rewards.append(reward)
                 costs.append(cost)
+                evaluated_seed_names.append(seed)
                 if success_rate is not None and success_count is not None:
                     success_rates.append(success_rate)
                     success_counts.append(success_count)
@@ -692,41 +769,62 @@ def benchmark_eval():
                     mode = 'w' if first_write else 'a'
                     with open(eval_result_path, mode, encoding='utf-8') as f:
                         if first_write:
-                            f.write("algorithm\ttask\tseed\tepisode\tnoise\treward\tcost\tsuccess\tsuccess_rate\tformation_completion\n")
+                            f.write("algorithm\ttask\tseed\tepisode\tnoise\treward\tcost\tsuccess_rate\tformation_completion\n")
                             first_write = False
                         for ep_idx, (noise, ep_reward, ep_cost, success) in enumerate(episode_results, start=1):
                             ep_success = 1 if success else 0
-                            f.write(f"{algo}\t{env}\t{seed}\t{ep_idx}\t{noise}\t{round(ep_reward, 2)}\t{round(ep_cost, 2)}\t{ep_success}\t-\t-\n")
+                            f.write(f"{algo}\t{env}\t{seed}\t{ep_idx}\t{noise}\t{round(ep_reward, 2)}\t{round(ep_cost, 2)}\t{ep_success}\t-\n")
                     # 每个 seed 写入一行成功率汇总
                     if success_rate is not None and success_count is not None:
                         with open(eval_result_path, 'a', encoding='utf-8') as f:
-                            f.write(f"{algo}\t{env}\t{seed}\tSUMMARY\t-\t-\t-\t{success_count}/{eval_episodes}\t{success_rate:.2%}\t-\n")
+                            f.write(f"{algo}\t{env}\t{seed}\tSUMMARY\t-\t-\t-\t{success_rate:.2f}\t-\n")
                 else:
                     # 多智能体：写入汇总行（含成功率）
                     mode = 'w' if first_write else 'a'
                     with open(eval_result_path, mode, encoding='utf-8') as f:
                         if first_write:
-                            f.write("algorithm\ttask\tseed\tepisode\tnoise\treward\tcost\tsuccess\tsuccess_rate\tformation_completion\n")
+                            f.write("algorithm\ttask\tseed\tepisode\tnoise\treward\tcost\tsuccess_rate\tformation_completion\n")
                             first_write = False
-                        sr_str = f"{success_count}/{eval_episodes}" if success_count is not None else "-"
-                        rate_str = f"{success_rate:.2%}" if success_rate is not None else "-"
-                        formation_str = f"{formation_completion_rate:.2%}" if formation_completion_rate is not None else "-"
-                        f.write(f"{algo}\t{env}\t{seed}\tSUMMARY\t-\t{round(reward, 2)}\t{round(cost, 2)}\t{sr_str}\t{rate_str}\t{formation_str}\n")
+                        rate_str = f"{success_rate:.2f}" if success_rate is not None else "-"
+                        formation_str = f"{formation_completion_rate:.2f}" if formation_completion_rate is not None else "-"
+                        f.write(f"{algo}\t{env}\t{seed}\tSUMMARY\t-\t{round(reward, 2)}\t{round(cost, 2)}\t{rate_str}\t{formation_str}\n")
+            if not rewards:
+                print(f"  Skip {algo} in {env}: no valid seeds to evaluate.")
+                continue
+
+            # 写入算法级别 AVG±STD 汇总行（对齐历史结果格式）
+            reward_mean = float(np.mean(rewards))
+            reward_std = float(np.std(rewards))
+            cost_mean = float(np.mean(costs))
+            cost_std = float(np.std(costs))
+            sr_mean = float(np.mean(success_rates)) if success_rates else None
+            sr_std = float(np.std(success_rates)) if success_rates else None
+            fc_mean = float(np.mean(formation_completion_rates)) if formation_completion_rates else None
+            fc_std = float(np.std(formation_completion_rates)) if formation_completion_rates else None
+
+            with open(eval_result_path, 'a', encoding='utf-8') as f:
+                sr_avg_std = f"{sr_mean:.2f}±{sr_std:.2f}" if sr_mean is not None else "-"
+                fc_avg_std = f"{fc_mean:.2f}±{fc_std:.2f}" if fc_mean is not None else "-"
+                f.write(
+                    f"{algo}\t{env}\tAVG±STD\tSUMMARY\t-\t"
+                    f"{reward_mean:.2f}±{reward_std:.2f}\t{cost_mean:.2f}±{cost_std:.2f}\t"
+                    f"{sr_avg_std}\t{fc_avg_std}\n"
+                )
             # 打印汇总信息
-            reward_mean = round(np.mean(rewards), 2)
-            reward_std = round(np.std(rewards), 2)
-            cost_mean = round(np.mean(costs), 2)
-            cost_std = round(np.std(costs), 2)
+            reward_mean = round(reward_mean, 2)
+            reward_std = round(reward_std, 2)
+            cost_mean = round(cost_mean, 2)
+            cost_std = round(cost_std, 2)
             msg = f"After {eval_episodes} episodes evaluation, the {algo} in {env} evaluation reward: {reward_mean}±{reward_std}, cost: {cost_mean}±{cost_std}"
             if success_rates:
-                sr_mean = np.mean(success_rates)
-                sr_std = np.std(success_rates)
+                sr_mean = float(np.mean(success_rates))
+                sr_std = float(np.std(success_rates))
                 total_success = sum(success_counts)
-                total_eps = len(seeds) * eval_episodes
+                total_eps = len(evaluated_seed_names) * eval_episodes
                 msg += f", success_rate: {total_success}/{total_eps} ({sr_mean:.2%}±{sr_std:.2%})"
             if formation_completion_rates:
-                fc_mean = np.mean(formation_completion_rates)
-                fc_std = np.std(formation_completion_rates)
+                fc_mean = float(np.mean(formation_completion_rates))
+                fc_std = float(np.std(formation_completion_rates))
                 msg += f", formation_completion: {fc_mean:.2%}±{fc_std:.2%}"
             msg += f", the result is saved in {eval_result_path}"
             print(msg)

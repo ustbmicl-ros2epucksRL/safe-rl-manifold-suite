@@ -6,7 +6,7 @@
 
 # Keep this specific directory (must appear AFTER ignore rules)
 !safepo/runs/
-safepo/runs/Base
+# safepo/runs/Base
 safepo/runs/benchmark
 !safepo/runs/single_agent_exp/
 safepo/runs/single_agent_exp/SafetyPointCircle1-v0

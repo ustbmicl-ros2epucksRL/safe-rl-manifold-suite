@@ -14,17 +14,12 @@
 # ==============================================================================
 
 
-import atexit
-import csv
 import json
 import os
 import os.path as osp
-import warnings
 
-import joblib
 import numpy as np
 import torch
-from torch.utils.tensorboard.writer import SummaryWriter
 
 # from safepo.common.mpi_tools import proc_id, mpi_statistics_scalar
 
@@ -128,13 +123,8 @@ class Logger:
         self.verbose = verbose
 
         os.makedirs(self.log_dir, exist_ok=True)
-        self.output_file = open(  # noqa: SIM115 # pylint: disable=consider-using-with
-            os.path.join(self.log_dir, output_fname),
-            encoding="utf-8",
-            mode="w",
-        )
-        atexit.register(self.output_file.close)
-        self._csv_writer = csv.writer(self.output_file)
+        self.output_file = None
+        self._csv_writer = None
 
         self.epoch = 0
         self.first_row = True
@@ -144,20 +134,14 @@ class Logger:
             [log_dir.split("/")[-3], log_dir.split("/")[-2], "seed", seed]
         )
         self.torch_saver_elements = None
-        self.use_tensorboard = use_tensorboard
+        self.use_tensorboard = False
         self.logged = True
-
-        # Setup tensor board logging if enabled and MPI root process
-        if use_tensorboard:
-            self.summary_writer = SummaryWriter(os.path.join(self.log_dir, "tb"))
 
     def close(self):
         """Close the output file.
         """
-        if self.use_tensorboard and hasattr(self, "summary_writer"):
-            self.summary_writer.close()
-            self.summary_writer = None
-        self.output_file.close()
+        if self.output_file is not None:
+            self.output_file.close()
 
     def debug(self, msg, color="yellow"):
         """Print a colorized message to stdout."""
@@ -207,15 +191,7 @@ class Logger:
         Returns:
             None
         """
-        config_json = convert_json(config)
-        if self.exp_name is not None:
-            config_json["exp_name"] = self.exp_name
-
-        output = json.dumps(
-            config_json, separators=(",", ":\t"), indent=4, sort_keys=True
-        )
-        with open(osp.join(self.log_dir, "config.json"), "w") as out:
-            out.write(output)
+        del config
 
     def save_state(self, state_dict, itr=None):
         """
@@ -231,13 +207,7 @@ class Logger:
         Returns:
             None
         """
-        fname = "state.pkl" if itr is None else "state%d.pkl" % itr
-        try:
-            joblib.dump(state_dict, osp.join(self.log_dir, fname))
-        except:
-            self.log("Warning: could not pickle state_dict.", color="red")
-        if hasattr(self, "torch_saver_elements"):
-            self.torch_save(itr)
+        del state_dict, itr
 
     def setup_torch_saver(self, what_to_save):
         """
@@ -257,21 +227,7 @@ class Logger:
 
     def torch_save(self, itr=None):
         """Saves the PyTorch model (or models)."""
-
-        self.log("Save model to disk...")
-        assert (
-            self.torch_saver_elements is not None
-        ), "First have to setup saving with self.setup_torch_saver"
-        fpath = "torch_save"
-        fpath = osp.join(self.log_dir, fpath)
-        fname = "model" + ("%d" % itr if itr is not None else "") + ".pt"
-        fname = osp.join(fpath, fname)
-        os.makedirs(fpath, exist_ok=True)
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            torch.save(self.torch_saver_elements, fname)
-        torch.save(self.torch_saver_elements.state_dict(), fname)
-        self.log("Done.")
+        del itr
 
     def dump_tabular(self) -> None:
         """Write all of the diagnostics from the current iteration.
@@ -296,18 +252,6 @@ class Logger:
             vals.append(val)
         if self.verbose and self.level > 0:
             print("-" * n_slashes, flush=True)
-
-        # Write into the output file (can be any text file format, e.g. CSV)
-        if self.output_file is not None:
-            if self.first_row:
-                self._csv_writer.writerow(self.log_current_row.keys())
-
-            self._csv_writer.writerow(self.log_current_row.values())
-            self.output_file.flush()
-
-        if self.use_tensorboard:
-            for key, val in self.log_current_row.items():
-                self.summary_writer.add_scalar(key, val, global_step=self.epoch)
 
         # free logged information in all processes...
         self.log_current_row.clear()
