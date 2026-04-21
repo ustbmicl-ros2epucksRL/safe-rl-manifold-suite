@@ -36,19 +36,40 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-ALGO_ORDER = ["mappo_rmp", "rmpflow", "mappo", "mappolag"]
-ALGO_LABEL = {
+# 对比实验 (RQ1): 4 基线
+COMPARE_ORDER = ["mappo_rmp", "rmpflow", "mappo", "mappolag"]
+COMPARE_LABEL = {
     "mappo_rmp": "GCPL (ours)",
     "rmpflow":   "RMPflow",
     "mappo":     "MAPPO",
     "mappolag":  "MAPPO_Lag",
 }
-ALGO_COLOR = {
+COMPARE_COLOR = {
     "mappo_rmp": "#1f77b4",   # blue
     "rmpflow":   "#2ca02c",   # green
     "mappo":     "#d62728",   # red
     "mappolag":  "#ff7f0e",   # orange
 }
+
+# 消融实验 (RQ2): 4 档几何叶配置
+ABLATION_ORDER = ["abl_A", "abl_B", "abl_C", "abl_D"]
+ABLATION_LABEL = {
+    "abl_A": "A: MAPPO (no leaf)",
+    "abl_B": "B: + dist leaf",
+    "abl_C": "C: + dist + orient",
+    "abl_D": "D: full GCPL",
+}
+ABLATION_COLOR = {
+    "abl_A": "#d62728",   # red
+    "abl_B": "#ff7f0e",   # orange
+    "abl_C": "#9467bd",   # purple
+    "abl_D": "#1f77b4",   # blue
+}
+
+# 初始默认 = 对比模式; main() 会根据实际 runs/ 目录内容自动切换
+ALGO_ORDER = COMPARE_ORDER
+ALGO_LABEL = COMPARE_LABEL
+ALGO_COLOR = COMPARE_COLOR
 
 REWARD_KEY = "Metrics/EpRet"
 COST_KEY = "Metrics/EpCost"
@@ -235,12 +256,15 @@ def plot_pareto(eval_df: pd.DataFrame, out_path: Path) -> None:
 
 
 def main() -> int:
+    global ALGO_ORDER, ALGO_LABEL, ALGO_COLOR
     ap = argparse.ArgumentParser()
     ap.add_argument("--runs-dir", required=True,
                     help="<repo>/runs/Base/SafetyPointMultiFormationGoal0-v0/")
     ap.add_argument("--eval-result", required=True,
                     help="<repo>/runs/Base/eval_result.txt")
     ap.add_argument("--out", required=True, help="output directory for pngs")
+    ap.add_argument("--mode", default="auto", choices=["auto", "compare", "ablation"],
+                    help="图表模式: compare (4 基线, RQ1) | ablation (4 档, RQ2) | auto (按 runs/ 内容猜)")
     args = ap.parse_args()
 
     runs_dir = Path(args.runs_dir)
@@ -250,6 +274,29 @@ def main() -> int:
     if not runs_dir.is_dir():
         print(f"ERROR: runs-dir not found: {runs_dir}", file=sys.stderr)
         return 2
+
+    # 根据实际 runs/ 内容选择绘图配置
+    existing = {p.name for p in runs_dir.iterdir() if p.is_dir()}
+    has_abl = any(n.startswith("abl_") for n in existing)
+    has_cmp = any(n in existing for n in COMPARE_ORDER)
+    mode = args.mode
+    if mode == "auto":
+        if has_abl and not has_cmp:
+            mode = "ablation"
+        elif has_abl and has_cmp:
+            print("[auto] 同时检测到 compare 和 ablation 目录, 默认用 compare (用 --mode ablation 切换)")
+            mode = "compare"
+        else:
+            mode = "compare"
+    if mode == "ablation":
+        ALGO_ORDER = ABLATION_ORDER
+        ALGO_LABEL = ABLATION_LABEL
+        ALGO_COLOR = ABLATION_COLOR
+    else:
+        ALGO_ORDER = COMPARE_ORDER
+        ALGO_LABEL = COMPARE_LABEL
+        ALGO_COLOR = COMPARE_COLOR
+    print(f"[plot mode] {mode}   (algos: {ALGO_ORDER})")
 
     # 1. Load training curves per algo
     print(f"[1/3] scanning progress.csv under {runs_dir} ...")

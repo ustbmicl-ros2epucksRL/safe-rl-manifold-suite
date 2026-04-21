@@ -61,7 +61,13 @@ class StateConstraint:
         elif self.slack_type == 'softplus':
             ret = self.c_last + np.log1p(np.exp(self.beta * self.s)) / self.beta
         elif self.slack_type == 'softcorner':
-            ret = self.c_last - np.log(-np.expm1(self.beta * self.s)) / self.beta
+            # softcorner 只在 s<0 时良定义: ret = c_last - log(-expm1(β*s))/β.
+            # 当 β*s → 0 或 >0 时会出现 log(0) / log(neg) → NaN.
+            # 这里把 β*s 钳制在 [-20, -1e-6] 以避免数值奇点:
+            #   β*s < -20  : -expm1(β*s) ≈ 1, log ≈ 0, ret ≈ c_last
+            #   β*s ≈ -1e-6: 极接近原约束边界, 保持数值稳定
+            bs = np.clip(self.beta * self.s, -20.0, -1e-6)
+            ret = self.c_last - np.log(-np.expm1(bs)) / self.beta
         else:
             raise NotImplementedError(f"Unknown slack type: {self.slack_type}")
 
@@ -85,8 +91,10 @@ class StateConstraint:
             exp_s = np.exp(self.beta * self.s)
             return exp_s / (1 + exp_s)
         elif self.slack_type == 'softcorner':
-            exp_s = np.exp(self.beta * self.s)
-            return exp_s / -np.expm1(self.beta * self.s)
+            # 同 fun() 的钳制, 避免 β*s→0 时的 ∞ 和 β*s>0 时的负除 0.
+            bs = np.clip(self.beta * self.s, -20.0, -1e-6)
+            exp_s = np.exp(bs)
+            return exp_s / -np.expm1(bs)
         else:
             raise NotImplementedError
 

@@ -50,3 +50,20 @@ TRO/
 
 # PDF output
 *.pdf
+
+# Large upstream source (use pip install safety-gymnasium or add as submodule)
+envs/
+
+# LaTeX build artifacts
+*.aux
+*.toc
+*.log
+*.lof
+*.lot
+*.out
+*.bcf
+*.run.xml
+chap5_verify.pdf
+main.pdf
+*.synctex.gz
+!paper-safeMARL/figs/*.pdf

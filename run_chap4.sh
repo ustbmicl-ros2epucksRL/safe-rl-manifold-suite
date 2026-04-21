@@ -27,7 +27,7 @@
 #   CHAP4_ENV              chap4_gcpl        conda 环境名
 #   CHAP4_PY               3.10              Python 版本
 #   CHAP4_SCALE            small             small | medium | full
-#   CHAP4_MODE             both              train | eval | both | sweep | plot
+#   CHAP4_MODE             both              train | eval | both | sweep | ablation_sweep | plot
 #   CHAP4_SKIP_INSTALL     0                 1 = 跳过 pip install
 #   CHAP4_SKIP_SANITY      0                 1 = 跳过 sanity check
 #   CHAP4_SEED             0                 随机种子 (单 run 模式用)
@@ -40,6 +40,9 @@
 #   CHAP4_ALGOS            "mappo_rmp mappo mappolag rmpflow"   扫的算法 (空格分隔)
 #   CHAP4_SEEDS            "0 1 2"           扫的种子
 #   CHAP4_PLOT_OUT         images/chap4_sweep  图输出目录 (相对 paper-safeMARL/)
+#   # -- ablation_sweep 模式专用 (RQ2 消融: 4 档几何叶配置 × seeds) --
+#   CHAP4_ABLATION_LEVELS  "A B C D"    A=裸MAPPO / B=仅距离叶 / C=距离+方向 / D=完整GCPL
+#   # CHAP4_SEEDS / CHAP4_PLOT_OUT 共用
 #
 # 对应论文: contents/chap4.tex (GCPL = MAPPO + RMPflow + RL 叶节点)
 # 实现记录: paper-safeMARL/chap4-changes.md D/E/F 节
@@ -67,6 +70,8 @@ FUSION_MODE="${CHAP4_FUSION_MODE:-leaf}"
 SWEEP_ALGOS="${CHAP4_ALGOS:-mappo_rmp mappo mappolag rmpflow}"
 SWEEP_SEEDS="${CHAP4_SEEDS:-0 1 2}"
 PLOT_OUT="${CHAP4_PLOT_OUT:-images/chap4_sweep}"
+# ablation_sweep-only: A=裸 MAPPO / B=仅距离叶 / C=距离+方向 / D=完整 GCPL
+ABLATION_LEVELS="${CHAP4_ABLATION_LEVELS:-A B C D}"
 TASK_NAME="SafetyPointMultiFormationGoal0-v0"
 
 # Scale 对应的训练参数
@@ -376,24 +381,34 @@ run_sweep_eval() {
         return
     fi
     cd "$SAFE_RL_DIR"
-    log "批量评估 sweep runs ($EVAL_EPISODES episodes/run)..."
+    # 显式指定 --save-dir, 默认 evaluate.py 会把 benchmark_dir 里的 runs 改写为 results/.
+    # 我们固定写到 $bench_src/eval_result.txt 方便 plot_chap4.py 读取.
+    local eval_save_dir="$bench_src"
+    log "批量评估 sweep runs ($EVAL_EPISODES episodes/run), 结果 -> $eval_save_dir/eval_result.txt"
     python -u -m safepo.evaluate \
         --benchmark-dir "$bench_src" \
+        --save-dir "$eval_save_dir" \
         --eval-episodes "$EVAL_EPISODES" \
         --headless \
         || log "WARN: evaluate.py 非零退出 (若无 xvfb/显示环境通常可忽略)"
-    log "sweep 评估完成, 结果在 $bench_src/eval_result.txt"
+    log "sweep 评估完成"
 }
 
 run_plotting() {
     cd "$SAFE_RL_DIR"
     local out_abs="$SAFE_RL_DIR/paper-safeMARL/$PLOT_OUT"
     mkdir -p "$out_abs"
-    log "绘图: 从 $RUNS_DIR/Base/$TASK_NAME 聚合 → $out_abs"
+    # ablation_sweep 模式输出强制使用 ablation 绘图配色/标签 (覆盖 auto 检测)
+    local plot_mode="auto"
+    if [ "$MODE" = "ablation_sweep" ]; then
+        plot_mode="ablation"
+    fi
+    log "绘图 (mode=$plot_mode): 从 $RUNS_DIR/Base/$TASK_NAME 聚合 → $out_abs"
     python -u scripts/plot_chap4.py \
         --runs-dir "$RUNS_DIR/Base/$TASK_NAME" \
         --eval-result "$RUNS_DIR/Base/eval_result.txt" \
         --out "$out_abs" \
+        --mode "$plot_mode" \
         || die "plot_chap4.py 失败"
     log "绘图完成, 输出目录: $out_abs"
     log "  - training_reward.png   (训练 reward 曲线, 多算法多 seed 阴影带)"
@@ -407,6 +422,99 @@ run_sweep() {
     for algo in $SWEEP_ALGOS; do
         for seed in $SWEEP_SEEDS; do
             run_one "$algo" "$seed"
+        done
+    done
+    run_sweep_eval
+    run_plotting
+}
+
+# -----------------------------------------------------------------------------
+# Ablation sweep (RQ2): 4 档几何叶配置 × seeds
+# A = 裸 MAPPO                         (全部 geo 叶关, 走 mappo.py)
+# B = MAPPO + 距离叶                   (mappo_rmp, 仅 formation)
+# C = MAPPO + 距离 + 方向叶            (mappo_rmp, formation + orientation)
+# D = 完整 GCPL                        (mappo_rmp, 全开)
+# 结果分别落到 runs/Base/<env>/abl_{A,B,C,D}/seed-*/
+# -----------------------------------------------------------------------------
+run_one_ablation() {
+    local level="$1"
+    local seed="$2"
+    export MULTI_ROBOT_RMPFLOW_PATH="$RMP_DIR"
+    cd "$SAFE_RL_DIR"
+    log "----- ablation run: level=$level  seed=$seed  steps=$TOTAL_STEPS  envs=$NUM_ENVS -----"
+
+    if [ "$level" = "A" ]; then
+        # 裸 MAPPO, 不经 RMP
+        unset CHAP4_USE_FORMATION_LEAF CHAP4_USE_ORIENTATION_LEAF CHAP4_USE_COLLISION_LEAF \
+              CHAP4_FUSION_MODE_OVERRIDE CHAP4_RL_LEAF_WEIGHT_OVERRIDE || true
+        python -u -m safepo.multi_agent.mappo \
+            --task "$TASK_NAME" \
+            --num_agents "$NUM_AGENTS" \
+            --formation-shape "$FORMATION_SHAPE" \
+            --num-envs "$NUM_ENVS" \
+            --seed "$seed" \
+            --write-terminal True \
+            --total-steps "$TOTAL_STEPS" \
+            --device "$DEVICE"
+        # 重命名 mappo run 为 abl_A/
+        local latest
+        latest="$(ls -td "$RUNS_DIR/Base/$TASK_NAME/mappo"/seed-$(printf '%03d' "$seed")-* 2>/dev/null | head -1 || true)"
+        if [ -n "$latest" ]; then
+            mkdir -p "$RUNS_DIR/Base/$TASK_NAME/abl_A"
+            mv "$latest" "$RUNS_DIR/Base/$TASK_NAME/abl_A/"
+        fi
+        return
+    fi
+
+    # B / C / D 均走 mappo_rmp, 通过 CHAP4_USE_*_LEAF 开关 geo 叶
+    export CHAP4_FUSION_MODE_OVERRIDE="leaf"
+    export CHAP4_RL_LEAF_WEIGHT_OVERRIDE="10.0"
+    case "$level" in
+        B)  # 仅距离叶
+            export CHAP4_USE_FORMATION_LEAF=true
+            export CHAP4_USE_ORIENTATION_LEAF=false
+            export CHAP4_USE_COLLISION_LEAF=false
+            ;;
+        C)  # 距离 + 方向叶
+            export CHAP4_USE_FORMATION_LEAF=true
+            export CHAP4_USE_ORIENTATION_LEAF=true
+            export CHAP4_USE_COLLISION_LEAF=false
+            ;;
+        D)  # 完整 GCPL
+            export CHAP4_USE_FORMATION_LEAF=true
+            export CHAP4_USE_ORIENTATION_LEAF=true
+            export CHAP4_USE_COLLISION_LEAF=true
+            ;;
+        *)
+            die "未知 ablation level: $level (允许 A|B|C|D)"
+            ;;
+    esac
+
+    python -u -m safepo.multi_agent.mappo_rmp \
+        --task "$TASK_NAME" \
+        --num_agents "$NUM_AGENTS" \
+        --formation-shape "$FORMATION_SHAPE" \
+        --num-envs "$NUM_ENVS" \
+        --seed "$seed" \
+        --write-terminal True \
+        --total-steps "$TOTAL_STEPS" \
+        --device "$DEVICE"
+
+    # 把本次训练结果重命名到 abl_<level>/
+    local latest
+    latest="$(ls -td "$RUNS_DIR/Base/$TASK_NAME/mappo_rmp"/seed-$(printf '%03d' "$seed")-* 2>/dev/null | head -1 || true)"
+    if [ -n "$latest" ]; then
+        mkdir -p "$RUNS_DIR/Base/$TASK_NAME/abl_$level"
+        mv "$latest" "$RUNS_DIR/Base/$TASK_NAME/abl_$level/"
+        log "abl_$level run 已移入: $RUNS_DIR/Base/$TASK_NAME/abl_$level/$(basename "$latest")"
+    fi
+}
+
+run_ablation_sweep() {
+    log "=== ablation_sweep: levels=($ABLATION_LEVELS) × seeds=($SWEEP_SEEDS) at scale=$SCALE ==="
+    for level in $ABLATION_LEVELS; do
+        for seed in $SWEEP_SEEDS; do
+            run_one_ablation "$level" "$seed"
         done
     done
     run_sweep_eval
@@ -449,9 +557,10 @@ main() {
         both)  run_training
                run_evaluation ;;
         sweep) run_sweep ;;
+        ablation_sweep) run_ablation_sweep ;;
         plot)  run_sweep_eval
                run_plotting ;;
-        *) die "CHAP4_MODE 必须是 train|eval|both|sweep|plot (got: $MODE)" ;;
+        *) die "CHAP4_MODE 必须是 train|eval|both|sweep|ablation_sweep|plot (got: $MODE)" ;;
     esac
 
     print_summary

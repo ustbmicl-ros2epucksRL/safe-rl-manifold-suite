@@ -262,6 +262,8 @@ class Runner:
         self.model_dir = model_dir
 
         self.num_agents = self.envs.num_agents
+        # 把 num_agents 写入 config, 存盘后 evaluate.py 才能还原观测维度.
+        config.setdefault('num_agents', self.num_agents)
 
         torch.autograd.set_detect_anomaly(True)
         torch.backends.cudnn.enabled = True
@@ -325,14 +327,17 @@ class Runner:
 
                 dones_env = torch.all(dones, dim=1)
 
-                reward_env = torch.mean(rewards, dim=1).flatten()
-                cost_env = torch.mean(costs, dim=1).flatten()
+                # envs.step() 返回 CPU tensor; train_episode_* 可能在 cuda 上.
+                _dev = train_episode_rewards.device
+                reward_env = torch.mean(rewards, dim=1).flatten().to(_dev)
+                cost_env = torch.mean(costs, dim=1).flatten().to(_dev)
+                dones_env_cpu = dones_env.to("cpu")
 
                 train_episode_rewards += reward_env
                 train_episode_costs += cost_env
 
                 for t in range(self.config["n_rollout_threads"]):
-                    if dones_env[t]:
+                    if dones_env_cpu[t]:
                         done_episodes_rewards.append(train_episode_rewards[:, t].clone())
                         train_episode_rewards[:, t] = 0
                         done_episodes_costs.append(train_episode_costs[:, t].clone())
@@ -568,13 +573,14 @@ class Runner:
                 eval_actions_collector
             )
 
-            reward_env = torch.mean(eval_rewards, dim=1).flatten()
-            cost_env = torch.mean(eval_costs, dim=1).flatten()
+            _dev = one_episode_rewards.device
+            reward_env = torch.mean(eval_rewards, dim=1).flatten().to(_dev)
+            cost_env = torch.mean(eval_costs, dim=1).flatten().to(_dev)
 
             one_episode_rewards += reward_env
             one_episode_costs += cost_env
 
-            eval_dones_env = torch.all(eval_dones, dim=1)
+            eval_dones_env = torch.all(eval_dones, dim=1).to(_dev)
 
             eval_rnn_states[eval_dones_env == True] = torch.zeros(
                 (eval_dones_env == True).sum(), self.num_agents, self.config["recurrent_N"], self.config["hidden_size"], device=self.config["device"])
@@ -642,7 +648,7 @@ def train(args, cfg_train):
         cfg_eval["n_rollout_threads"] = cfg_eval["n_eval_rollout_threads"]
         eval_env = make_ma_multi_goal_env(task=args.task, seed=args.seed + 10000, cfg_train=cfg_eval)
     elif args.task in multi_agent_formation_tasks:
-        # Multi-robot formation navigation environment.
+        # 多机器人编队导航环境, 支持通过命令行参数指定机器人数量 (chap4 对比实验)
         render_mode = getattr(args, "render_mode", None)
         if render_mode is None and getattr(args, "render", False):
             render_mode = "human"
@@ -663,7 +669,7 @@ def train(args, cfg_train):
             num_agents=args.num_agents,
             cfg_train=cfg_eval,
         )
-    else: 
+    else:
         raise NotImplementedError
     
     torch.set_num_threads(4)

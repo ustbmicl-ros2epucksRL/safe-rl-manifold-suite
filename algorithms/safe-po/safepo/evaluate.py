@@ -23,6 +23,15 @@ import shutil
 import sys
 import tempfile
 
+# [ADD 2026-04-19] 多个 run 顺序评估时, ShareSubprocVecEnv 会用默认 fork 启动子进程;
+# 第二次及之后因父进程已初始化 CUDA 而报 "Cannot re-initialize CUDA in forked subprocess".
+# 用 spawn 方式启动子进程彻底避开该问题 (子进程独立 import CUDA).
+import multiprocessing as _mp
+try:
+    _mp.set_start_method("spawn", force=True)
+except RuntimeError:
+    pass  # already set
+
 # 无显示环境（Docker/SSH）下用 xvfb-run 执行，避免 GLFW/X11 报错
 # 用法: python evaluate.py --headless ...  或  DISPLAY= python evaluate.py ...
 _use_headless = "--headless" in sys.argv
@@ -704,8 +713,13 @@ def benchmark_eval():
         algos = os.listdir(env_path)
         cur_env = env
         for algo in algos:
-            # 跳过不包含"ppo_cm"、"mappo"或"mappo_rmp"的算法
-            if algo.find("mappo_rmp") < 0 and algo.find("mappo") < 0:
+            # 跳过不包含 mappo / mappo_rmp / rmpflow / abl_* 的算法目录.
+            # rmpflow / abl_* 都是 sweep 脚本对 mappo 或 mappo_rmp 训练产物的重命名,
+            # 其 config.json 里 algorithm_name 仍是原始算法, 下方 Runner 分发能正确处理.
+            if (algo.find("mappo_rmp") < 0
+                    and algo.find("mappo") < 0
+                    and algo.find("rmpflow") < 0
+                    and algo.find("abl_") < 0):
                 continue
             print(f"Start evaluating {algo} in {env}")
             cur_algo = algo

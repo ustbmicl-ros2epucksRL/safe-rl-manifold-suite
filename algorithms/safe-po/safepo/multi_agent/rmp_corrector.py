@@ -158,6 +158,31 @@ class RMPCorrector:
                 self.rl_leaf_weight = float(_env_w)
             except ValueError:
                 pass
+        # [ADD 2026-04-19 ablation] 三类几何叶节点独立开关 (chap4 RQ2 消融实验用).
+        #   use_formation_leaf    : FormationDecentralized (距离保持)
+        #   use_orientation_leaf  : FormationOrientationDecentralized (方向保持, 本文新增)
+        #   use_collision_leaf    : CollisionAvoidanceDecentralized + 静态障碍 (sigwalls)
+        # 默认全开 (完整 GCPL). 环境变量 CHAP4_USE_*_LEAF 支持 sweep 脚本覆盖.
+        def _env_bool(name, default):
+            v = _os.environ.get(name, '').strip().lower()
+            if v in ('1', 'true', 'yes', 'on'):
+                return True
+            if v in ('0', 'false', 'no', 'off'):
+                return False
+            return default
+        self.use_formation_leaf = _env_bool(
+            'CHAP4_USE_FORMATION_LEAF',
+            bool(self.config.get('use_formation_leaf', True)),
+        )
+        self.use_orientation_leaf = _env_bool(
+            'CHAP4_USE_ORIENTATION_LEAF',
+            bool(self.config.get('use_orientation_leaf', True)),
+        )
+        self.use_collision_leaf = _env_bool(
+            'CHAP4_USE_COLLISION_LEAF',
+            bool(self.config.get('use_collision_leaf', True)),
+        )
+
         # [ADD 2026-04-18 缺口 1] chap4.4.4 差速映射
         #   RMP resolve 输出是世界坐标 (ax, ay); Point agent 的动作空间是机体系 (v, omega).
         #   paper 4.4.4 给出映射: v = cos(θ)ax + sin(θ)ay,  omega = k_θ(atan2(ay,ax) - θ).
@@ -197,7 +222,10 @@ class RMPCorrector:
                     f"rl_leaf_weight={self.rl_leaf_weight}, "
                     f"diff_drive_mapping={self.use_diff_drive_mapping} "
                     f"(k_theta={self.diff_drive_k_theta}), "
-                    f"legacy_rmp_weight={self.rmp_weight}"
+                    f"legacy_rmp_weight={self.rmp_weight}, "
+                    f"leaves=[form:{int(self.use_formation_leaf)}, "
+                    f"orient:{int(self.use_orientation_leaf)}, "
+                    f"coll:{int(self.use_collision_leaf)}]"
                 )
             except Exception as e:
                 print(f"Warning: Failed to initialize RMP trees: {e}. RMP will be disabled.")
@@ -238,9 +266,9 @@ class RMPCorrector:
                 robot = RMPNode('robot_' + str(i), r, phi, J, J_dot)
                 robots.append(robot)
             
-            # 创建机器人之间的碰撞避免节点
+            # 创建机器人之间的碰撞避免节点 (可被 use_collision_leaf 关闭做消融)
             collision_nodes = []
-            if self.use_rmp_collision:
+            if self.use_rmp_collision and self.use_collision_leaf:
                 for i in range(self.num_agents):
                     for j in range(self.num_agents):
                         if i != j:
@@ -251,11 +279,11 @@ class RMPCorrector:
                                 R=self.collision_safety_radius,
                                 eta=1.0)
                             collision_nodes.append(ca)
-            
             # 创建编队控制：按 formation_spec 的边列表；每条边在 robot[i] 上挂
             # hub + 距离叶 + 方向叶（i 指向 j，几何见 formation_spec 注记）
+            # use_formation_leaf / use_orientation_leaf 分别控制距离/方向叶 (消融用)
             formation_nodes = []
-            if self.use_rmp_formation:
+            if self.use_rmp_formation and (self.use_formation_leaf or self.use_orientation_leaf):
                 for edge_idx, (i, j, d_ij, r_star) in enumerate(self.formation_edges):
                     hub = RMPNode(
                         f'formation_hub_e{edge_idx}_robot_{i}_to_{j}',
@@ -264,36 +292,39 @@ class RMPCorrector:
                         _formation_hub_J,
                         _formation_hub_Jdot,
                     )
-                    fc = FormationDecentralized(
-                        f'fc_dist_e{edge_idx}_robot_{i}_to_{j}',
-                        hub,
-                        robots[j],
-                        d=d_ij,
-                        gain=1.0,
-                        eta=2.0,
-                        w=10.0,
-                    )
-                    fo = FormationOrientationDecentralized(
-                        f'fc_ori_e{edge_idx}_robot_{i}_to_{j}',
-                        hub,
-                        robots[j],
-                        r_star=r_star,
-                        alpha_theta=self.formation_orientation_alpha,
-                        eta_theta=self.formation_orientation_eta,
-                        c_theta=self.formation_orientation_c_metric,
-                    )
-                    formation_nodes.append(fc)
-                    formation_nodes.append(fo)
+                    if self.use_formation_leaf:
+                        fc = FormationDecentralized(
+                            f'fc_dist_e{edge_idx}_robot_{i}_to_{j}',
+                            hub,
+                            robots[j],
+                            d=d_ij,
+                            gain=1.0,
+                            eta=2.0,
+                            w=10.0,
+                        )
+                        formation_nodes.append(fc)
+                    if self.use_orientation_leaf:
+                        fo = FormationOrientationDecentralized(
+                            f'fc_ori_e{edge_idx}_robot_{i}_to_{j}',
+                            hub,
+                            robots[j],
+                            r_star=r_star,
+                            alpha_theta=self.formation_orientation_alpha,
+                            eta_theta=self.formation_orientation_eta,
+                            c_theta=self.formation_orientation_c_metric,
+                        )
+                        formation_nodes.append(fo)
 
             # 创建与 Sigwalls 碰撞避免的节点（静态障碍物）
             # MultiFormationGoalLevel0 中 sigwalls.locations 实际为 [(-1.0, 0), (1.0, 0)]
             # 支持通过 config["sigwall_centers"] 覆盖；若未提供则使用任务默认值
-            _default_sigwall_centers = [[-1.0, 0.0], [1.0, 0.0]]
-            _cfg_sigwall_centers = self.config.get('sigwall_centers', _default_sigwall_centers)
-            sigwall_centers = [np.asarray(c, dtype=np.float64) for c in _cfg_sigwall_centers]
-            sigwall_radius = self.collision_safety_radius
+            # use_collision_leaf 关闭时同时禁用 sigwall 碰撞 (保证"A 档裸 MAPPO"纯净)
             sigwall_nodes = []
-            if self.use_rmp_collision:
+            if self.use_rmp_collision and self.use_collision_leaf:
+                _default_sigwall_centers = [[-1.0, 0.0], [1.0, 0.0]]
+                _cfg_sigwall_centers = self.config.get('sigwall_centers', _default_sigwall_centers)
+                sigwall_centers = [np.asarray(c, dtype=np.float64) for c in _cfg_sigwall_centers]
+                sigwall_radius = self.collision_safety_radius
                 for i in range(self.num_agents):
                     for wall_idx, center in enumerate(sigwall_centers):
                         ca_wall = CollisionAvoidance(
@@ -550,4 +581,3 @@ class RMPCorrector:
                 agent_headings.append(np.zeros((n_envs,)))
 
         return agent_positions, agent_velocities, agent_headings
-

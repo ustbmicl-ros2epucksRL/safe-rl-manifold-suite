@@ -221,6 +221,8 @@ class Runner:
         self.model_dir = model_dir
 
         self.num_agents = self.envs.num_agents
+        # 把 num_agents 写入 config, 存盘后 evaluate.py 才能还原观测维度.
+        config.setdefault('num_agents', self.num_agents)
 
         torch.autograd.set_detect_anomaly(True)
         torch.backends.cudnn.enabled = True
@@ -292,14 +294,18 @@ class Runner:
 
                 dones_env = torch.all(dones, dim=1)
 
-                reward_env = torch.mean(rewards, dim=1).flatten()
-                cost_env = torch.mean(costs, dim=1).flatten()
+                # envs.step() 返回 CPU tensor; train_episode_* 可能在 cuda 上.
+                # 显式对齐设备, 否则 CHAP4_DEVICE=cuda 下 += 触发 device mismatch.
+                _dev = train_episode_rewards.device
+                reward_env = torch.mean(rewards, dim=1).flatten().to(_dev)
+                cost_env = torch.mean(costs, dim=1).flatten().to(_dev)
+                dones_env_cpu = dones_env.to("cpu")
 
                 train_episode_rewards += reward_env
                 train_episode_costs += cost_env
 
                 for t in range(self.config["n_rollout_threads"]):
-                    if dones_env[t]:
+                    if dones_env_cpu[t]:
                         done_episodes_rewards.append(train_episode_rewards[:, t].clone())
                         train_episode_rewards[:, t] = 0
                         done_episodes_costs.append(train_episode_costs[:, t].clone())
@@ -522,13 +528,14 @@ class Runner:
                 eval_actions_collector
             )
 
-            reward_env = torch.mean(eval_rewards, dim=1).flatten()
-            cost_env = torch.mean(eval_costs, dim=1).flatten()
+            _dev = one_episode_rewards.device
+            reward_env = torch.mean(eval_rewards, dim=1).flatten().to(_dev)
+            cost_env = torch.mean(eval_costs, dim=1).flatten().to(_dev)
 
             one_episode_rewards += reward_env
             one_episode_costs += cost_env
 
-            eval_dones_env = torch.all(eval_dones, dim=1)
+            eval_dones_env = torch.all(eval_dones, dim=1).to(_dev)
 
             eval_rnn_states[eval_dones_env == True] = torch.zeros(
                 (eval_dones_env == True).sum(), self.num_agents, self.config["recurrent_N"], self.config["hidden_size"], device=self.config["device"])

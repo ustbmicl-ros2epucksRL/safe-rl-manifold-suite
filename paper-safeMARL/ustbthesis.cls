@@ -183,7 +183,14 @@
 
 %\setCJKfamilyfont{xingkai}{STXINGKA.TTF}
 %\newcommand{\xingkai}{\CJKfamily{xingkai}}
-\setmainfont{Times New Roman}
+% 本机未装 Microsoft Times New Roman 时回落到 TeX Gyre Termes (Times 的开源替代,
+% 随 TeX Live 发布, metric 兼容). 定稿提交时建议在装有正版 Times New Roman
+% 的机器上重编.
+\IfFontExistsTF{Times New Roman}{%
+  \setmainfont{Times New Roman}%
+}{%
+  \setmainfont{TeX Gyre Termes}%
+}
 %\setCJKmainfont[AutoFakeBold,AutoFakeSlant]{SimSun}
 %\setCJKmainfont[BoldFont={},ItalicFont={}]{SimSun}
 
