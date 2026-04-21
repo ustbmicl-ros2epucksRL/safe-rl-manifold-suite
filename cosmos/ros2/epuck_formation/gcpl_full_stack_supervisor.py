@@ -31,6 +31,9 @@ Webots Supervisor controller for chap5 §5.1.3 完整分层控制栈:
     GCPL_ENABLE_ATACOM=1         0 = 关闭 chap3 投影, 退化为只有 chap4
     GCPL_MAPPO_CKPT_DIR=         MAPPO checkpoint 目录; 为空则 a_RL=0
     EPUCK_DEF_FMT=EPUCK_{i}      场景中 E-puck DEF 名格式
+    GCPL_TEST_REPLAY=            若非空, 跳过 MAPPO/GCPL/ATACOM, 直接下发脚本化
+                                 cmd_vel (供平台演示/论文截图使用). 取值:
+                                   wedge_channel : 3 机同速直行 10 s 后停车
 """
 from __future__ import annotations
 
@@ -70,6 +73,28 @@ W_RL = float(os.environ.get("GCPL_RL_WEIGHT", 0.01))
 ENABLE_ATACOM = os.environ.get("GCPL_ENABLE_ATACOM", "1") == "1"
 MAPPO_CKPT = os.environ.get("GCPL_MAPPO_CKPT_DIR", "").strip()
 EPUCK_FMT = os.environ.get("EPUCK_DEF_FMT", "EPUCK_{i}")
+# GCPL_TEST_REPLAY: 启动时的 env var 只作为默认值, 运行时每 tick 还会读
+# TEST_REPLAY_FLAG_FILE (默认 /tmp/gcpl_test_replay.flag) 以支持前端按钮动态开关.
+TEST_REPLAY_DEFAULT = os.environ.get("GCPL_TEST_REPLAY", "").strip().lower()
+TEST_REPLAY_FLAG_FILE = os.environ.get(
+    "GCPL_TEST_REPLAY_FLAG_FILE", "/tmp/gcpl_test_replay.flag"
+)
+
+
+def read_test_replay_flag(default: str = "") -> str:
+    """Read replay pattern from flag file each tick.
+
+    文件不存在 或 读失败 → 返回 default (通常来自启动时的 env var).
+    文件内容空 → 关闭回放 (返回 "").
+    内容非空 → 使用该 pattern (如 'wedge_channel'). 写入时会被 strip+lower.
+    """
+    try:
+        with open(TEST_REPLAY_FLAG_FILE, "r", encoding="utf-8") as f:
+            return f.read().strip().lower()
+    except FileNotFoundError:
+        return default
+    except OSError:
+        return default
 
 # E-puck 硬件常数
 MAX_WHEEL_SPEED = 6.28
@@ -140,6 +165,33 @@ def world_accel_to_diff(a_xy: np.ndarray, heading: float) -> tuple[float, float]
     v_si = float(np.clip(v, -MAX_V_SI, MAX_V_SI))
     omega_si = float(np.clip(omega, -6.0, 6.0))  # 角速度软限 6 rad/s
     return v_si, omega_si
+
+
+# =============================================================================
+# 脚本化测试路径 (用于 §5.2 平台截图; 不参与论文方法实验)
+# =============================================================================
+def scripted_cmd(t_sec: float, agent_idx: int, pattern: str) -> tuple[float, float]:
+    """Return (v_si, omega_si) for a hard-coded replay path.
+
+    Motivation: RoboticsAcademy 前端演示 / 论文 §5.2.2 双通道可视化截图时, 需要
+    机器人有可见运动; 当 MAPPO 未加载或策略输出为零会导致静止. 本函数提供完全
+    绕过 RL/GCPL/ATACOM 的脚本化指令, 仅用于平台本身的视觉验证.
+
+    所有 agent 目前共享同一命令序列 (楔形编队平移), 方便 WebGUI 的 3 条轨迹曲线
+    平行上升, 同时 noVNC 窗口里可以看到 E-puck 穿过 Sigwall 通道.
+    """
+    if pattern == "wedge_channel":
+        # 0 .. 10 s : 直行 0.10 m/s  →  约推进 1 m, 穿过 Sigwall 通道
+        # 10 .. 12 s: 线性减速
+        # >12 s     : 停车, 保持画面可截图
+        V_CRUISE = 0.10
+        if t_sec < 10.0:
+            return V_CRUISE, 0.0
+        if t_sec < 12.0:
+            return V_CRUISE * (1.0 - (t_sec - 10.0) / 2.0), 0.0
+        return 0.0, 0.0
+    # 未知模式 → 静止
+    return 0.0, 0.0
 
 
 # =============================================================================
@@ -297,8 +349,30 @@ def main():
     step_count = 0
     log_interval = max(1, int(500 / dt_ms))  # ~500ms 打印一次
 
+    # 运行时 replay 状态跟踪 (开关由 flag 文件控制, 支持前端按钮)
+    current_replay = TEST_REPLAY_DEFAULT  # 启动时默认值
+    replay_start_step = step_count if current_replay else None
+    if current_replay:
+        print(f"[full_stack] !! TEST_REPLAY_DEFAULT='{current_replay}' 启动即启用, "
+              f"跳过 MAPPO/GCPL/ATACOM, 直接下发脚本化 cmd_vel")
+    print(f"[full_stack] replay flag file: {TEST_REPLAY_FLAG_FILE} "
+          f"(写入 pattern 名启用, 写空关闭)")
+
     while robot.step(dt_ms) != -1:
         step_count += 1
+
+        # 0. 每 tick 刷新 replay 开关 (文件开关, 供前端按钮使用)
+        new_replay = read_test_replay_flag(default=TEST_REPLAY_DEFAULT)
+        if new_replay != current_replay:
+            # 状态切换: 重置 replay 起点, 这样脚本的 t_sec 总是从 0 开始
+            if new_replay:
+                replay_start_step = step_count
+                print(f"[full_stack] >>> replay ENABLE  pattern='{new_replay}' "
+                      f"(at step {step_count})")
+            else:
+                replay_start_step = None
+                print(f"[full_stack] <<< replay DISABLE (back to MAPPO/GCPL/ATACOM)")
+            current_replay = new_replay
 
         # 1. 读取状态
         positions = np.zeros((NUM_AGENTS, 2))
@@ -315,6 +389,19 @@ def main():
         else:
             velocities = (positions - prev_positions) / dt
         prev_positions = positions.copy()
+
+        # ★ 测试回放模式: 绕过整条 RL/安全栈, 直接下发脚本化指令后跳到日志
+        if current_replay:
+            t_sec = (step_count - replay_start_step) * dt
+            if emitter is not None:
+                for i in range(NUM_AGENTS):
+                    v_si, omega_si = scripted_cmd(t_sec, i, current_replay)
+                    v_L, v_R = diff_drive_split(v_si, omega_si)
+                    msg = f"{i} {v_L:.4f} {v_R:.4f}".encode("utf-8")
+                    emitter.send(msg)
+            if step_count % log_interval == 0:
+                print(f"[replay t={t_sec:5.2f}s] pos={positions.round(3).tolist()}")
+            continue
 
         # 3. MAPPO 策略 (可选)
         if policy_pack is not None:

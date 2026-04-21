@@ -1,0 +1,235 @@
+% ============================================================================
+% chap5_mvp_3mode.tex
+%   第5章 · MVP 三模式轨迹对比 (mappo_only / rmp_only / fusion)
+%   数据来源: figs/chap5_mvp_data/*.tsv
+%   数据再生: figs/chap5_mvp_export.py (需 --ckpt-mappo / --ckpt-rmp)
+%
+% 独立编译:
+%   xelatex figs/chap5_mvp_3mode.tex
+%   → figs/chap5_mvp_3mode.pdf
+%
+% 嵌入论文:
+%   \begin{figure}[htbp]
+%     \centering
+%     \includegraphics[width=0.98\linewidth]{figs/chap5_mvp_3mode.pdf}
+%     \caption{...}
+%     \label{fig:chap5_mvp_3mode}
+%   \end{figure}
+% ============================================================================
+
+\documentclass[tikz,border=6pt]{standalone}
+\usepackage[UTF8]{ctex}
+\usepackage{amsmath}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usetikzlibrary{positioning, arrows.meta, backgrounds, fit, shapes.geometric, calc}
+
+% 与 chap5_architecture.tex 保持配色一致
+\definecolor{cA0}{HTML}{1F77B4}   % agent 0
+\definecolor{cA1}{HTML}{FF7F0E}   % agent 1
+\definecolor{cA2}{HTML}{2CA02C}   % agent 2
+\definecolor{cHard}{HTML}{D62728} % 硬安全半径
+\definecolor{cSoft}{HTML}{FF7F0E} % 软协调半径
+\definecolor{cGoal}{HTML}{FFC83D} % 目标
+\definecolor{cWall}{HTML}{3A3A3A} % 墙心
+
+% ---- 场景几何参数 (与 full_stack_mvp_demo.py 对齐) ----
+\def\Goalx{0}
+\def\Goaly{2}
+\def\WallA{-1}
+\def\WallB{1}
+\def\RHard{0.35}   % 硬安全半径 = HARD_R(0.25) + 0.10
+\def\RSoft{0.30}   % 软协调半径 = SOFT_R
+\def\RRobot{0.08}  % 仅可视化占位
+
+% ---- 坐标轴范围 (覆盖 fusion 漂移, 让 mappo_only 发散明显越界可见) ----
+\def\Xmin{-3.2}
+\def\Xmax{1.8}
+\def\Ymin{-1.2}
+\def\Ymax{2.4}
+
+% ---- 每个 panel 的共用基础 (墙、软/硬安全圈、目标、标题) ----
+\pgfplotsset{
+  mvpPanel/.style={
+    width=6.1cm, height=5.2cm,
+    xmin=\Xmin, xmax=\Xmax, ymin=\Ymin, ymax=\Ymax,
+    axis equal image,
+    axis on top=false,
+    tick align=outside,
+    xtick distance=1, ytick distance=1,
+    minor tick num=1,
+    grid=both,
+    major grid style={line width=0.3pt, draw=black!15},
+    minor grid style={line width=0.2pt, draw=black!8},
+    tick label style={font=\tiny},
+    xlabel={\scriptsize $x$ (m)},
+    ylabel={\scriptsize $y$ (m)},
+    xlabel style={yshift=2pt}, ylabel style={yshift=-2pt},
+    title style={align=center, font=\footnotesize, yshift=2pt},
+    clip=true,
+  },
+  every axis plot/.append style={line width=1.1pt},
+}
+
+\begin{document}
+
+\begin{tikzpicture}
+% 背景装饰 (墙心黑点 + 硬红圆 + 软橙虚线圆 + 目标金星) 统一样式
+\def\drawScene#1#2{
+  % #1, #2 = panel 中 axis cs 变换用的 prefix / suffix, 这里用 plot cs 近似
+}
+
+% ---------- Panel 1: mappo_only ----------
+\begin{axis}[
+  name=pMappo,
+  mvpPanel,
+  title={\textbf{\color{black!70}mappo\_only}\\%
+         \scriptsize reached=True, steps=266\\%
+         \scriptsize $\min d_{\text{pair}}=0.043$,\; $\min d_{\text{wall}}=0.561$\\%
+         \scriptsize coll(pair/wall)$=33/0$},
+  legend style={font=\tiny, at={(0.02,0.02)}, anchor=south west,
+                draw=black!30, fill=white, fill opacity=0.85,
+                row sep=-1pt, inner sep=2pt},
+  legend cell align=left,
+]
+  % -- 场景元素 --
+  \draw[cHard, line width=0.9pt] (axis cs:\WallA,0) circle [radius=\RHard];
+  \draw[cSoft, densely dashed, line width=0.7pt]
+        (axis cs:\WallA,0) circle [radius=\RSoft];
+  \fill[cWall] (axis cs:\WallA,0) circle [radius=\RRobot];
+  \draw[cHard, line width=0.9pt] (axis cs:\WallB,0) circle [radius=\RHard];
+  \draw[cSoft, densely dashed, line width=0.7pt]
+        (axis cs:\WallB,0) circle [radius=\RSoft];
+  \fill[cWall] (axis cs:\WallB,0) circle [radius=\RRobot];
+  % 目标星 (五角星)
+  \node[star, star points=5, star point ratio=2.2,
+        inner sep=1.3pt, draw=black!70, line width=0.4pt,
+        fill=cGoal] at (axis cs:\Goalx,\Goaly) {};
+
+  % -- 轨迹 --
+  \addplot[cA0, smooth] table[x=x0, y=y0, col sep=tab]
+      {chap5_mvp_data/mappo_only.tsv};
+  \addlegendentry{agent 0}
+  \addplot[cA1, smooth] table[x=x1, y=y1, col sep=tab]
+      {chap5_mvp_data/mappo_only.tsv};
+  \addlegendentry{agent 1}
+  \addplot[cA2, smooth] table[x=x2, y=y2, col sep=tab]
+      {chap5_mvp_data/mappo_only.tsv};
+  \addlegendentry{agent 2}
+
+  % -- 起点 (圆) / 终点 (方) --
+  \addplot[only marks, mark=*, mark size=1.8pt, cA0, forget plot]
+      coordinates {(-0.091805,-0.336304)};
+  \addplot[only marks, mark=*, mark size=1.8pt, cA1, forget plot]
+      coordinates {(-0.340468,-0.486304)};
+  \addplot[only marks, mark=*, mark size=1.8pt, cA2, forget plot]
+      coordinates {(0.340468,-0.486304)};
+\end{axis}
+
+% ---------- Panel 2: rmp_only ----------
+\begin{axis}[
+  name=pRmp,
+  at={(pMappo.east)}, anchor=west,
+  xshift=0.6cm,
+  mvpPanel,
+  title={\textbf{\color{black!70}rmp\_only}\\%
+         \scriptsize reached=False, steps=600\\%
+         \scriptsize $\min d_{\text{pair}}=0.290$,\; $\min d_{\text{wall}}=0.772$\\%
+         \scriptsize coll(pair/wall)$=0/0$},
+  yticklabels={},
+  ylabel={},
+]
+  \draw[cHard, line width=0.9pt] (axis cs:\WallA,0) circle [radius=\RHard];
+  \draw[cSoft, densely dashed, line width=0.7pt]
+        (axis cs:\WallA,0) circle [radius=\RSoft];
+  \fill[cWall] (axis cs:\WallA,0) circle [radius=\RRobot];
+  \draw[cHard, line width=0.9pt] (axis cs:\WallB,0) circle [radius=\RHard];
+  \draw[cSoft, densely dashed, line width=0.7pt]
+        (axis cs:\WallB,0) circle [radius=\RSoft];
+  \fill[cWall] (axis cs:\WallB,0) circle [radius=\RRobot];
+  \node[star, star points=5, star point ratio=2.2,
+        inner sep=1.3pt, draw=black!70, line width=0.4pt,
+        fill=cGoal] at (axis cs:\Goalx,\Goaly) {};
+
+  \addplot[cA0, smooth] table[x=x0, y=y0, col sep=tab]
+      {chap5_mvp_data/rmp_only.tsv};
+  \addplot[cA1, smooth] table[x=x1, y=y1, col sep=tab]
+      {chap5_mvp_data/rmp_only.tsv};
+  \addplot[cA2, smooth] table[x=x2, y=y2, col sep=tab]
+      {chap5_mvp_data/rmp_only.tsv};
+
+  \addplot[only marks, mark=*, mark size=1.8pt, cA0, forget plot]
+      coordinates {(-0.091805,-0.336304)};
+  \addplot[only marks, mark=*, mark size=1.8pt, cA1, forget plot]
+      coordinates {(-0.340468,-0.486304)};
+  \addplot[only marks, mark=*, mark size=1.8pt, cA2, forget plot]
+      coordinates {(0.340468,-0.486304)};
+\end{axis}
+
+% ---------- Panel 3: fusion ----------
+\begin{axis}[
+  name=pFusion,
+  at={(pRmp.east)}, anchor=west,
+  xshift=0.6cm,
+  mvpPanel,
+  title={\textbf{\color{black!70}fusion}\\%
+         \scriptsize reached=False, steps=600\\%
+         \scriptsize $\min d_{\text{pair}}=0.290$,\; $\min d_{\text{wall}}=0.378$\\%
+         \scriptsize coll(pair/wall)$=0/0$},
+  yticklabels={},
+  ylabel={},
+]
+  \draw[cHard, line width=0.9pt] (axis cs:\WallA,0) circle [radius=\RHard];
+  \draw[cSoft, densely dashed, line width=0.7pt]
+        (axis cs:\WallA,0) circle [radius=\RSoft];
+  \fill[cWall] (axis cs:\WallA,0) circle [radius=\RRobot];
+  \draw[cHard, line width=0.9pt] (axis cs:\WallB,0) circle [radius=\RHard];
+  \draw[cSoft, densely dashed, line width=0.7pt]
+        (axis cs:\WallB,0) circle [radius=\RSoft];
+  \fill[cWall] (axis cs:\WallB,0) circle [radius=\RRobot];
+  \node[star, star points=5, star point ratio=2.2,
+        inner sep=1.3pt, draw=black!70, line width=0.4pt,
+        fill=cGoal] at (axis cs:\Goalx,\Goaly) {};
+
+  \addplot[cA0, smooth] table[x=x0, y=y0, col sep=tab]
+      {chap5_mvp_data/fusion.tsv};
+  \addplot[cA1, smooth] table[x=x1, y=y1, col sep=tab]
+      {chap5_mvp_data/fusion.tsv};
+  \addplot[cA2, smooth] table[x=x2, y=y2, col sep=tab]
+      {chap5_mvp_data/fusion.tsv};
+
+  \addplot[only marks, mark=*, mark size=1.8pt, cA0, forget plot]
+      coordinates {(-0.091805,-0.336304)};
+  \addplot[only marks, mark=*, mark size=1.8pt, cA1, forget plot]
+      coordinates {(-0.340468,-0.486304)};
+  \addplot[only marks, mark=*, mark size=1.8pt, cA2, forget plot]
+      coordinates {(0.340468,-0.486304)};
+\end{axis}
+
+% ---------- 图例 (跨 panel, 放在下方) ----------
+\node[anchor=north, font=\scriptsize,
+      draw=black!30, rounded corners=2pt, inner sep=4pt]
+  at ($(pRmp.south)+(0,-1.3cm)$) {%
+  \begin{tabular}{@{}l@{\hspace{6pt}}l@{\hspace{14pt}}l@{\hspace{6pt}}l@{\hspace{14pt}}l@{\hspace{6pt}}l@{\hspace{14pt}}l@{\hspace{6pt}}l@{}}
+    \tikz[baseline=-0.6ex]\fill[cWall] (0,0) circle (2pt);
+      & 墙心 &
+    \tikz[baseline=-0.6ex]\draw[cHard, line width=0.9pt] (0,0) circle (4pt);
+      & 硬安全半径 $R_{\text{hard}}=0.35$\,m &
+    \tikz[baseline=-0.6ex]\draw[cSoft, densely dashed, line width=0.7pt]
+         (0,0) circle (4pt);
+      & 软协调半径 $R_{\text{soft}}=0.30$\,m &
+    \tikz[baseline=-0.6ex]
+      \node[star, star points=5, star point ratio=2.2, inner sep=1pt,
+            draw=black!70, line width=0.3pt, fill=cGoal] at (0,0) {};
+      & 目标 $(0,2)$ \\
+  \end{tabular}};
+
+% 注: 顶部大标题被移除, 改由论文 \caption 提供描述.
+% 若需独立发布此 PDF (脱离论文), 可取消注释下方一行:
+% \node[font=\bfseries, anchor=south] at ($(pRmp.north)+(0,1.8cm)$)
+%   {chap5 分层控制栈 MVP · 3 机楔形穿通道 (Safety-Gymnasium pure-python)};
+
+\end{tikzpicture}
+
+\end{document}

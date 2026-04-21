@@ -1,0 +1,180 @@
+% ============================================================================
+% chap5_dual_visualization.tex
+%   第5章 §5.2.2 · 双通道可视化机制
+%   语义级 WebGUI 通道 + 原生 noVNC 通道 的并行数据链路
+%
+% 独立编译:
+%   xelatex figs/chap5_dual_visualization.tex
+%   → figs/chap5_dual_visualization.pdf
+%
+% 嵌入论文:
+%   \begin{figure}[htbp]
+%     \centering
+%     \includegraphics[width=0.95\linewidth]{figs/chap5_dual_visualization.pdf}
+%     \caption{双通道可视化机制: 上行语义级 WebGUI 通道 (绿) 提取结构化状态
+%              经 WebSocket 推送至前端组件; 下行原生 noVNC 通道 (蓝) 经 Xvfb
+%              + Xvnc 远程转发仿真器图形界面至浏览器 iframe.}
+%     \label{fig:chap5_dual_vis}
+%   \end{figure}
+% ============================================================================
+
+\documentclass[tikz,border=6pt]{standalone}
+\usepackage[UTF8]{ctex}
+\usepackage{amsmath}
+\usepackage{tikz}
+\usetikzlibrary{positioning, arrows.meta, shapes.geometric, calc, fit, backgrounds}
+
+% 配色与 chap5_parallel_orchestration.tex / chap5_architecture.tex 保持一致
+\definecolor{cOurs}{HTML}{1F77B4}      % 本文核心扩展: 蓝 (原生通道)
+\definecolor{cOursAlt}{HTML}{FF7F0E}   % 本文方法集成: 橙 (源头/前端)
+\definecolor{cOursEval}{HTML}{2CA02C}  % 本文评估管线: 绿 (语义通道)
+\definecolor{cUpstream}{HTML}{7F7F7F}  % 上游已有: 灰
+\definecolor{cBgLayer}{HTML}{F0F0F0}
+\definecolor{cBgHi}{HTML}{FFF8E7}
+
+\begin{document}
+\begin{tikzpicture}[
+  font=\small\sffamily,
+  every node/.style={align=center},
+  % 源/宿 (左右两端)
+  endpoint/.style={
+    draw=cOursAlt, line width=1.1pt, rounded corners=3pt,
+    fill=cBgHi, text=cOursAlt, inner sep=4pt,
+    minimum width=3.2cm, minimum height=1.9cm,
+    font=\footnotesize\bfseries\sffamily,
+  },
+  % 语义通道节点 (绿)
+  semnode/.style={
+    draw=cOursEval, line width=1pt, rounded corners=3pt,
+    fill=white, text=cOursEval, inner sep=4pt,
+    minimum width=2.6cm, minimum height=1.15cm,
+    font=\footnotesize\sffamily,
+  },
+  % 原生通道节点 (蓝)
+  vncnode/.style={
+    draw=cOurs, line width=1pt, rounded corners=3pt,
+    fill=white, text=cOurs, inner sep=4pt,
+    minimum width=2.6cm, minimum height=1.15cm,
+    font=\footnotesize\sffamily,
+  },
+  % 通道标题横幅
+  banner/.style={
+    font=\scriptsize\bfseries\sffamily,
+    inner sep=3pt, rounded corners=2pt,
+  },
+  % 箭头
+  semflow/.style={
+    -{Stealth[length=2.4mm, width=2mm]},
+    line width=0.9pt, draw=cOursEval,
+  },
+  vncflow/.style={
+    -{Stealth[length=2.4mm, width=2mm]},
+    line width=0.9pt, draw=cOurs,
+  },
+  ctrlflow/.style={
+    -{Stealth[length=2.2mm, width=1.8mm]},
+    line width=0.9pt, draw=black!60, densely dashed,
+  },
+  lbl/.style={font=\tiny, inner sep=1pt, fill=white, text=black!65},
+]
+
+% ============================================================================
+% 左端: 仿真源 (Webots / Gazebo / RViz 容器内)
+% ============================================================================
+\node[endpoint] (sim) at (-8.0cm, 0)
+  {仿真器 (容器内)\\[2pt]
+   \scriptsize Webots / Gazebo / RViz\\
+   \scriptsize + ROS\,2 状态话题};
+
+% ============================================================================
+% 右端: 浏览器前端
+% ============================================================================
+\node[endpoint] (browser) at (8.0cm, 0)
+  {浏览器前端\\[2pt]
+   \scriptsize React SPA\\
+   \scriptsize (WebGUI + iframe)};
+
+% ============================================================================
+% 上行: 语义级 WebGUI 通道 (绿)
+% ============================================================================
+\node[banner, text=cOursEval, fill=cOursEval!10, draw=cOursEval!50]
+  (semtitle) at (0, 2.55cm)
+  {语义级 WebGUI 通道 —— 结构化状态 \& 抽象图形};
+
+\node[semnode] (extract) at (-4.3cm, 1.45cm)
+  {状态提取器\\
+   \scriptsize pose / scan / force /\\[-1pt]
+   \scriptsize safety set};
+\node[semnode] (ws)      at ( 0,      1.45cm)
+  {WebSocket 推送\\
+   \scriptsize JSON · 事件驱动\\[-1pt]
+   \scriptsize 局部组件刷新};
+\node[semnode] (comp)    at ( 4.3cm,  1.45cm)
+  {语义组件层\\
+   \scriptsize 轨迹曲线 · 力向量\\[-1pt]
+   \scriptsize 约束边界 2D 图形};
+
+\draw[semflow] (sim.north east)    to[out=20,in=180]  (extract.west);
+\draw[semflow] (extract.east) -- (ws.west);
+\draw[semflow] (ws.east)      -- (comp.west);
+\draw[semflow] (comp.east)    to[out=0,in=160] (browser.north west);
+
+% ============================================================================
+% 下行: 原生 noVNC 通道 (蓝)
+% ============================================================================
+\node[banner, text=cOurs, fill=cOurs!10, draw=cOurs!50]
+  (vnctitle) at (0, -2.55cm)
+  {原生 noVNC 通道 —— 仿真器 GUI 远程转发};
+
+\node[vncnode] (xvfb) at (-4.3cm, -1.45cm)
+  {Xvfb 虚拟显示\\
+   \scriptsize 无头 X server · 容器内\\[-1pt]
+   \scriptsize 承载仿真 GUI 进程};
+\node[vncnode] (xvnc) at ( 0,     -1.45cm)
+  {Xvnc 服务\\
+   \scriptsize VNC 协议帧编码\\[-1pt]
+   \scriptsize 端口映射转发};
+\node[vncnode] (novnc) at ( 4.3cm, -1.45cm)
+  {noVNC 客户端\\
+   \scriptsize WebSocket 解码\\[-1pt]
+   \scriptsize iframe 嵌入页面};
+
+\draw[vncflow] (sim.south east) to[out=-20,in=180]  (xvfb.west);
+\draw[vncflow] (xvfb.east) -- (xvnc.west);
+\draw[vncflow] (xvnc.east) -- (novnc.west);
+\draw[vncflow] (novnc.east) to[out=0,in=-160] (browser.south west);
+
+% ============================================================================
+% 控制反向链路 (浏览器 → 仿真) : 用户交互 (暂停/重启/参数调节)
+% ============================================================================
+\draw[ctrlflow] (browser.west) to[out=175,in=5]
+  node[lbl, pos=0.5]{用户控制 (start / pause / reset)}
+  (sim.east);
+
+% ============================================================================
+% 右侧说明框
+% ============================================================================
+\node[draw=black!25, rounded corners=2pt, inner sep=6pt, font=\scriptsize,
+      fill=white, align=left, text width=4.6cm]
+  at (8.0cm, -4.7cm)
+  {\textbf{双通道互补特性}\\[1pt]
+   \textcolor{cOursEval}{$\bullet$} 语义通道: 轻量 \& 可解释 \\
+   \phantom{$\bullet$} $\Rightarrow$ 算法状态细粒度分析 \\[1pt]
+   \textcolor{cOurs}{$\bullet$} 原生通道: 完整视觉保真 \\
+   \phantom{$\bullet$} $\Rightarrow$ 仿真场景整体观测 \\[1pt]
+   \textcolor{black!60}{$\bullet$} 并行共存 · 互不阻塞};
+
+% ============================================================================
+% 图例
+% ============================================================================
+\node[draw=black!25, rounded corners=2pt, inner sep=5pt, font=\scriptsize,
+      anchor=north west]
+  at (-9.0cm, -4.0cm)
+  {\begin{tabular}{@{}l@{\hspace{4pt}}l@{}}
+     \tikz[baseline=-0.6ex]\draw[semflow] (0,0) -- (0.7,0); & 语义数据流 (结构化 JSON) \\[2pt]
+     \tikz[baseline=-0.6ex]\draw[vncflow] (0,0) -- (0.7,0); & 原生帧流 (VNC RFB) \\[2pt]
+     \tikz[baseline=-0.6ex]\draw[ctrlflow] (0,0) -- (0.7,0); & 用户控制指令 (下行) \\
+   \end{tabular}};
+
+\end{tikzpicture}
+\end{document}

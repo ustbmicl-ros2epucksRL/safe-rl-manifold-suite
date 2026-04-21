@@ -1,0 +1,228 @@
+% ============================================================================
+% chap5_safety_eval.tex
+%   第5章 §5.2.3 · 安全评估与模型验证机制
+%   标准化任务配置 → 策略执行 (内建/上传) → 统一指标体系 → 对比报表
+%
+% 独立编译:
+%   xelatex figs/chap5_safety_eval.tex
+%   → figs/chap5_safety_eval.pdf
+%
+% 嵌入论文:
+%   \begin{figure}[htbp]
+%     \centering
+%     \includegraphics[width=0.95\linewidth]{figs/chap5_safety_eval.pdf}
+%     \caption{安全评估与模型验证机制: 标准化任务配置统一输入, 内建算法与用户
+%              上传模型在同一环境下执行, 统一指标体系 (任务性能 + 安全性)
+%              汇总至对比报表, 支持跨算法横向比较.}
+%     \label{fig:chap5_safety_eval}
+%   \end{figure}
+% ============================================================================
+
+\documentclass[tikz,border=6pt]{standalone}
+\usepackage[UTF8]{ctex}
+\usepackage{amsmath}
+\usepackage{tikz}
+\usetikzlibrary{positioning, arrows.meta, shapes.geometric, calc, fit, backgrounds}
+
+% 配色与 chap5_parallel_orchestration.tex / chap5_architecture.tex 保持一致
+\definecolor{cOurs}{HTML}{1F77B4}      % 本文核心扩展: 蓝
+\definecolor{cOursAlt}{HTML}{FF7F0E}   % 本文方法集成: 橙
+\definecolor{cOursEval}{HTML}{2CA02C}  % 评估管线: 绿
+\definecolor{cUpstream}{HTML}{7F7F7F}  % 上游已有: 灰
+\definecolor{cBgLayer}{HTML}{F0F0F0}
+\definecolor{cBgHi}{HTML}{FFF8E7}
+
+\begin{document}
+\begin{tikzpicture}[
+  font=\small\sffamily,
+  every node/.style={align=center},
+  % 标准化配置源
+  configbox/.style={
+    draw=cOursAlt, line width=1.1pt, rounded corners=3pt,
+    fill=cBgHi, text=cOursAlt, inner sep=4pt,
+    minimum width=4.2cm, minimum height=2.2cm,
+    font=\footnotesize\bfseries\sffamily,
+  },
+  % 策略来源 (内建 / 上传)
+  srcbuiltin/.style={
+    draw=cOurs, line width=1pt, rounded corners=3pt,
+    fill=white, text=cOurs, inner sep=4pt,
+    minimum width=3.6cm, minimum height=1.05cm,
+    font=\footnotesize\sffamily,
+  },
+  srcupload/.style={
+    draw=cOurs, line width=1pt, rounded corners=3pt,
+    fill=cOurs!5, text=cOurs, inner sep=4pt,
+    minimum width=3.6cm, minimum height=1.05cm,
+    font=\footnotesize\sffamily,
+  },
+  % 验证流水线阶段
+  stage/.style={
+    draw=cOursEval, line width=1pt, rounded corners=3pt,
+    fill=white, text=cOursEval, inner sep=3pt,
+    minimum width=2.3cm, minimum height=1.25cm,
+    font=\scriptsize\sffamily,
+  },
+  % 指标体系容器 (两列)
+  metricbox/.style={
+    draw=cOursEval, line width=1pt, rounded corners=3pt,
+    fill=white, inner sep=4pt,
+    minimum width=3.3cm, minimum height=2.6cm,
+    font=\scriptsize\sffamily, text=cOursEval,
+  },
+  metricinner/.style={
+    draw=cOursEval!60, line width=0.4pt, rounded corners=1.5pt,
+    fill=cOursEval!6, text=cOursEval, inner sep=1.5pt,
+    minimum width=2.85cm, minimum height=0.36cm,
+    font=\tiny\sffamily,
+  },
+  mtitle/.style={font=\scriptsize\bfseries\sffamily, text=cOursEval,
+    inner sep=1pt,},
+  % 输出报表
+  report/.style={
+    draw=cOursAlt, line width=1.1pt, rounded corners=3pt,
+    fill=cBgHi, text=cOursAlt, inner sep=4pt,
+    minimum width=3.6cm, minimum height=1.8cm,
+    font=\footnotesize\bfseries\sffamily,
+  },
+  % 箭头
+  flow/.style={
+    -{Stealth[length=2.4mm, width=2mm]},
+    line width=0.9pt, draw=black!70,
+  },
+  flowCfg/.style={
+    -{Stealth[length=2.2mm, width=1.8mm]},
+    line width=0.9pt, draw=cOursAlt,
+  },
+  flowPolicy/.style={
+    -{Stealth[length=2.2mm, width=1.8mm]},
+    line width=0.9pt, draw=cOurs,
+  },
+  flowMetric/.style={
+    -{Stealth[length=2.2mm, width=1.8mm]},
+    line width=0.9pt, draw=cOursEval,
+  },
+  lbl/.style={font=\tiny, inner sep=1pt, fill=white, text=black!65},
+]
+
+% ============================================================================
+% 左侧: 标准化任务配置 (输入源, 橙)
+% ============================================================================
+\node[configbox] (cfg) at (-7.5cm, 0)
+  {标准化任务配置\\[3pt]
+   \scriptsize 机器人模型 · 场景结构\\
+   \scriptsize 障碍物分布 · 传感器参数\\
+   \scriptsize 随机种子 \& 评估轮次};
+
+% ============================================================================
+% 中部: 统一验证流水线 (绿, 4 阶段)
+% ============================================================================
+\node[stage] (s1) at (-3.3cm, -0.0cm) {环境初始化\\[-1pt]
+   \scriptsize 加载 Task 配置\\[-1pt]
+   \scriptsize 同一 seed 流};
+\node[stage] (s2) at (-0.55cm, -0.0cm) {策略推理\\[-1pt]
+   \scriptsize 固定 episode \&\\[-1pt]
+   \scriptsize 控制频率};
+\node[stage] (s3) at (2.2cm, -0.0cm) {运行记录\\[-1pt]
+   \scriptsize traj / cost /\\[-1pt]
+   \scriptsize constraint 日志};
+\node[stage] (s4) at (4.95cm, -0.0cm) {指标计算\\[-1pt]
+   \scriptsize 聚合 \&\\[-1pt]
+   \scriptsize 均值/方差};
+
+\draw[flowMetric] (s1.east) -- (s2.west);
+\draw[flowMetric] (s2.east) -- (s3.west);
+\draw[flowMetric] (s3.east) -- (s4.west);
+
+% 流水线横幅
+\node[font=\scriptsize\bfseries\sffamily, text=cOursEval,
+      fill=cOursEval!10, draw=cOursEval!50, rounded corners=2pt, inner sep=3pt]
+  at (0.85cm, 1.35cm)
+  {统一验证流水线 (同一环境 · 同一随机种子 · 同一评估轮次)};
+
+% 配置 → 流水线 (橙线)
+\draw[flowCfg] (cfg.east) to[out=0,in=180]
+  node[lbl, pos=0.55]{task config}
+  (s1.west);
+
+% ============================================================================
+% 策略来源 (内建 + 用户上传, 蓝)
+%   两者并列位于 s1--s2 下方偏左区域 (整体相对原位左移, 为 s4 下方的指标盒腾空间);
+%   两条路径均汇入 s2.south, 表达两类策略源在评估管线中地位对等.
+% ============================================================================
+\node[srcbuiltin] (builtin) at ($(s2.south)+(-3.50cm,-1.45cm)$)
+  {内建算法库\\[-1pt]
+   \scriptsize MAPPO · MADDPG · QMIX + 安全栈};
+\node[srcupload] (upload) at ($(s2.south)+(0.90cm,-1.45cm)$)
+  {用户上传模型\\[-1pt]
+   \scriptsize .pt / .onnx 检查点上传接口};
+
+% 策略 → 推理阶段 s2 (蓝线, 直线汇入, 体现两路等价接入同一阶段)
+\draw[flowPolicy] (builtin.north) --
+  node[lbl, pos=0.5, fill=white]{policy $\pi$}
+  (s2.south);
+\draw[flowPolicy] (upload.north) -- (s2.south);
+
+% ============================================================================
+% 右上: 跨算法对比报表 (橙)
+%   与左上 cfg 在同一 y=0 行对齐, 形成 "左上输入 → 右上输出" 的水平主干;
+%   两个指标盒下移至 y<0 区, 作为主干下方的汇聚枝.
+% ============================================================================
+\node[report] (rep) at (8.2cm, 0cm)
+  {跨算法对比报表\\[2pt]
+   \scriptsize 表格 · 轨迹 · 学习曲线\\
+   \scriptsize 一键导出 (CSV / PDF)};
+
+% ============================================================================
+% 统一指标体系 (两盒左右并排, 位于 指标计算 s4 正下方)
+%   mperf (任务性能) / msafe (安全性) 左右对称分布于 s4.x=4.95 两侧, 使 s4.south
+%   能对称分叉汇入两类指标, 视觉上表达 "两类指标同源于 s4 且地位对等".
+% ============================================================================
+\node[metricbox] (mperf) at (3.9cm, -3.0cm) {};
+\node[mtitle, below=0.08cm of mperf.north, anchor=north] (mperft)
+  {任务性能指标};
+\node[metricinner, below=0.08cm of mperft.south, anchor=north] (mp1)
+  {任务完成率 (success rate)};
+\node[metricinner, below=0.08cm of mp1.south, anchor=north] (mp2)
+  {累计回报 EpRet};
+\node[metricinner, below=0.08cm of mp2.south, anchor=north] (mp3)
+  {平均编队误差};
+\node[metricinner, below=0.08cm of mp3.south, anchor=north] (mp4)
+  {终点距目标 $d_\mathrm{final}$};
+
+\node[metricbox] (msafe) at (7.5cm, -3.0cm) {};
+\node[mtitle, below=0.08cm of msafe.north, anchor=north] (msafet)
+  {安全性指标};
+\node[metricinner, below=0.08cm of msafet.south, anchor=north] (ms1)
+  {约束违反次数};
+\node[metricinner, below=0.08cm of ms1.south, anchor=north] (ms2)
+  {最小两两距离 $\min d_\mathrm{pair}$};
+\node[metricinner, below=0.08cm of ms2.south, anchor=north] (ms3)
+  {最小墙距 $\min d_\mathrm{wall}$};
+\node[metricinner, below=0.08cm of ms3.south, anchor=north] (ms4)
+  {累计安全代价 $\sum c_t$};
+
+% s4 → 两类指标盒 (对称分叉, metrics 标签放在 s4 正下方)
+\draw[flowMetric] (s4.south) -- (mperf.north);
+\draw[flowMetric] (s4.south) -- (msafe.north);
+\node[lbl, fill=white, text=cOursEval]
+  at ($(s4.south)+(0,-0.5cm)$) {metrics};
+
+% 两类指标 → 对比报表 (均汇入 rep.south, 形成 V 形合并)
+\draw[flowMetric] (mperf.north) -- (rep.south);
+\draw[flowMetric] (msafe.north) -- (rep.south);
+
+% ============================================================================
+% 左下: 图例
+% ============================================================================
+\node[draw=black!25, rounded corners=2pt, inner sep=5pt, font=\scriptsize,
+      anchor=north west]
+  at (-9.0cm, -5.2cm)
+  {\begin{tabular}{@{}l@{\hspace{4pt}}l@{\hspace{14pt}}l@{\hspace{4pt}}l@{\hspace{14pt}}l@{\hspace{4pt}}l@{}}
+     \tikz[baseline=-0.6ex]\draw[flowCfg] (0,0) -- (0.6,0); & 配置下发 &
+     \tikz[baseline=-0.6ex]\draw[flowPolicy] (0,0) -- (0.6,0); & 策略注入 &
+     \tikz[baseline=-0.6ex]\draw[flowMetric] (0,0) -- (0.6,0); & 评估数据流 \\
+   \end{tabular}};
+
+\end{tikzpicture}
+\end{document}

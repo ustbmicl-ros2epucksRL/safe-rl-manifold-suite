@@ -1,0 +1,227 @@
+% ============================================================================
+% chap5_parallel_orchestration.tex
+%   第5章 §5.2.1 · 容器化与并行调度机制
+%   从统一镜像 → 调度器 → N 并行容器 → 共享卷 → 训练器 的数据/控制链路
+%
+% 独立编译:
+%   xelatex figs/chap5_parallel_orchestration.tex
+%   → figs/chap5_parallel_orchestration.pdf
+%
+% 嵌入论文:
+%   \begin{figure}[htbp]
+%     \centering
+%     \includegraphics[width=0.95\linewidth]{figs/chap5_parallel_orchestration.pdf}
+%     \caption{容器化并行调度机制: 统一镜像派生 N 个隔离容器执行并行 rollout,
+%              通过共享卷回收轨迹供训练器更新, 更新后的策略再分发至各容器.}
+%     \label{fig:chap5_parallel_orch}
+%   \end{figure}
+% ============================================================================
+
+\documentclass[tikz,border=6pt]{standalone}
+\usepackage[UTF8]{ctex}
+\usepackage{amsmath}
+\usepackage{tikz}
+\usetikzlibrary{positioning, arrows.meta, shapes.geometric, calc, fit, backgrounds}
+
+% 配色与 chap5_architecture.tex 保持一致
+\definecolor{cOurs}{HTML}{1F77B4}      % 本文核心扩展: 蓝
+\definecolor{cOursAlt}{HTML}{FF7F0E}   % 本文方法集成: 橙
+\definecolor{cOursEval}{HTML}{2CA02C}  % 评估管线: 绿
+\definecolor{cUpstream}{HTML}{7F7F7F}  % 上游已有: 灰
+\definecolor{cBgLayer}{HTML}{F0F0F0}
+\definecolor{cBgHi}{HTML}{FFF8E7}
+
+\begin{document}
+\begin{tikzpicture}[
+  font=\small\sffamily,
+  every node/.style={align=center},
+  % 块样式
+  imgbox/.style={
+    draw=cUpstream, line width=0.8pt, dashed, rounded corners=3pt,
+    fill=white, text=cUpstream, inner sep=4pt,
+    minimum width=5.2cm, minimum height=1.1cm,
+    font=\footnotesize\sffamily,
+  },
+  orch/.style={
+    draw=cOursAlt, line width=1.1pt, rounded corners=3pt,
+    fill=cBgHi, text=cOursAlt, inner sep=4pt,
+    minimum width=5.2cm, minimum height=1.1cm,
+    font=\footnotesize\bfseries\sffamily,
+  },
+  cbox/.style={
+    draw=cOurs, line width=1pt, rounded corners=2pt,
+    fill=white, inner sep=3pt,
+    minimum width=2.55cm, minimum height=2.25cm,
+    font=\scriptsize\bfseries\sffamily, text=cOurs,
+  },
+  cinner/.style={
+    draw=cOurs!60, line width=0.4pt, rounded corners=1.5pt,
+    fill=cOurs!6, text=cOurs, inner sep=1.5pt,
+    minimum width=2.25cm, minimum height=0.38cm,
+    font=\tiny\sffamily,
+  },
+  ctitle/.style={
+    font=\scriptsize\bfseries\sffamily, text=cOurs,
+    inner sep=1pt,
+  },
+  storage/.style={
+    draw=cOursEval, line width=1pt, rounded corners=3pt,
+    fill=white, text=cOursEval, inner sep=4pt,
+    minimum width=8.0cm, minimum height=1.0cm,
+    font=\footnotesize\sffamily,
+  },
+  trainer/.style={
+    draw=cOursEval, line width=1pt, rounded corners=3pt,
+    fill=white, text=cOursEval, inner sep=4pt,
+    minimum width=5.2cm, minimum height=1.0cm,
+    font=\footnotesize\bfseries\sffamily,
+  },
+  request/.style={
+    draw=black!55, line width=0.6pt, rounded corners=2pt,
+    fill=white, text=black!65, inner sep=3pt,
+    minimum width=3.2cm, minimum height=0.9cm,
+    font=\scriptsize\sffamily,
+  },
+  % 箭头
+  flow/.style={
+    -{Stealth[length=2.4mm, width=2mm]},
+    line width=0.9pt, draw=black!70,
+  },
+  flowSpawn/.style={
+    -{Stealth[length=2.2mm, width=1.8mm]},
+    line width=0.9pt, draw=cOursAlt,
+  },
+  flowData/.style={
+    -{Stealth[length=2.2mm, width=1.8mm]},
+    line width=0.9pt, draw=cOursEval,
+  },
+  flowPolicy/.style={
+    -{Stealth[length=2.2mm, width=1.8mm]},
+    line width=0.9pt, draw=cOurs, densely dashed,
+  },
+  lbl/.style={font=\tiny, inner sep=1pt, fill=white, text=black!65},
+]
+
+% ============================================================================
+% 顶行: 镜像  +  用户请求
+% ============================================================================
+\node[imgbox] (img) at (-4.0cm, 4.8cm)
+  {统一容器镜像 (Docker)\\
+   \scriptsize Webots + ROS\,2 + safepo + GCPL};
+
+\node[request] (req) at (4.0cm, 4.8cm)
+  {用户 / 训练任务\\
+   \scriptsize $K$ 次并行 rollout 请求};
+
+% ============================================================================
+% 第 2 行: 调度器
+% ============================================================================
+\node[orch] (orch) at (0, 3.0cm)
+  {容器调度器 (Docker Engine + Orchestrator)\\
+   \scriptsize 创建 / 启动 / 暂停 / 销毁 · 按需分配 CPU/GPU};
+
+\draw[flow, draw=cUpstream] (img.south) to[out=-90,in=160]
+  node[lbl, pos=0.5]{build}
+  ($(orch.north west)+(1.0cm,0)$);
+\draw[flow, draw=black!55] (req.south) to[out=-90,in=20]
+  node[lbl, pos=0.5]{submit}
+  ($(orch.north east)+(-1.0cm,0)$);
+
+% ============================================================================
+% 第 3 行: N 个并行容器 (横向排布 4 个 + 省略号)
+% ============================================================================
+\def\cY{0.35cm}
+\node[cbox] (c1) at (-6.3cm, \cY) {};
+\node[cbox] (c2) at (-3.4cm, \cY) {};
+\node[cbox] (c3) at (-0.5cm, \cY) {};
+\node[font=\Large\bfseries, text=cOurs] at (1.75cm, \cY) {$\cdots$};
+% Container K 左移 1.3cm, 从 x=5.3 → 4.0, 避免与右侧 "隔离与并行机制" 说明框贴边
+\node[cbox] (cN) at (4.0cm, \cY) {};
+
+% 容器标题放在顶部 (box 内部顶对齐)
+\foreach \c/\name in {c1/Container 1, c2/Container 2, c3/Container 3, cN/Container $K$}{
+  \node[ctitle, below=0.06cm of \c.north, anchor=north] (\c t) {\name};
+  % 三层栈 (从上到下: MAPPO → ROS2 → Webots, 对应 run-time 调用顺序)
+  \node[cinner, below=0.08cm of \c t.south, anchor=north] (\c p) {MAPPO + 安全栈};
+  \node[cinner, below=0.08cm of \c p.south, anchor=north] (\c r) {ROS\,2 bridge};
+  \node[cinner, below=0.08cm of \c r.south, anchor=north] (\c s) {Webots 仿真};
+}
+
+% 调度器 → 容器 (spawn)
+%   为避免四条箭头从同一点发散造成交叉与重叠, 起点沿 orch 底边均匀分布;
+%   采用直线段 ( -- ) 而非 S 形贝塞尔, 使扇出关系更清晰.
+\draw[flowSpawn] ($(orch.south west)+(0.7cm,0)$)  -- (c1.north);
+\draw[flowSpawn] ($(orch.south)+(-0.9cm,0)$)      -- (c2.north);
+\draw[flowSpawn] ($(orch.south)+(0.9cm,0)$)       -- (c3.north);
+\draw[flowSpawn] ($(orch.south east)+(-0.7cm,0)$) -- (cN.north);
+
+% spawn 标签放入 c3 与 cN 两条箭头之间的扇形空隙 (此处无其他图元), 避开顶部 build/submit 箭头及右侧说明框
+\node[font=\scriptsize\bfseries, text=cOursAlt, fill=white,
+      draw=cOursAlt!40, rounded corners=1.5pt, inner sep=2pt]
+  at ($(orch.south)+(1.8cm,-0.5cm)$) {spawn $\times K$};
+
+% ============================================================================
+% 第 4 行: 共享卷 (replay / checkpoint)
+%   width 由 8.0cm 扩至 10.5cm, 中心左移至 x=-1.15cm, 使 vol 横向覆盖 c1(x=-6.3) 至
+%   cN(x=4.0) 全部容器, 四条上行数据箭头因此均可采用直线垂直下行, 无需 L 形折线.
+% ============================================================================
+\node[storage, minimum width=10.5cm] (vol) at (-1.15cm, -2.6cm)
+  {共享卷 Volume : runs/\\
+   \scriptsize 轨迹回放缓冲 · 策略检查点 · TensorBoard 日志};
+
+% 各容器 → 共享卷 (数据上行, 绿色): 全部为直线垂直下行
+\foreach \c in {c1,c2,c3,cN}{
+  \draw[flowData] (\c.south) -- (\c.south |- vol.north);
+}
+
+\node[font=\tiny, text=cOursEval]
+  at ($(c3.south)+(0,-0.6cm)$) {rollout \& checkpoint write};
+
+% ============================================================================
+% 第 5 行: 训练器 (返回更新后的策略给容器)
+% ============================================================================
+% 训练器与 vol 新中心 (x=-1.15) 对齐, 保持 mini-batch 箭头为竖直线
+\node[trainer] (tr) at (-1.15cm, -4.3cm)
+  {MAPPO 训练器 (safepo.multi\_agent)};
+
+\draw[flowData] (vol.south) -- node[lbl, pos=0.5]{mini-batch} (tr.north);
+
+% 训练器 → Container K (策略下行, 蓝虚线)
+%   先沿东向离开 tr → 经 vol 东侧外缘 (x ≈ 6.1) 绕上 → 水平向左进入 cN.east,
+%   箭头终点方向清晰指向 Container K 右侧, 避免上一版 "沿 cN.east 竖直上行" 导致的
+%   指向歧义与终点重叠问题. 标签独立出来放在竖直段旁的空地, 避免被箭头穿过.
+\coordinate (ptop) at ($(cN.east)+(0.85cm,0)$);
+\draw[flowPolicy] (tr.east) to[out=0,in=-90] (ptop) -- (cN.east);
+\node[font=\scriptsize\bfseries\sffamily, text=cOurs, align=center,
+      fill=white, draw=cOurs!40, rounded corners=1.5pt, inner sep=2pt]
+  at ($(ptop)+(-0.1cm,-1.9cm)$) {push policy};
+
+% ============================================================================
+% 右侧说明框
+% ============================================================================
+\node[draw=black!25, rounded corners=2pt, inner sep=6pt, font=\scriptsize,
+      fill=white, align=left, text width=4.6cm]
+  at (9.0cm, 0.6cm)
+  {\textbf{隔离与并行机制}\\[1pt]
+   \textcolor{cUpstream}{$\bullet$} 镜像固定全部依赖 \\
+   \phantom{$\bullet$} $\Rightarrow$ 实验可复现 \\[1pt]
+   \textcolor{cOursAlt}{$\bullet$} 调度器动态派生 $K$ 实例 \\
+   \phantom{$\bullet$} $\Rightarrow$ 硬件隔离运行 \\[1pt]
+   \textcolor{cOursEval}{$\bullet$} 共享卷聚合轨迹 \\
+   \phantom{$\bullet$} $\Rightarrow$ 样本吞吐 $\times K$};
+
+% ============================================================================
+% 图例
+% ============================================================================
+\node[draw=black!25, rounded corners=2pt, inner sep=5pt, font=\scriptsize,
+      anchor=north]
+  at ($(tr.south)+(0,-0.35cm)$)
+  {\begin{tabular}{@{}l@{\hspace{4pt}}l@{\hspace{14pt}}l@{\hspace{4pt}}l@{\hspace{14pt}}l@{\hspace{4pt}}l@{\hspace{14pt}}l@{\hspace{4pt}}l@{}}
+     \tikz[baseline=-0.6ex]\draw[flowSpawn] (0,0) -- (0.6,0); & 容器派生 &
+     \tikz[baseline=-0.6ex]\draw[flowData] (0,0) -- (0.6,0); & 数据上行 (rollout) &
+     \tikz[baseline=-0.6ex]\draw[flowPolicy] (0,0) -- (0.6,0); & 策略下行 (checkpoint) &
+     \tikz[baseline=-0.6ex]\draw[flow, draw=black!55] (0,0) -- (0.6,0); & 用户请求 / 构建 \\
+   \end{tabular}};
+
+\end{tikzpicture}
+\end{document}
