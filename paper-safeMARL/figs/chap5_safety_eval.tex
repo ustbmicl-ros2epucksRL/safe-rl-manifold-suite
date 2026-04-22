@@ -115,6 +115,16 @@
    \scriptsize 随机种子 \& 评估轮次};
 
 % ============================================================================
+% 左下: 策略来源 (内建 + 用户上传, 蓝)
+% ============================================================================
+\node[srcbuiltin] (builtin) at (-7.5cm, -2.8cm)
+  {内建算法库\\[-1pt]
+   \scriptsize MAPPO · MADDPG · QMIX + 安全栈};
+\node[srcupload, below=0.35cm of builtin] (upload)
+  {用户上传模型\\[-1pt]
+   \scriptsize .pt / .onnx 检查点上传接口};
+
+% ============================================================================
 % 中部: 统一验证流水线 (绿, 4 阶段)
 % ============================================================================
 \node[stage] (s1) at (-3.3cm, -0.0cm) {环境初始化\\[-1pt]
@@ -145,40 +155,17 @@
   node[lbl, pos=0.55]{task config}
   (s1.west);
 
-% ============================================================================
-% 策略来源 (内建 + 用户上传, 蓝)
-%   两者并列位于 s1--s2 下方偏左区域 (整体相对原位左移, 为 s4 下方的指标盒腾空间);
-%   两条路径均汇入 s2.south, 表达两类策略源在评估管线中地位对等.
-% ============================================================================
-\node[srcbuiltin] (builtin) at ($(s2.south)+(-3.50cm,-1.45cm)$)
-  {内建算法库\\[-1pt]
-   \scriptsize MAPPO · MADDPG · QMIX + 安全栈};
-\node[srcupload] (upload) at ($(s2.south)+(0.90cm,-1.45cm)$)
-  {用户上传模型\\[-1pt]
-   \scriptsize .pt / .onnx 检查点上传接口};
-
-% 策略 → 推理阶段 s2 (蓝线, 直线汇入, 体现两路等价接入同一阶段)
-\draw[flowPolicy] (builtin.north) --
-  node[lbl, pos=0.5, fill=white]{policy $\pi$}
+% 策略 → 推理阶段 (蓝线)
+\draw[flowPolicy] (builtin.east) to[out=0,in=-120]
+  node[lbl, pos=0.6]{policy $\pi$}
   (s2.south);
-\draw[flowPolicy] (upload.north) -- (s2.south);
+\draw[flowPolicy] (upload.east) to[out=0,in=-90]
+  ($(s2.south)+(0.25cm,0)$);
 
 % ============================================================================
-% 右上: 跨算法对比报表 (橙)
-%   与左上 cfg 在同一 y=0 行对齐, 形成 "左上输入 → 右上输出" 的水平主干;
-%   两个指标盒下移至 y<0 区, 作为主干下方的汇聚枝.
+% 右侧: 统一指标体系 (两列: 性能 / 安全)
 % ============================================================================
-\node[report] (rep) at (8.2cm, 0cm)
-  {跨算法对比报表\\[2pt]
-   \scriptsize 表格 · 轨迹 · 学习曲线\\
-   \scriptsize 一键导出 (CSV / PDF)};
-
-% ============================================================================
-% 统一指标体系 (两盒左右并排, 位于 指标计算 s4 正下方)
-%   mperf (任务性能) / msafe (安全性) 左右对称分布于 s4.x=4.95 两侧, 使 s4.south
-%   能对称分叉汇入两类指标, 视觉上表达 "两类指标同源于 s4 且地位对等".
-% ============================================================================
-\node[metricbox] (mperf) at (3.9cm, -3.0cm) {};
+\node[metricbox] (mperf) at (8.2cm, 1.55cm) {};
 \node[mtitle, below=0.08cm of mperf.north, anchor=north] (mperft)
   {任务性能指标};
 \node[metricinner, below=0.08cm of mperft.south, anchor=north] (mp1)
@@ -190,7 +177,7 @@
 \node[metricinner, below=0.08cm of mp3.south, anchor=north] (mp4)
   {终点距目标 $d_\mathrm{final}$};
 
-\node[metricbox] (msafe) at (7.5cm, -3.0cm) {};
+\node[metricbox] (msafe) at (8.2cm, -1.55cm) {};
 \node[mtitle, below=0.08cm of msafe.north, anchor=north] (msafet)
   {安全性指标};
 \node[metricinner, below=0.08cm of msafet.south, anchor=north] (ms1)
@@ -202,15 +189,22 @@
 \node[metricinner, below=0.08cm of ms3.south, anchor=north] (ms4)
   {累计安全代价 $\sum c_t$};
 
-% s4 → 两类指标盒 (对称分叉, metrics 标签放在 s4 正下方)
-\draw[flowMetric] (s4.south) -- (mperf.north);
-\draw[flowMetric] (s4.south) -- (msafe.north);
-\node[lbl, fill=white, text=cOursEval]
-  at ($(s4.south)+(0,-0.5cm)$) {metrics};
+% 流水线输出 → 两类指标
+\draw[flowMetric] (s4.east) to[out=0,in=180]
+  node[lbl, pos=0.5]{metrics}
+  (mperf.west);
+\draw[flowMetric] (s4.east) to[out=0,in=180] (msafe.west);
 
-% 两类指标 → 对比报表 (均汇入 rep.south, 形成 V 形合并)
-\draw[flowMetric] (mperf.north) -- (rep.south);
-\draw[flowMetric] (msafe.north) -- (rep.south);
+% ============================================================================
+% 右下: 对比报表 (橙)
+% ============================================================================
+\node[report] (rep) at (8.2cm, -4.4cm)
+  {跨算法对比报表\\[2pt]
+   \scriptsize 表格 · 轨迹 · 学习曲线\\
+   \scriptsize 一键导出 (CSV / PDF)};
+
+\draw[flowMetric] (mperf.south) -- ++(0,-0.25cm) -| (rep.north west);
+\draw[flowMetric] (msafe.south) -- (rep.north);
 
 % ============================================================================
 % 左下: 图例
