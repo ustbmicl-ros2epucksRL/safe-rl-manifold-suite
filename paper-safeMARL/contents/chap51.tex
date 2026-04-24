@@ -198,7 +198,7 @@ v = \frac{r_w}{2}(\omega_R + \omega_L), \qquad
     \label{fig:tasks}
 \end{figure}
 
-任务运行界面如图~\ref{fig:follow_line}所示，通过向用户提供在线代码编辑器、任务控制面板以及仿真可视化窗口，使用户能够在浏览器环境中完成机器人算法的编写、运行与调试。
+实验界面如图~\ref{fig:follow_line}所示，通过向用户提供在线代码编辑器、任务控制面板以及仿真可视化窗口，使用户能够在浏览器环境中完成机器人算法的编写、运行与调试。
 页面左侧为代码编辑区，右侧为仿真可视化区，右上方任务控制面板用于管理实验流程与系统运行状态。
 \begin{figure}
     \centering
@@ -216,6 +216,22 @@ v = \frac{r_w}{2}(\omega_R + \omega_L), \qquad
 数据可视化通过接收后端周期性推送的状态数据，并映射为二维图形，从而实现对系统状态的语义化表达。事件驱动触发局部组件更新的机制减少了不必要的重绘，提高了渲染效率。
 远程桌面通过 Xvnc 与 noVNC 将图形界面以远程帧缓冲形式传输至浏览器，前端通过 iframe 加载对应页面，实现对 Gazebo、Webots 等原生界面的无侵入式展示。
 此外，系统通过状态机驱动可视化组件的加载与显示，并支持多面板动态编排。
+
+运行管理界面如图~\ref{fig:running}所示，用于展示当前运行的实验任务及其运行状态。
+\begin{figure}
+    \centering
+    \includegraphics[width=1\linewidth]{images/running.png}
+    \caption{运行管理界面}
+    \label{fig:running}
+\end{figure}
+
+实验结果分析界面如图~\ref{fig:result}所示，用于展示实验结果。
+\begin{figure}
+    \centering
+    \includegraphics[width=1\linewidth]{images/result.png}
+    \caption{实验结果分析界面}
+    \label{fig:result}
+\end{figure}
 
 \subsection{后端服务模块}
 
