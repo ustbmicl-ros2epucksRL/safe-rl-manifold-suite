@@ -152,24 +152,11 @@
   (sim.east);
 
 % ============================================================================
-% 右侧说明框
-% ============================================================================
-\node[draw=black!25, rounded corners=2pt, inner sep=6pt, font=\scriptsize,
-      fill=white, align=left, text width=4.6cm]
-  at (8.0cm, -4.7cm)
-  {\textbf{双通道互补特性}\\[1pt]
-   \textcolor{cOursEval}{$\bullet$} 语义通道: 轻量 \& 可解释 \\
-   \phantom{$\bullet$} $\Rightarrow$ 算法状态细粒度分析 \\[1pt]
-   \textcolor{cOurs}{$\bullet$} 原生通道: 完整视觉保真 \\
-   \phantom{$\bullet$} $\Rightarrow$ 仿真场景整体观测 \\[1pt]
-   \textcolor{black!60}{$\bullet$} 并行共存 · 互不阻塞};
-
-% ============================================================================
 % 图例
 % ============================================================================
 \node[draw=black!25, rounded corners=2pt, inner sep=5pt, font=\scriptsize,
       anchor=north west]
-  at (-9.0cm, -4.0cm)
+  at (3.8cm, -2.9cm)
   {\begin{tabular}{@{}l@{\hspace{4pt}}l@{}}
      \tikz[baseline=-0.6ex]\draw[semflow] (0,0) -- (0.7,0); & 语义数据流 (结构化 JSON) \\[2pt]
      \tikz[baseline=-0.6ex]\draw[vncflow] (0,0) -- (0.7,0); & 原生帧流 (VNC RFB) \\[2pt]

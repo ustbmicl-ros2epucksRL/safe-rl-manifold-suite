@@ -1,5 +1,12 @@
 \chapter{不确定环境下安全约束方法}
-\section{方法框架}
+
+在不确定环境中，机器人自主决策不仅需要完成目标导航、避障或任务执行等基本功能，还需要在感知误差和环境变化等因素影响下保持稳定的安全行为。
+传统强化学习方法通常通过奖励惩罚引导策略避免危险状态，但这类软约束方式难以保证训练与部署过程中始终满足硬安全约束；
+同时，机器人系统的运动学限制和状态估计误差也会进一步放大策略执行中的碰撞风险。
+
+针对上述问题，本章围绕不确定环境下的安全强化学习展开研究，提出一种基于约束流形的安全策略学习方法。
+该方法将安全约束显式嵌入策略执行过程，通过约束流形投影对策略动作进行实时修正，并结合离线安全可达性分析与数据驱动状态估计机制，提高策略在复杂环境中的安全性和鲁棒性。
+
 % 针对机器人在强安全约束环境中进行强化学习训练时须严格遵循硬安全约束的问题，
 % 同时优化感知不确定性以及安全约束高度依赖先验模型的问题，本文提出了一种基于约束流形的安全空间过滤框架。
 % 利用系统可达性分析为，从离线轨迹数据中预先计算环境感知的安全区域，
@@ -9,27 +16,6 @@
 % 针对实际机器人系统中普遍存在的传感器噪声与定位误差问题，本文进一步引入数据驱动的扩展卡尔曼滤波（EKF），
 % 利用卷积神经网络（CNN）学习噪声参数，使测量协方差能够适应与速度相关的传感器噪声，
 % 对机器人自身状态进行更加精确和鲁棒的估计，从而显著降低了因感知不确定性引发的安全风险。
-本文构建了一种面向安全强化学习的约束流形策略框架（Constrained Manifold Policy Learning，CMPL），通过约束流形建模、可达性分析与状态估计的协同设计，实现策略安全性与可部署性的兼顾。整体框架由以下三个核心模块组成：
-\begin{itemize}
-\item \textbf{基于约束流形的安全过滤器}：
-针对策略输出可能违反安全约束的问题，本文设计基于零空间投影的动作修正机制，将名义动作投影至约束流形的切空间，从而保证生成动作始终满足硬约束。在此基础上，引入动态奖励校准机制，对动作修正幅度进行显式调节，使策略在训练过程中逐步适应约束结构，形成内生的安全行为，而非单纯依赖外部惩罚项。
-
-\item \textbf{离线安全可达空间构建}：  
-为提升系统对环境约束的感知能力，本文引入 Hamilton--Jacobi 可达性分析方法，在离线阶段基于采样轨迹与环境先验信息预计算安全可达区域。所得可行性值函数在部署时用于动态调节安全裕度，使系统在无需实时精确建模障碍物的情况下，仍能保持保守且稳定的安全行为。
-
-\item \textbf{数据驱动的状态估计模块}：  
-为缓解感知噪声对安全决策的影响，本文构建基于数据驱动的扩展卡尔曼滤波（EKF）框架，通过卷积神经网络学习观测噪声参数，使测量协方差能够随运动状态自适应调整，从而在速度相关噪声条件下维持较高的状态估计精度，保证安全过滤器输入的可靠性。
-\end{itemize}
-
-上述可达性分析与状态估计模块共同遵循“双离线预计算”范式：前者基于环境数据学习安全裕度分布，后者基于交互数据建模感知噪声特性。两者均可在离线阶段完成训练与构建，在部署时无需在线更新，从而显著降低计算开销，提高方法在资源受限平台上的可落地性。
-
-\begin{figure}
-    \centering
-    \includegraphics[width=1\linewidth]{images/framework.png}
-    \caption{framework}
-    \label{fig:placeholder}
-\end{figure}
-
 \section{问题定义}
 为刻画机器人安全导航中的安全关系，考虑一个机器人在包含 $n$ 个障碍物的复杂环境中进行导航任务。令 $s_t = [p_t^\top, v_t^\top]^\top \in \mathcal{S} \subseteq \mathbb{R}^d$ 表示机器人在离散时间步 $t$ 时的状态，其中 $p_t \in \mathbb{R}^{d_p}$ 代表位置向量，$v_t \in \mathbb{R}^{d_p}$ 代表速度向量（$d_p$ 通常为 2 或 3）。为了定量描述安全，我们引入基于距离的约束函数。安全性的核心要求是机器人与环境中任何障碍物之间必须保持一定的物理间隔。定义约束集合如下：$$c_i(s_t) := d_{\text{safe}} - \|p_t - o_i\|_2 \leq 0, \quad \forall i \in \{1, \ldots, n\}$$其中，$d_{\text{safe}} > 0$ 表示预设的最小安全距离阈值，$o_i \in \mathbb{R}^{d_p}$ 为第 $i$ 个障碍物在空间中的坐标，$\|\cdot\|_2$ 为欧几里得范数。
 
@@ -41,9 +27,30 @@
 
 在该模型中：$a \in \mathcal{A} \subseteq \mathbb{R}^m$ 是 $m$ 维控制控制量（如推力、转矩或速度指令）；$f(s): \mathcal{S} \rightarrow \mathbb{R}^d$ 称为漂移项（Drift term），代表系统在无控制输入时的固有动力学演化；$G(s): \mathcal{S} \rightarrow \mathbb{R}^{d \times m}$ 为控制输入矩阵，定义了控制动作如何映射到状态的变化率上。动力学特例：质点模型（Single-Integrator）： 若 $f(s) = 0$ 且 $G(s) = I$，系统简化为全向移动模型。差速驱动模型： $G(s)$ 包含三角函数项（如 $\cos\theta, \sin\theta$），用以体现机器人朝向与运动速度之间的耦合关系。通过结合上述动力学模型与 CMDP 框架，本文的研究重点在于如何在复杂的动力学约束下，保证机器人在轨迹执行过程中的实时安全性。
 
-\section{约束流形方法}
+\section{约束流形策略学习方法}
+本文构建了一种面向安全强化学习的约束流形策略方法（Constrained Manifold Policy Learning，CMPL），通过约束流形建模、可达性分析与状态估计的协同设计，实现策略安全性。整体框架由以下三个核心模块组成：
+\begin{itemize}
+\item \textbf{基于约束流形的安全过滤器}：
+针对策略输出可能违反安全约束的问题，本文设计基于零空间投影的动作修正机制，将名义动作投影至约束流形的切空间，从而保证生成动作始终满足硬约束。在此基础上，引入动态奖励校准机制，对动作修正幅度进行显式调节，使策略在训练过程中逐步适应约束结构，形成内生的安全行为，而非单纯依赖外部惩罚项。
+
+\item \textbf{离线安全可达空间构建}：  
+为提升系统对环境约束的感知能力，本文引入可达性分析方法，在离线阶段基于采样轨迹与环境先验信息预计算安全可达区域。所得可行性值函数在部署时用于动态调节安全裕度，使系统在无需实时精确建模障碍物的情况下，仍能保持保守且稳定的安全行为。
+
+\item \textbf{数据驱动的状态估计模块}：  
+为缓解感知噪声对安全决策的影响，本文构建基于数据驱动的扩展卡尔曼滤波（EKF）框架，通过卷积神经网络学习观测噪声参数，使测量协方差能够随运动状态自适应调整，从而在速度相关噪声条件下维持较高的状态估计精度，保证安全过滤器输入的可靠性。
+\end{itemize}
+
+上述可达性分析与状态估计模块共同遵循双离线预计算范式：前者基于环境数据学习安全裕度分布，后者基于交互数据建模感知噪声特性。两者均可在离线阶段完成训练与构建，在部署时无需在线更新，从而显著降低计算开销，提高方法在资源受限平台上的可落地性。
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1\linewidth]{images/framework.png}
+    \caption{约束流形策略学习方法框架}
+    \label{fig:placeholder}
+\end{figure}
+\subsection{约束流形投影}
 流形是一个局部与欧几里得空间同胚的拓扑空间， 可以用于描述复杂的几何对象，例如曲线、曲面以及更高维的结构。约束流形是由某些约束条件定义的流形，这些约束条件限制系统的状态或行为。在几何上，这些约束可以用方程或不等式来描述。
-\subsection{松弛变量}
+\subsubsection{（1）松弛变量}
 然而，不等式约束在优化和控制律设计中往往难以直接处理，且难以定义稳定的切空间（Tangent Space）。为此，本研究引入非负松弛变量（Slack Variables） $\mu \in \mathbb{R}^k_{\geq 0}$。通过将原始约束函数与松弛变量结合，可以将不等式约束转化为严格的等式约束形式：
 \begin{equation}
     \bar{c}(s, \mu) := c(s) + \mu = 0, \quad \text{其中 } \mu \geq 0\label{eq:slack}
@@ -56,7 +63,7 @@
 
 其中 $\mathcal{D} = \mathcal{S} \times \mathbb{R}^k_{\geq 0}$ 代表由原始状态与松弛变量构成的增广状态空间（Augmented State Space）。
 
-\subsection{零空间投影}
+\subsubsection{（2）零空间投影}
 设$a_{\text{unsafe}} \in \mathbb{R}^m$表示由强化学习策略输出的未受约束的动作（unconstrained action）。
 为了保证系统在执行控制输入时始终满足安全约束，安全过滤器首先在内部构造一个增广参考向量：
 $u_{\text{ref}} =
@@ -148,7 +155,7 @@ $K_c \hat{J}_c^\dagger \bar{c}$
 $O(\Delta t^2)$
 的有界误差。结合修正项的作用，当 $\Delta t$ 相对于 $K_c$ 足够小时，系统仍能够维持约束满足，从而保证整体安全性。
 
-\subsection{奖励修正}
+\subsubsection{（3）奖励修正}
 此外，我们优化了奖励修正方法。在强化学习中，惩罚约束违反是鼓励安全性的一种常见方法。通常的做法是在约束被违反时，向奖励中引入一个负常数惩罚项，但这种方法未考虑动作的不安全程度。当强化学习提出不安全的的动作时，安全流形过滤器会对不安全的动作时做出相应的的修正使其符合安全标准。而修正的幅度则量化了该动作的不安全程度。
 
 因此，在奖励中引入一个与修正幅度相关的惩罚项，通过惩罚修正，可以更精细地控制系统的安全性。将这种奖励修正方法与安全流形过滤器结合使用，这种修改能够鼓励安全性并最小化修正。利用安全过滤器惩罚奖励的通用框架为：
@@ -179,10 +186,10 @@ $O(\Delta t^2)$
 \end{algorithmic}
 \end{algorithm}
 
-\section{安全可达性分析}
+\subsection{安全可达性分析}
 约束流形过滤器需要已知障碍物的位置，我们假设这些信息可以通过静态障碍物的先验地图获得（例如来自离线建图或仿真中的真实环境数据）。为了进一步构建能够自适应调节安全裕度的环境感知安全区域，我们采用离线HJ 可达性分析（Hamilton–Jacobi reachability analysis）。
 
-\subsection{从 HJ 偏微分方程到可行性值函数}
+\subsubsection{（1）从 HJ 偏微分方程到可行性值函数}
 在连续时间系统中，给定约束函数 $c(s) \leq 0$ 定义安全集合
 \begin{equation}
     \mathcal{K} = {s : c(s) \leq 0}
@@ -215,7 +222,7 @@ Hamilton–Jacobi 变分不等式（HJ-VI）刻画了后向可达管（Backward 
 
 对于策略 $\pi$ 的可行区域定义为 $S^{\pi}_f:=\{s|V^{\pi}_c(s) \leq 0\}$ ，即策略 $\pi$ 能够满足硬约束的状态集合。最大可行区域（viability kernel）定义为 $S^*_f:=\{s|V^*_c(s) \leq 0\}$ ，即包括所有存在至少一个满足硬约束策略的状态。 对于状态 $s$ ，可行策略集合定义为 $\Pi_{f(s)}:=\{\pi |V^{\pi}_c(s) \leq 0\}$ ，即包含所有从状态 出发能够满足硬约束的策略。
 
-\subsection{离线近似}
+\subsubsection{（2）离线近似}
 HJ 可达性分析在计算最优可行值函数需要通过与环境交互进行蒙特卡罗估计，这在离线设置中是不可行的。为了保证 Bellman 算子的收敛性，我们引入折扣因子 $\gamma \in (0, 1)$。通过反复利用带有折扣因子 $\gamma\to 1$的可行 Bellman 算子来获得近似的最优可行值。与 BRT 不动点对应的折扣可行 Bellman 算子定义为：
 \begin{equation}
 \mathcal{T}^* Q_c(s, a) := (1{-}\gamma) c(s) + \gamma \max{c(s), V_c(s')}
@@ -233,7 +240,7 @@ L_{Q_c} &= \mathbb{E}_{(s,a,s') \sim \mathcal{D}} \left[ (\mathcal{T}^* Q_c - Q_
 
 其中$L^\tau_{\text{rev}}(u) = |\tau - \mathbf{1}(u > 0)| \cdot u^2$ ， $\tau \in [0.5, 1]$。该损失函数会对较小的 $Q_c$ 值赋予更高权重，从而偏向选择最安全（最乐观）的动作——这对应于 HJ-VI 中 $\min_a$ 的离散近似。
 
-\subsection{与安全过滤器的集成}
+\subsubsection{（3）与安全过滤器的集成}
 在部署阶段，学习得到的 $V^*_c$ 用于调节安全过滤器的保守程度。我们定义一个平滑权重函数：
 \begin{equation}
     w(s) = \exp(V^*_c(s) / \delta)
@@ -256,7 +263,7 @@ d_{\text{danger}}(s) = d_0 + \eta  w(s)
 
 % 通过离线交互数据训练后，可以获得一个可达安全动作值函数，用于预测在给定状态下执行某一动作是否会导致未来进入危险区域。由此获得一个连续、可微的安全判别函数，用于定义隐式安全约束边界。利用学习得到的安全动作值函数，在每个状态下定义安全可行动作集合。对于任意状态，该函数将动作空间划分为可执行的安全动作区域以及会导致未来危险的违规动作区域。由此，通过学习得到的值函数零水平面刻画的连续边界结，在状态–动作空间中形成安全流形。
 
-\section{数据驱动的状态估计}
+\subsection{数据驱动的状态估计}
 准确的状态估计对于安全导航至关重要。位置传感器（例如 GPS、视觉里程计）通常会受到噪声影响，而且这种噪声会随着运行条件变化而变化。例如，当机器人运动速度较快时，振动、多路径效应以及运动模糊都会加剧，从而导致与速度相关（velocity-dependent）的测量不确定性。我们将这种现象建模为：
 \begin{equation}
 \sigma(v) = \sigma_{\text{base}}(1 + k |v|)
@@ -265,7 +272,7 @@ d_{\text{danger}}(s) = d_0 + \eta  w(s)
 
 其中，$\sigma_{\text{base}}$ 表示基础噪声标准差，$k > 0$ 为速度缩放系数，$|v|$ 表示机器人的运动速度。传统的 EKF 通常采用固定的测量噪声协方差 $R = \sigma_{\text{base}}^2 I$，因此无法适应这种噪声变化。在机器人高速运动时，这种固定协方差模型往往会过度信任噪声较大的测量数据，从而降低状态估计精度。为了解决这一问题，我们提出一种数据驱动的扩展卡尔曼滤波（EKF）方法，通过利用最近的 IMU 数据学习预测测量噪声协方差。
 
-\subsection{扩展卡尔曼滤波}
+\subsubsection{（1）扩展卡尔曼滤波}
 我们采用扩展卡尔曼滤波（EKF）对非线性系统动力学进行线性化处理，其线性化点为当前的状态估计。预测步骤如下：
 \begin{align}
 \hat{s}*{t|t-1} &= f(\hat{s}*{t-1}, a_{t-1}) \\
@@ -283,7 +290,7 @@ K_t &= P_{t|t-1} H^\top (H P_{t|t-1} H^\top + R_t)^{-1} \\
 
 其中，$K_t$为卡尔曼增益，$R_t$ 为测量噪声协方差矩阵，通过该更新步骤将预测状态与传感器观测进行融合，从而得到更精确的状态估计。
 
- \subsection{噪声参数适配器}
+ \subsubsection{（2）噪声参数适配器}
 为了避免手动设置的误差，本文通过一个卷积神经网络 NoiseAdapter 来进行学习。该网络以一段 IMU 测量的滑动窗口 作为输入：
 \begin{equation}
 z_t = \text{CNN}\left({\omega^{\text{IMU}}_i, a^{\text{IMU}}*i}*{i=t-L}^{t}\right)
@@ -308,7 +315,7 @@ R_{t} =
 
 其中$\phi(z) = 10^{\beta \tanh(z)}$,$\sigma_{\text{lat}}$ 和 $\sigma_{\text{hdg}}$ 分别表示位置和航向角的基准噪声估计。前两个对角元素共享 $z^{\text{lat}}_t$，对应 各向同性的 GPS 位置噪声；参数 $\beta > 0$ 用于控制噪声自适应的变化范围。$\tanh$ 非线性函数用于限制输出范围，指数形式的参数化确保协方差矩阵满足 $R_t \succ 0$。当 $z_t \approx 0$（例如在模型尚未收敛时），$R_t$ 会退化为基准协方差，从而保证系统的稳定性。
 
-\subsection{离线预训练}
+\subsubsection{（3）离线预训练}
 该 CNN 在离线阶段进行预训练，训练数据由随机探索得到的三元组 $(\mathbf{w}_t, \tilde{y}_t, y_t)$ 构成，其中：$\mathbf{w}_t \in \mathbb{R}^{L \times 6}$ 表示 IMU 测量窗口，$\tilde{y}_t$ 表示带噪声的测量值，$y_t$ 表示真实值。
 训练目标是最小化负对数似然（Negative Log-Likelihood）损失：
 \begin{equation}
@@ -335,7 +342,7 @@ R_{t} =
 
 \section{实验}
 \subsection{任务与环境}
-为了验证所提出方法在不确定环境下安全导航任务中的有效性，本文围绕以下三个核心问题展开实验分析：
+为了验证所提出方法在不确定环境下安全导航任务中的有效性，本文围绕以下四个核心问题展开实验分析：
 \begin{itemize}
     \item \textbf{安全可达空间构建：}
     为验证离线可达性分析是否能够为在线决策提供有效安全先验，本文基于离线轨迹数据构建安全值函数，并分析其对危险区域与安全区域的区分能力，以及其随速度和方向变化的动态边界特性。
@@ -349,6 +356,29 @@ R_{t} =
     \item \textbf{策略无关迁移性：}
     为了验证所提出方法的迁移能力，本文在 Webots E-puck 平台上结合 ROS2 部署安全层，使用简单 P 控制器替代强化学习策略，验证方法的策略无关迁移能力。
 \end{itemize}
+
+本文在 Safety-Gymnasium 基准环境中选取了三个单智能体任务以及一个多智能体任务进行实验评估：
+\begin{itemize}
+\item \textbf{Goal}：在避开圆形危险区域的同时导航至目标位置（共 8 个危险区域，半径为 0.2 m）。
+\item \textbf{Circle}：在保持指定半径的圆周运动的同时避免与边界墙体发生碰撞。
+\item \textbf{Push}：找到一个箱子并将其推动至目标位置，同时避开危险区域
+% （该任务需要涉及接触丰富的操作）。
+\item \textbf{MultiGoal}：多个智能体在避开圆形危险区域的同时导航至目标位置。
+\end{itemize}
+\begin{figure}[!t]
+    \centering
+    %\includegraphics[width=3in]{fig5}
+    \subfloat[Goal Task]{
+            \includegraphics [width=0.4\textwidth, height=0.25\textwidth]{images/goal.png}}
+    \subfloat[Circle Task]{
+            \includegraphics [width=0.4\textwidth, height=0.25\textwidth]{images/circle.png}}
+    \\
+    \subfloat[Push Task]{
+            \includegraphics [width=0.4\textwidth, height=0.25\textwidth]{images/push.png}}
+    \subfloat[MultiGoal Task]{
+            \includegraphics [width=0.4\textwidth, height=0.25\textwidth]{images/multiGoal.png}}
+    \caption{不同任务场景图}
+    \end{figure}
 
 \subsection{安全可达空间实验}
 为刻画智能体在不确定环境中的可行运动范围，并在策略学习前引入先验安全信息，本文基于包含智能体状态及环境观测的离线数据，对系统进行可达性分析预训练，从而构建智能体的安全可达空间。该安全空间用于刻画在给定动力学约束和环境条件下，系统状态是否能够在未来演化过程中满足安全约束，为后续在线决策提供安全判据。
@@ -364,29 +394,9 @@ R_{t} =
 	\caption{安全空间分布图。蓝色曲线所包围的区域（安全值 > 0）表示危险区域，其余区域为安全区域。安全域会随着输入速度和方向的变化而发生改变。}
 	\label{fig:safety_space}
 \end{figure*}
+
 \subsection{对比实验}
-\textbf{任务.}我们在 Safety-Gymnasium 基准环境中选取了三个单智能体任务以及一个多智能体任务进行评估：
-\begin{itemize}
-\item \textbf{Goal}：在避开圆形危险区域的同时导航至目标位置（共 8 个危险区域，半径为 0.2 m）。
-\item \textbf{Circle}：在保持指定半径的圆周运动的同时避免与边界墙体发生碰撞。
-\item \textbf{Push}：找到一个箱子并将其推动至目标位置，同时避开危险区域
-% （该任务需要涉及接触丰富的操作）。
-\item \textbf{MultiGoal}：多个智能体在避开圆形危险区域的同时导航至目标位置。
-\end{itemize}
-\begin{figure}[!t]
-\centering
-%\includegraphics[width=3in]{fig5}
-\subfloat[Goal Task]{
-		\includegraphics [width=0.4\textwidth, height=0.25\textwidth]{images/goal.png}}
-\subfloat[Circle Task]{
-		\includegraphics [width=0.4\textwidth, height=0.25\textwidth]{images/circle.png}}
-\\
-\subfloat[Push Task]{
-		\includegraphics [width=0.4\textwidth, height=0.25\textwidth]{images/push.png}}
-\subfloat[MultiGoal Task]{
-		\includegraphics [width=0.4\textwidth, height=0.25\textwidth]{images/multiGoal.png}}
-\caption{不同任务场景图}
-\end{figure}
+为评估完整框架在安全性与任务性能上的综合表现，本文在 Safety-Gymnasium 的 Goal、Circle、Push 与 MultiGoal 任务中与其他基准算法进行对比。
 
 \subsubsection{基线方法}
 我们在单智能体和多智能体场景中，与多种经典的安全强化学习算法进行对比，包括 PPO~\cite{schulman2017ppo}、 PCPO~\cite{yang2020projection} 、 PPO-Lag~\cite{stooke2020responsive} 、 TRPO-Lag~\cite{achiam2017cpo} ，多智能体实验包含了 MAPPO 、 HAPPO~\cite{kuba2022happo} 、 MACPO 以及 MAPPO-Lag。
@@ -683,7 +693,7 @@ EKF（学习得到的 $R$） & $\mathbf{0.27 {\pm} 0.05}$ & $-7.87 {\pm} 0.94$ &
 
 \section{本章小结}
 
-本章围绕安全强化学习在机器人导航避障问题，构建了“安全可达空间刻画 + 策略生成 + 安全过滤 + 状态估计”的完整执行链路。
+本章围绕安全强化学习在机器人导航避障问题，构建了CMPL框架，即“安全可达空间刻画 + 策略生成 + 安全过滤 + 状态估计”的完整执行链路。
 针对强化学习策略在复杂场景下可能出现的约束违规风险，本文首先从系统约束出发刻画了可用于在线决策的安全可达空间，
 并进一步从约束流形视角设计了安全过滤机制，
 通过对名义动作进行在线修正，在不改变上层策略结构的前提下实现对安全约束的显式满足，并给出了相应的稳定性分析。

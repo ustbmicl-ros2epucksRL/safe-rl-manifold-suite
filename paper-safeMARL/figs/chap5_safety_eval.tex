@@ -119,7 +119,7 @@
 % ============================================================================
 \node[srcbuiltin] (builtin) at (-7.5cm, -2.8cm)
   {内建算法库\\[-1pt]
-   \scriptsize MAPPO · MADDPG · QMIX + 安全栈};
+   \scriptsize MAPPO + 安全机制};
 \node[srcupload, below=0.35cm of builtin] (upload)
   {用户上传模型\\[-1pt]
    \scriptsize .pt / .onnx 检查点上传接口};
@@ -190,10 +190,11 @@
   {累计安全代价 $\sum c_t$};
 
 % 流水线输出 → 两类指标
-\draw[flowMetric] (s4.east) to[out=0,in=180]
+\draw[flowMetric] ($(s4.east)+(0,0.14cm)$) to[out=10,in=180]
   node[lbl, pos=0.5]{metrics}
-  (mperf.west);
-\draw[flowMetric] (s4.east) to[out=0,in=180] (msafe.west);
+  ($(mperf.west)+(0,-0.12cm)$);
+\draw[flowMetric] ($(s4.east)+(0,-0.14cm)$) to[out=-10,in=180]
+  ($(msafe.west)+(0,0.12cm)$);
 
 % ============================================================================
 % 右下: 对比报表 (橙)
@@ -203,8 +204,10 @@
    \scriptsize 表格 · 轨迹 · 学习曲线\\
    \scriptsize 一键导出 (CSV / PDF)};
 
-\draw[flowMetric] (mperf.south) -- ++(0,-0.25cm) -| (rep.north west);
-\draw[flowMetric] (msafe.south) -- (rep.north);
+\coordinate (repRT) at ($(rep.east)+(0,0.55cm)$);
+\coordinate (repRB) at ($(rep.east)+(0,-0.55cm)$);
+\draw[flowMetric] (mperf.east) to[out=0,in=20] (repRT);
+\draw[flowMetric] (msafe.east) to[out=0,in=10] (repRB);
 
 % ============================================================================
 % 左下: 图例

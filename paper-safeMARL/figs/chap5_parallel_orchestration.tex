@@ -107,24 +107,24 @@
 % ============================================================================
 \node[imgbox] (img) at (-4.0cm, 4.8cm)
   {统一容器镜像 (Docker)\\
-   \scriptsize Webots + ROS\,2 + safepo + GCPL};
+   \scriptsize Webots + ROS\,2 + MAPPO 训练组件};
 
 \node[request] (req) at (4.0cm, 4.8cm)
   {用户 / 训练任务\\
-   \scriptsize $K$ 次并行 rollout 请求};
+   \scriptsize $K$ 组并行采样请求};
 
 % ============================================================================
 % 第 2 行: 调度器
 % ============================================================================
 \node[orch] (orch) at (0, 3.0cm)
-  {容器调度器 (Docker Engine + Orchestrator)\\
+  {容器运行管理 (Docker Engine)\\
    \scriptsize 创建 / 启动 / 暂停 / 销毁 · 按需分配 CPU/GPU};
 
 \draw[flow, draw=cUpstream] (img.south) to[out=-90,in=160]
-  node[lbl, pos=0.5]{build}
+  node[lbl, pos=0.5]{构建}
   ($(orch.north west)+(1.0cm,0)$);
 \draw[flow, draw=black!55] (req.south) to[out=-90,in=20]
-  node[lbl, pos=0.5]{submit}
+  node[lbl, pos=0.5]{提交}
   ($(orch.north east)+(-1.0cm,0)$);
 
 % ============================================================================
@@ -139,11 +139,11 @@
 \node[cbox] (cN) at (4.0cm, \cY) {};
 
 % 容器标题放在顶部 (box 内部顶对齐)
-\foreach \c/\name in {c1/Container 1, c2/Container 2, c3/Container 3, cN/Container $K$}{
+\foreach \c/\name in {c1/容器 1, c2/容器 2, c3/容器 3, cN/容器 $K$}{
   \node[ctitle, below=0.06cm of \c.north, anchor=north] (\c t) {\name};
   % 三层栈 (从上到下: MAPPO → ROS2 → Webots, 对应 run-time 调用顺序)
-  \node[cinner, below=0.08cm of \c t.south, anchor=north] (\c p) {MAPPO + 安全栈};
-  \node[cinner, below=0.08cm of \c p.south, anchor=north] (\c r) {ROS\,2 bridge};
+  \node[cinner, below=0.08cm of \c t.south, anchor=north] (\c p) {MAPPO 策略模块};
+  \node[cinner, below=0.08cm of \c p.south, anchor=north] (\c r) {ROS\,2 通信接口};
   \node[cinner, below=0.08cm of \c r.south, anchor=north] (\c s) {Webots 仿真};
 }
 
@@ -158,7 +158,7 @@
 % spawn 标签放入 c3 与 cN 两条箭头之间的扇形空隙 (此处无其他图元), 避开顶部 build/submit 箭头及右侧说明框
 \node[font=\scriptsize\bfseries, text=cOursAlt, fill=white,
       draw=cOursAlt!40, rounded corners=1.5pt, inner sep=2pt]
-  at ($(orch.south)+(1.8cm,-0.5cm)$) {spawn $\times K$};
+  at ($(orch.south)+(1.8cm,-0.5cm)$) {启动 $\times K$};
 
 % ============================================================================
 % 第 4 行: 共享卷 (replay / checkpoint)
@@ -166,25 +166,26 @@
 %   cN(x=4.0) 全部容器, 四条上行数据箭头因此均可采用直线垂直下行, 无需 L 形折线.
 % ============================================================================
 \node[storage, minimum width=10.5cm] (vol) at (-1.15cm, -2.6cm)
-  {共享卷 Volume : runs/\\
-   \scriptsize 轨迹回放缓冲 · 策略检查点 · TensorBoard 日志};
+  {统一数据目录 runs/\\
+   \scriptsize 轨迹缓存 · 策略参数 · TensorBoard 日志};
 
 % 各容器 → 共享卷 (数据上行, 绿色): 全部为直线垂直下行
 \foreach \c in {c1,c2,c3,cN}{
   \draw[flowData] (\c.south) -- (\c.south |- vol.north);
 }
 
-\node[font=\tiny, text=cOursEval]
-  at ($(c3.south)+(0,-0.6cm)$) {rollout \& checkpoint write};
+\node[font=\tiny, text=cOursEval, fill=white, draw=cOursEval!40,
+      rounded corners=1.2pt, inner sep=1.5pt]
+  at ($(c3.south)+(1.45cm,-0.55cm)$) {采样轨迹与参数写入};
 
 % ============================================================================
 % 第 5 行: 训练器 (返回更新后的策略给容器)
 % ============================================================================
 % 训练器与 vol 新中心 (x=-1.15) 对齐, 保持 mini-batch 箭头为竖直线
 \node[trainer] (tr) at (-1.15cm, -4.3cm)
-  {MAPPO 训练器 (safepo.multi\_agent)};
+  {MAPPO 训练端};
 
-\draw[flowData] (vol.south) -- node[lbl, pos=0.5]{mini-batch} (tr.north);
+\draw[flowData] (vol.south) -- node[lbl, pos=0.5]{批量样本} (tr.north);
 
 % 训练器 → Container K (策略下行, 蓝虚线)
 %   先沿东向离开 tr → 经 vol 东侧外缘 (x ≈ 6.1) 绕上 → 水平向左进入 cN.east,
@@ -194,21 +195,7 @@
 \draw[flowPolicy] (tr.east) to[out=0,in=-90] (ptop) -- (cN.east);
 \node[font=\scriptsize\bfseries\sffamily, text=cOurs, align=center,
       fill=white, draw=cOurs!40, rounded corners=1.5pt, inner sep=2pt]
-  at ($(ptop)+(-0.1cm,-1.9cm)$) {push policy};
-
-% ============================================================================
-% 右侧说明框
-% ============================================================================
-\node[draw=black!25, rounded corners=2pt, inner sep=6pt, font=\scriptsize,
-      fill=white, align=left, text width=4.6cm]
-  at (9.0cm, 0.6cm)
-  {\textbf{隔离与并行机制}\\[1pt]
-   \textcolor{cUpstream}{$\bullet$} 镜像固定全部依赖 \\
-   \phantom{$\bullet$} $\Rightarrow$ 实验可复现 \\[1pt]
-   \textcolor{cOursAlt}{$\bullet$} 调度器动态派生 $K$ 实例 \\
-   \phantom{$\bullet$} $\Rightarrow$ 硬件隔离运行 \\[1pt]
-   \textcolor{cOursEval}{$\bullet$} 共享卷聚合轨迹 \\
-   \phantom{$\bullet$} $\Rightarrow$ 样本吞吐 $\times K$};
+  at ($(ptop)+(-0.1cm,-1.9cm)$) {策略下发};
 
 % ============================================================================
 % 图例
@@ -217,9 +204,9 @@
       anchor=north]
   at ($(tr.south)+(0,-0.35cm)$)
   {\begin{tabular}{@{}l@{\hspace{4pt}}l@{\hspace{14pt}}l@{\hspace{4pt}}l@{\hspace{14pt}}l@{\hspace{4pt}}l@{\hspace{14pt}}l@{\hspace{4pt}}l@{}}
-     \tikz[baseline=-0.6ex]\draw[flowSpawn] (0,0) -- (0.6,0); & 容器派生 &
-     \tikz[baseline=-0.6ex]\draw[flowData] (0,0) -- (0.6,0); & 数据上行 (rollout) &
-     \tikz[baseline=-0.6ex]\draw[flowPolicy] (0,0) -- (0.6,0); & 策略下行 (checkpoint) &
+     \tikz[baseline=-0.6ex]\draw[flowSpawn] (0,0) -- (0.6,0); & 容器启动 &
+     \tikz[baseline=-0.6ex]\draw[flowData] (0,0) -- (0.6,0); & 数据上行 (采样轨迹) &
+     \tikz[baseline=-0.6ex]\draw[flowPolicy] (0,0) -- (0.6,0); & 策略下行 (参数更新) &
      \tikz[baseline=-0.6ex]\draw[flow, draw=black!55] (0,0) -- (0.6,0); & 用户请求 / 构建 \\
    \end{tabular}};
 

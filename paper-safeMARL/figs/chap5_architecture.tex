@@ -12,7 +12,7 @@
 %     \centering
 %     \resizebox{\linewidth}{!}{\input{figs/chap5_architecture}}
 %     \caption{多机器人安全强化学习容器化仿真验证平台的五层架构。
-%              蓝色/橙色/绿色实线方框为本文扩展实现, 灰色虚线方框为上游已有模块.}
+%              蓝色/橙色/绿色实线方框为本文扩展实现, 灰色虚线方框为通用基础模块.}
 %     \label{fig:chap5_architecture}
 %   \end{figure}
 % ============================================================================
@@ -34,7 +34,7 @@
 \definecolor{cOurs}{HTML}{1F77B4}      % 本文核心扩展: 蓝
 \definecolor{cOursAlt}{HTML}{FF7F0E}   % 本文方法集成: 橙
 \definecolor{cOursEval}{HTML}{2CA02C}  % 本文评估管线: 绿
-\definecolor{cUpstream}{HTML}{7F7F7F}  % 上游已有: 灰
+\definecolor{cUpstream}{HTML}{7F7F7F}  % 通用部件: 灰
 \definecolor{cBgLayer}{HTML}{F0F0F0}
 \definecolor{cBgHighlight}{HTML}{FFF8E7}
 
@@ -71,7 +71,7 @@
     minimum width=3.5cm, minimum height=0.9cm,
     font=\footnotesize\sffamily,
   },
-  % 模块 (上游已有)
+  % 模块 (通用部件)
   upstream/.style={
     draw=cUpstream, line width=0.6pt, dashed, rounded corners=2pt,
     fill=white, text=cUpstream, inner sep=4pt,
@@ -118,8 +118,8 @@
 
 % ---- Layer 3: 算法容器层 (Docker) ----
 \node[layer, above=0.55cm of L2] (L3) {};
-\node[layerLabel] at ($(L3.north west) + (0.15cm, -0.25cm)$) {Layer 3 · 算法容器层 (Docker, 扩展自上游镜像)};
-\node[upstream] (L3A) at ($(L3.center) + (\colA, -0.20cm)$) {Docker + noVNC\\\scriptsize 上游镜像};
+\node[layerLabel] at ($(L3.north west) + (0.15cm, -0.25cm)$) {Layer 3 · 算法容器层 (Docker)};
+\node[upstream] (L3A) at ($(L3.center) + (\colA, -0.20cm)$) {Docker + noVNC\\\scriptsize 通用容器镜像};
 \node[ours] (L3B) at ($(L3.center) + (\colB, -0.20cm)$) {PyTorch + CUDA\\\scriptsize cu121};
 \node[ours] (L3C) at ($(L3.center) + (\colC, -0.20cm)$) {safepo + safety-gym\\\scriptsize editable install};
 \node[ours] (L3D) at ($(L3.center) + (\colD, -0.20cm)$) {MAPPO 检查点共享\\\scriptsize volume: runs/};
@@ -129,28 +129,28 @@
       fill=cBgHighlight, draw=cOursAlt, line width=0.8pt] (L4) {};
 \node[layerLabel, text=cOursAlt]
   at ($(L4.north west) + (0.15cm, -0.25cm)$)
-  {Layer 4 · 分层控制栈集成层 \emph{(本章方法贡献)}};
+  {Layer 4 · 分层控制栈集成层 \emph{(本文方法贡献)}};
 
 % 四个集成模块 - 用统一列坐标, 避免重叠
 \node[oursAlt] (L4A) at ($(L4.center) + (\colA, -0.35cm)$)
   {MAPPO 策略加载\\\scriptsize cosmos/policies/mappo\_loader.py};
 \node[oursAlt] (L4B) at ($(L4.center) + (\colB, -0.35cm)$)
-  {chap4 软协调层\\\scriptsize cosmos/safety/rmp\_multi\_agent.py};
+  {GCPL 软协调层\\\scriptsize cosmos/safety/rmp\_multi\_agent.py};
 \node[oursAlt] (L4C) at ($(L4.center) + (\colC, -0.35cm)$)
-  {chap3 硬投影层\\\scriptsize cosmos/safety/atacom.py};
+  {CMPL 硬投影层\\\scriptsize cosmos/safety/atacom.py};
 \node[oursAlt] (L4D) at ($(L4.center) + (\colD, -0.35cm)$)
   {差速映射\\\scriptsize $(a_x, a_y)\to(v,\omega)$};
 
 % Supervisor 容器
 \node[draw=cOursAlt, dash pattern=on 2pt off 1pt, rounded corners=3pt,
       fit=(L4A) (L4B) (L4C) (L4D), inner sep=5pt,
-      label={[text=cOursAlt, font=\scriptsize\bfseries]
+      label={[text=cOursAlt, font=\scriptsize\bfseries, fill=white, inner sep=1.5pt, yshift=-3pt]
              below:gcpl\_full\_stack\_supervisor.py}] (L4box) {};
 
 % Layer 4 内部的流向箭头
-\draw[flowBold] (L4A.east) -- node[above, font=\tiny]{$a^{RL}$} (L4B.west);
-\draw[flowBold] (L4B.east) -- node[above, font=\tiny]{$a^\star$} (L4C.west);
-\draw[flowBold] (L4C.east) -- node[above, font=\tiny]{$a_\mathrm{safe}$} (L4D.west);
+\draw[flowBold] (L4A.east) -- node[above, font=\tiny, fill=white, inner sep=1pt]{$a^{RL}$} (L4B.west);
+\draw[flowBold] (L4B.east) -- node[above, font=\tiny, fill=white, inner sep=1pt]{$a^\star$} (L4C.west);
+\draw[flowBold] (L4C.east) -- node[above, font=\tiny, fill=white, inner sep=1pt]{$a_\mathrm{safe}$} (L4D.west);
 
 % ---- Layer 5: 评估管线层 ----
 \node[layer, above=0.55cm of L4] (L5) {};
@@ -171,15 +171,11 @@
 %   · 中间: 仅保留列对齐的纵向依赖 (L3→L4 runtime, L5→L4 触发)
 % ============================================================================
 
-% ----  状态采集链: L1 → L2 → L4  (左侧绕)  ----
-\draw[flow] (L1B.north) -- (L2B.south);
-\draw[flow] (L2B.north) to[out=135,in=225]
-  ($(L4B.west) + (-0.15cm, 0)$);
-
-% ----  指令下发链: L4 → L2 → L1  (右侧绕)  ----
-\draw[flow] ($(L4D.east) + (0.15cm, 0)$) to[out=315,in=45]
-  ($(L2C.north) + (0.15cm, 0)$);
-\draw[flow] (L2C.south) -- (L1C.north);
+% ----  跨层主链: 大框到大框  ----
+\draw[flow] ($(L1.north)+(-7.75cm,0)$) -- node[left, xshift=-2pt, font=\tiny, fill=white, inner sep=1pt]{状态上行} ($(L2.south)+(-7.75cm,0)$);
+\draw[flow] ($(L2.north)+(-7.75cm,0)$) -- ($(L4.south)+(-7.75cm,0)$);
+\draw[flow] ($(L4.south)+(7.75cm,0)$) -- node[right, xshift=2pt, font=\tiny, fill=white, inner sep=1pt]{指令下行} ($(L2.north)+(7.75cm,0)$);
+\draw[flow] ($(L2.south)+(7.75cm,0)$) -- ($(L1.north)+(7.75cm,0)$);
 
 % ----  L3 → L4  (容器提供 runtime, 虚线纵向, 列对齐)  ----
 \draw[flow, dashed] (L3A.north) -- (L4A.south);
@@ -199,27 +195,19 @@
 \node[draw=black!30, rounded corners=2pt, inner sep=5pt, font=\scriptsize,
       anchor=north]
   at ($(L1.south) + (0, -0.4cm)$) (legend)
-  {\begin{tabular}{@{}l@{\hspace{3pt}}l@{\hspace{16pt}}l@{\hspace{3pt}}l@{\hspace{16pt}}l@{\hspace{3pt}}l@{\hspace{16pt}}l@{\hspace{3pt}}l@{}}
+  {\begin{tabular}{@{}l@{\hspace{3pt}}l@{\hspace{10pt}}l@{\hspace{3pt}}l@{\hspace{10pt}}l@{\hspace{3pt}}l@{\hspace{10pt}}l@{\hspace{3pt}}l@{\hspace{10pt}}l@{\hspace{3pt}}l@{\hspace{10pt}}l@{\hspace{3pt}}l@{\hspace{10pt}}l@{\hspace{3pt}}l@{}}
     \tikz \draw[cOursAlt, line width=1pt, fill=white, rounded corners=1pt]
-        (0,0) rectangle (0.4,0.2); & 本章方法贡献 (L4) &
+        (0,0) rectangle (0.4,0.2); & 本文方法贡献 (L4) &
     \tikz \draw[cOurs, line width=1pt, fill=white, rounded corners=1pt]
         (0,0) rectangle (0.4,0.2); & 本文平台扩展 (L1–L3) &
     \tikz \draw[cOursEval, line width=1pt, fill=white, rounded corners=1pt]
         (0,0) rectangle (0.4,0.2); & 评估管线扩展 (L5) &
     \tikz \draw[cUpstream, dashed, fill=white, rounded corners=1pt]
-        (0,0) rectangle (0.4,0.2); & 上游 RoboticsAcademy 已有 \\[2pt]
+        (0,0) rectangle (0.4,0.2); & 通用基础模块 &
     \tikz \draw[flowBold, shorten >=2pt] (0,0.1) -- (0.4,0.1); & 核心控制管道 &
     \tikz \draw[flow, shorten >=2pt] (0,0.1) -- (0.4,0.1); & 数据/状态流向 &
-    \tikz \draw[flow, dashed, shorten >=2pt] (0,0.1) -- (0.4,0.1); & 依赖关系 &
-    & \\
+    \tikz \draw[flow, dashed, shorten >=2pt] (0,0.1) -- (0.4,0.1); & 依赖关系 \\
   \end{tabular}};
-
-% ============================================================================
-% 标题  (放在最上方)
-% ============================================================================
-\node[font=\bfseries, anchor=south]
-  at ($(L5.north) + (0, 0.4cm)$)
-  {多机器人安全强化学习的容器化仿真验证平台 \emph{· 五层架构}};
 
 \end{tikzpicture}
 
