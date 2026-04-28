@@ -23,7 +23,7 @@
 
 在强化学习（RL）框架下，将安全导航任务建模为一个约束马尔可夫决策过程（CMDP），记为六元组 $(\mathcal{S}, \mathcal{A}, P, R, \gamma, C)$。其中：$\mathcal{S}$ 和 $\mathcal{A}$ 分别为状态空间和动作空间；$P: \mathcal{S} \times \mathcal{A} \times \mathcal{S} \rightarrow [0, 1]$ 为环境的状态转移概率核；$R: \mathcal{S} \times \mathcal{A} \rightarrow \mathbb{R}$ 为奖励函数，鼓励机器人靠近目标点；$\gamma \in [0, 1)$ 为折扣因子；$C = \{c_i: \mathcal{S} \rightarrow \mathbb{R}\}_{i=1}^k$ 为与环境障碍物对应的约束集合。在具有 $k=n$ 个硬约束（每个障碍物对应一个约束）的设置下，安全强化学习的目标是寻找到一个最优策略 $\pi: \mathcal{S} \rightarrow \mathcal{A}$，使得在满足所有时间步的硬安全约束前提下，最大化累积期望回报：$$\max_{\pi} \mathbb{E}_{\pi}\left[ \sum_{t=0}^{T} \gamma^t R(s_t, a_t) \right]$$$$\text{s.t. } c_i(s_t) \leq 0, \quad \forall t \in \{0, \dots, T\}, \forall i \in \{1, \dots, n\}$$与传统的强化学习不同，CMDP 要求算法在探索过程中不仅要学习任务技能，还必须严格遵守状态空间的边界，避免任何形式的碰撞。
 
-此外，考虑到机器人系统（如差速驱动轮式机器人或无人机）普遍存在非霍洛诺姆约束（Nonholonomic Constraints），不能简单地假设状态可以任意改变。因此，本文将机器人的底层运动学建模为连续时间的控制仿射系统（Control-Affine System）：$$\dot{s} = f(s) + G(s) a$$
+此外，考虑到机器人系统（如差速驱动轮式机器人或无人机）普遍存在非完整约束（Nonholonomic Constraints），不能简单地假设状态可以任意改变。因此，本文将机器人的底层运动学建模为连续时间的控制仿射系统（Control-Affine System）：$$\dot{s} = f(s) + G(s) a$$
 
 在该模型中：$a \in \mathcal{A} \subseteq \mathbb{R}^m$ 是 $m$ 维控制控制量（如推力、转矩或速度指令）；$f(s): \mathcal{S} \rightarrow \mathbb{R}^d$ 称为漂移项（Drift term），代表系统在无控制输入时的固有动力学演化；$G(s): \mathcal{S} \rightarrow \mathbb{R}^{d \times m}$ 为控制输入矩阵，定义了控制动作如何映射到状态的变化率上。动力学特例：质点模型（Single-Integrator）： 若 $f(s) = 0$ 且 $G(s) = I$，系统简化为全向移动模型。差速驱动模型： $G(s)$ 包含三角函数项（如 $\cos\theta, \sin\theta$），用以体现机器人朝向与运动速度之间的耦合关系。通过结合上述动力学模型与 CMDP 框架，本文的研究重点在于如何在复杂的动力学约束下，保证机器人在轨迹执行过程中的实时安全性。
 
@@ -158,7 +158,7 @@ $O(\Delta t^2)$
 的有界误差。结合修正项的作用，当 $\Delta t$ 相对于 $K_c$ 足够小时，系统仍能够维持约束满足，从而保证整体安全性。
 
 \subsubsection{（3）奖励修正}
-此外，本文优化了奖励修正方法。在强化学习中，惩罚约束违反是鼓励安全性的一种常见方法。通常的做法是在约束被违反时，向奖励中引入一个负常数惩罚项，但这种方法未考虑动作的不安全程度。当强化学习提出不安全的的动作时，安全流形过滤器会对不安全的动作时做出相应的的修正使其符合安全标准。而修正的幅度则量化了该动作的不安全程度。
+此外，本文优化了奖励修正方法。在强化学习中，惩罚约束违反是鼓励安全性的一种常见方法。通常的做法是在约束被违反时，向奖励中引入一个负常数惩罚项，但这种方法未考虑动作的不安全程度。当强化学习提出不安全的的动作时，安全流形过滤器会对其做出相应的的修正使其符合安全标准。而修正的幅度则量化了该动作的不安全程度。
 
 因此，在奖励中引入一个与修正幅度相关的惩罚项，通过惩罚修正，可以更精细地控制系统的安全性。将这种奖励修正方法与安全流形过滤器结合使用，这种修改能够鼓励安全性并最小化修正。利用安全过滤器惩罚奖励的通用框架为：
 \begin{equation}
@@ -168,7 +168,7 @@ $O(\Delta t^2)$
     \end{split}
 \end{equation}
 
-其中，$\alpha$ 是惩罚权重，$P$ 是基于修正的惩罚函数，$a_{applied,t}$是实际应用于系统的动作（在标准 RL 训练中为$a_{uncert,t}$ 而在过滤训练动作时为$a_{safe,t}$。
+其中，$\alpha$ 是惩罚权重，$P$ 是基于修正的惩罚函数，$a_{applied,t}$是实际应用于系统的动作（在标准 RL 训练中为$a_{uncert,t}$ 而在过滤训练动作时为$a_{safe,t}$）。
 
 \begin{algorithm}
 \caption{Policy Iteration with Constraints}
@@ -401,7 +401,7 @@ R_{t} =
 为评估完整框架在安全性与任务性能上的综合表现，本文在 Safety-Gymnasium 的 Goal、Circle、Push 与 MultiGoal 任务中与其他基准算法进行对比。
 
 \subsubsection{基线方法}
-本文在单智能体和多智能体场景中，与多种经典的安全强化学习算法进行对比，包括 PPO~\cite{schulman2017ppo}、 PCPO~\cite{yang2020projection} 、 PPO-Lag~\cite{stooke2020responsive} 、 TRPO-Lag~\cite{achiam2017cpo} ，多智能体实验包含了 MAPPO 、 HAPPO~\cite{kuba2022happo} 、 MACPO 以及 MAPPO-Lag。
+本文在单智能体和多智能体场景中，与多种经典的安全强化学习算法进行对比，包括 PPO~\cite{schulman2017ppo}、 PCPO~\cite{yang2020projection} 、 PPO-Lag~\cite{stooke2020responsive} 、 TRPO-Lag~\cite{achiam2017cpo} ，多智能体实验包含了 MAPPO 、 HAPPO~\cite{kuba2022happo} 、 MACPO 以及 MAPPO\_Lag。
 
 需要注意的是，ATACOM~\cite{liu2022atacom} 需要任务特定的约束雅可比矩阵以及扩展动作空间，因此在 Safety-Gymnasium 基准环境上进行直接比较较为困难；相比之下，本文的方法采用一种基于距离的简化安全过滤器，用于在点机器人任务中近似实现流形投影。
 
@@ -461,8 +461,8 @@ Clip ratio $\epsilon$ & 0.2 & 安全裕度参数 $\eta$ / $\delta$ & 0.1,m / 1.0
       \multicolumn{2}{c|}{Algorithm} &
       \multicolumn{3}{c|}{PPO} &
       \multicolumn{3}{c|}{PCPO} &
-      \multicolumn{3}{c|}{PPO\_LAG} &
-      \multicolumn{3}{c|}{TRPO\_LAG} &
+      \multicolumn{3}{c|}{PPO\_Lag} &
+      \multicolumn{3}{c|}{TRPO\_Lag} &
       \multicolumn{3}{c}{CMPL}\\
       TASK & $r_{collision}$
           & reward & cost & step
@@ -535,7 +535,7 @@ Clip ratio $\epsilon$ & 0.2 & 安全裕度参数 $\eta$ / $\delta$ & 0.1,m / 1.0
       \multicolumn{3}{c|}{MAPPO} &
       \multicolumn{3}{c|}{HAPPO} &
       \multicolumn{3}{c|}{MACPO} &
-      \multicolumn{3}{c|}{MAPPO\_LAG} &
+      \multicolumn{3}{c|}{MAPPO\_Lag} &
       \multicolumn{3}{c}{CMPL}\\
       TASK & $r_{collision}$
           & reward & cost & step

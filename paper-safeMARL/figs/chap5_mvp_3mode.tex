@@ -1,6 +1,6 @@
 % ============================================================================
 % chap5_mvp_3mode.tex
-%   第5章 · MVP 三模式轨迹对比 (mappo_only / rmp_only / fusion)
+%   第5章 · MVP 三模式轨迹对比 (MAPPO_only / rmp_only / fusion)
 %   数据来源: figs/chap5_mvp_data/*.tsv
 %   数据再生: figs/chap5_mvp_export.py (需 --ckpt-mappo / --ckpt-rmp)
 %
@@ -43,7 +43,7 @@
 \def\RSoft{0.30}   % 软协调半径 = SOFT_R
 \def\RRobot{0.08}  % 仅可视化占位
 
-% ---- 坐标轴范围 (覆盖 fusion 漂移, 让 mappo_only 发散明显越界可见) ----
+% ---- 坐标轴范围 (覆盖 fusion 漂移, 让 MAPPO_only 发散明显越界可见) ----
 \def\Xmin{-3.2}
 \def\Xmax{1.8}
 \def\Ymin{-1.2}
@@ -80,11 +80,11 @@
   % #1, #2 = panel 中 axis cs 变换用的 prefix / suffix, 这里用 plot cs 近似
 }
 
-% ---------- Panel 1: mappo_only ----------
+% ---------- Panel 1: MAPPO_only ----------
 \begin{axis}[
   name=pMappo,
   mvpPanel,
-  title={\textbf{\color{black!70}mappo\_only}\\%
+  title={\textbf{\color{black!70}MAPPO\_only}\\%
          \scriptsize reached=True, steps=266\\%
          \scriptsize $\min d_{\text{pair}}=0.043$,\; $\min d_{\text{wall}}=0.561$\\%
          \scriptsize coll(pair/wall)$=33/0$},
