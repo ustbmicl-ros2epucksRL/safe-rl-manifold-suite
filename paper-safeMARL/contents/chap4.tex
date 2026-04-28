@@ -563,7 +563,7 @@ GCPL 根节点解析输出的是机器人世界坐标系下的二维加速度 $a
     成功率定义为：$SR = \frac{N_{success}}{N_{total}}$，其中：$N_{success}$ 为成功到达目标且未发生碰撞的 episode 数；$N_{total}$ 为总测试 episode 数，该指标反映策略在复杂环境中的任务完成能力。
 \end{itemize}
 
-\subsubsection{奖励设置}
+\subsubsection{（1）奖励设置}
 强化学习部分主要负责提供目标驱动和整体行为优化能力，因此设计了一系列奖励函数以引导策略学习合理的导航行为。
 总奖励由多个子奖励组成：
 \[r_t = r_{goal} + r_{progress} + r_{form} + r_{collision}\]
@@ -648,7 +648,7 @@ r_{\mathrm{form}}^k = r_{\mathrm{dist}} + r_{\mathrm{aux}},
 如果机器人发生碰撞，则给予较大的负奖励：$r_{collision} = R_{collision}$。
 该奖励用于强烈惩罚危险行为，促使策略避免碰撞。
 
-\subsubsection{代价设置}
+\subsubsection{（2）代价设置}
 
 除奖励函数外，本文设计代价函数（Cost），用于度量系统在运行过程中产生的风险程度。该 cost 主要用于安全评估以及策略约束分析。
 总安全代价定义为：
@@ -665,7 +665,7 @@ r_{\mathrm{form}}^k = r_{\mathrm{dist}} + r_{\mathrm{aux}},
 其中： $d_{safe}$ 为机器人间安全距离；$\beta_c$ 为代价权重； $\phi(\cdot)$ 为ReLU 或 barrier 函数。
 当机器人距离小于安全距离时，代价增加，从而反映系统风险。
 
-\subsubsection{参数设置}
+\subsubsection{（3）参数设置}
 实验中的训练参数与GCPL参数如表~\ref{tab:GCPL_params} 所示。
 \begin{table}[htbp]
 \centering
