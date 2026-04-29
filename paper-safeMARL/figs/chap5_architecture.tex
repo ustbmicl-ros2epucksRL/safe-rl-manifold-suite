@@ -32,11 +32,11 @@
 }
 
 \definecolor{cOurs}{HTML}{1F77B4}      % 本文核心扩展: 蓝
-\definecolor{cOursAlt}{HTML}{FF7F0E}   % 本文方法集成: 橙
-\definecolor{cOursEval}{HTML}{2CA02C}  % 本文评估管线: 绿
+\definecolor{cOursAlt}{HTML}{F57C00}   % 本文方法集成: 中橙 (Material Orange 700)
+\definecolor{cOursEval}{HTML}{000000}  % 本文评估管线: 黑 (原 2CA02C 绿)
 \definecolor{cUpstream}{HTML}{7F7F7F}  % 通用部件: 灰
 \definecolor{cBgLayer}{HTML}{F0F0F0}
-\definecolor{cBgHighlight}{HTML}{FFF8E7}
+\definecolor{cBgHighlight}{HTML}{FFF3E0}  % L4 高亮底色: 浅暖橙 (Material Orange 50)
 
 \begin{document}
 
@@ -84,8 +84,8 @@
     line width=0.9pt, draw=black!70,
   },
   flowBold/.style={
-    -{Stealth[length=2.5mm, width=2.2mm]},
-    line width=1.2pt, draw=cOursAlt,
+    -{Stealth[length=2.6mm, width=2.2mm]},
+    line width=1.3pt, draw=cOursAlt,
   },
   codepath/.style={font=\tiny\ttfamily, text=black!50},
 ]
@@ -126,7 +126,7 @@
 
 % ---- Layer 4: 分层集成层 (核心) ----
 \node[layer, minimum height=2.6cm, above=0.55cm of L3,
-      fill=cBgHighlight, draw=cOursAlt, line width=0.8pt] (L4) {};
+      fill=cBgHighlight, draw=cOursAlt, line width=1pt] (L4) {};
 \node[layerLabel, text=cOursAlt]
   at ($(L4.north west) + (0.15cm, -0.25cm)$)
   {Layer 4 · 分层控制栈集成层 \emph{(本文方法贡献)}};
@@ -171,11 +171,18 @@
 %   · 中间: 仅保留列对齐的纵向依赖 (L3→L4 runtime, L5→L4 触发)
 % ============================================================================
 
-% ----  跨层主链: 大框到大框  ----
-\draw[flow] ($(L1.north)+(-7.75cm,0)$) -- node[left, xshift=-2pt, font=\tiny, fill=white, inner sep=1pt]{状态上行} ($(L2.south)+(-7.75cm,0)$);
-\draw[flow] ($(L2.north)+(-7.75cm,0)$) -- ($(L4.south)+(-7.75cm,0)$);
-\draw[flow] ($(L4.south)+(7.75cm,0)$) -- node[right, xshift=2pt, font=\tiny, fill=white, inner sep=1pt]{指令下行} ($(L2.north)+(7.75cm,0)$);
-\draw[flow] ($(L2.south)+(7.75cm,0)$) -- ($(L1.north)+(7.75cm,0)$);
+% ----  跨层主链: 走 layer 框外侧, 用平滑曲线 (Bezier) 贯穿 L1↔L4  ----
+%        左侧上行 L1 → L4 (状态), 右侧下行 L4 → L1 (指令)
+\draw[flow, rounded corners=8pt]
+  ($(L1.west)+(-0.6cm,0)$)
+    .. controls ($(L1.west)+(-1.6cm,1.0cm)$) and ($(L4.west)+(-1.6cm,-1.0cm)$) ..
+  node[right, pos=0.5, xshift=2pt, font=\tiny, fill=white, inner sep=1pt]{状态上行}
+  ($(L4.west)+(-0.6cm,0)$);
+\draw[flow, rounded corners=8pt]
+  ($(L4.east)+(0.6cm,0)$)
+    .. controls ($(L4.east)+(1.6cm,-1.0cm)$) and ($(L1.east)+(1.6cm,1.0cm)$) ..
+  node[left, pos=0.5, xshift=-2pt, font=\tiny, fill=white, inner sep=1pt]{指令下行}
+  ($(L1.east)+(0.6cm,0)$);
 
 % ----  L3 → L4  (容器提供 runtime, 虚线纵向, 列对齐)  ----
 \draw[flow, dashed] (L3A.north) -- (L4A.south);
