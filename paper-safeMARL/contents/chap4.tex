@@ -7,14 +7,14 @@
 
 \section{问题定义}
 在强化学习框架下，编队控制问题可建模为一个带约束的多智能体马尔可夫决策过程（CMDP）。策略 $\pi_\theta$ 的目标是在满足安全约束的前提下最大化期望累计奖励：
-\begin{equation}
+\begin{equation*}
 \max_{\pi_\theta} \mathbb{E}\left[\sum_{t=0}^{T} r_t \right]
-\end{equation}
+\end{equation*}
 
 同时满足期望安全代价约束：
-\begin{equation}
+\begin{equation*}
 \mathbb{E}\left[\sum_{t=0}^{T} c_t \right] \le C.
-\end{equation}
+\end{equation*}
 
 其中 $r_t$ 表示任务奖励（目标到达、编队保持等），$c_t$ 表示安全代价（碰撞风险等）。
 为保证系统运行过程中的安全性，定义不等式约束，包括机器人-障碍物约束
@@ -26,67 +26,67 @@ $|p_i - p_j| \ge d_{\text{safe}}, \quad i \ne j$,
 \subsection{状态与控制输入建模}
 本文研究对象为工作在二维平面环境下的多差速移动机器人系统。为便于在 GCPL 框架下进行统一的几何力学建模与控制，首先对单个机器人进行状态与控制输入建模。
 设机器人系统由若干个同构差速机器人组成，第 i 个机器人在平面内的配置空间状态可表示为机器人在世界坐标系下的平面位置坐标，以及当前航向角：
-\begin{equation}
+\begin{equation*}
     q_i = (x_i,y_i,\theta_i)
-\end{equation}
+\end{equation*}
 
 机器人的底层控制输入为前进线速度与转向角速度：
-\begin{equation}
+\begin{equation*}
     u_i=(v_i,\omega_i)
-\end{equation}
+\end{equation*}
 
 GCPL 是在配置空间加速度层进行多任务融合的几何控制框架，本文将机器人控制问题建模为加速度级指令生成问题，即：
-\begin{equation}
+\begin{equation*}
     \ddot{q_i} = a_i
-\end{equation}
+\end{equation*}
 
 其中 $a_i =(a_x ,a_y)$为机器人质心在世界坐标系下的二维期望加速度。通过后续的运动学映射，可将该加速度指令转换为差速机器人可执行的线加速度与角加速度。
 
 \subsection{编队几何图建模}
 
 为刻画多机器人系统的空间编队结构，本文采用无向图对编队拓扑进行建模。设系统包含 $N$ 个机器人，其在二维平面中的位置表示为
-\begin{equation}
+\begin{equation*}
     p = (p_0, p_1, \ldots, p_{N-1}), \quad p_i \in \mathbb{R}^2.
-\end{equation}
+\end{equation*}
 
 定义编队拓扑图为
-\begin{equation}
+\begin{equation*}
     \mathcal{G} = (\mathcal{V}, \mathcal{E})
-\end{equation}
+\end{equation*}
 
 其中节点集合 $\mathcal{V} = \{0,1,\ldots,N-1\}$ 表示机器人个体，边集合 $\mathcal{E} \subseteq \mathcal{V} \times \mathcal{V}$ 表示需要维持相对几何约束的机器人对。
 对于每一条边 $(i,j) \in \mathcal{E}$，指定期望的相对距离 $d_{ij}^* > 0$。
 基于该图结构，定义编队的距离约束为
-\begin{equation}
+\begin{equation*}
     \|p_i - p_j\| = d_{ij}^*, \quad \forall (i,j) \in \mathcal{E}.
-\end{equation}
+\end{equation*}
 
 为刻画编队偏离程度，引入边的距离误差函数
-\begin{equation}
+\begin{equation*}
     z_{ij} = \psi(p_i, p_j) = \|p_i - p_j\| - d_{ij}^*.
-\end{equation}
+\end{equation*}
 
 从而，定义整体编队误差能量函数为
-\begin{equation}
+\begin{equation*}
     E(p) = \frac{1}{2} \sum_{(i,j)\in\mathcal{E}} 
     \left( \|p_i - p_j\| - d_{ij}^* \right)^2,
-\end{equation}
+\end{equation*}
 
 该能量函数用于度量当前编队与目标编队之间的整体偏差。
 仅依赖距离约束时，编队结构在欧氏变换（平移与旋转）下是不变的，即该约束仅能保证编队的刚性形状，而无法唯一确定其方向与朝向。
 因此，为消除由旋转和镜像引起的不确定性，本文进一步在图结构上引入方向约束。
 对于每一条边 $(i,j) \in \mathcal{E}$，定义单位方向向量为
-\begin{equation}
+\begin{equation*}
     \hat{r}_{ij} = \frac{p_j - p_i}{\|p_j - p_i\|},
-\end{equation}
+\end{equation*}
 
 并设定对应的期望方向 $\hat{r}_{ij}^*$。由此定义方向误差为
-\begin{equation}
+\begin{equation*}
     z_{ij}^{\theta} = 1 - \hat{r}_{ij}^\top \hat{r}_{ij}^*.
-\end{equation}
+\end{equation*}
 
 结合距离与方向约束，可得到联合编队能量函数
-\begin{equation}
+\begin{equation*}
     E_{\text{form}}(p) = 
     \frac{1}{2} \sum_{(i,j)\in\mathcal{E}} 
     \left[
@@ -94,7 +94,7 @@ GCPL 是在配置空间加速度层进行多任务融合的几何控制框架，
     +
     \alpha_\theta \left( 1 - \hat{r}_{ij}^\top \hat{r}_{ij}^* \right)^2
     \right],
-\end{equation}
+\end{equation*}
 
 其中 $\alpha_d, \alpha_\theta > 0$ 分别为距离约束与方向约束的权重系数。
 
@@ -105,26 +105,26 @@ GCPL 是在配置空间加速度层进行多任务融合的几何控制框架，
 \paragraph{1) 直线编队（Line Formation）}
 
 直线编队的目标是使机器人沿某一主轴方向排列，并仅维持相邻机器人之间的局部距离约束。设机器人按照索引顺序排列，则边集合定义为
-\begin{equation}
+\begin{equation*}
     \mathcal{E}_{\text{line}} = \{ (i, i+1) \mid i = 0, 1, \ldots, N-2 \}.
-\end{equation}
+\end{equation*}
 
 对应的期望距离通常设置为常数间距：
-\begin{equation}
+\begin{equation*}
     d_{i,i+1}^* = d, \quad \forall (i,i+1) \in \mathcal{E}_{\text{line}}.
-\end{equation}
+\end{equation*}
 
 该结构形成一条链式拓扑，仅约束局部相邻关系。由于该图不具备全局刚性，其整体朝向与宽度需要通过额外的方向约束加以限制。
 
 \paragraph{2) 楔形编队（Wedge Formation）}
 
 楔形编队设机器人 $0$ 为顶点，其余机器人分布在两侧，则边集合可构造为
-\begin{equation}
+\begin{equation*}
     \mathcal{E}_{\text{wedge}} =
     \{ (0,i) \mid i = 1,\ldots,N-1 \}
     \cup
     \{ (i,j) \mid i,j \in \mathcal{N}_{\text{side}} \},
-\end{equation}
+\end{equation*}
 
 其中 $\mathcal{N}_{\text{side}}$ 表示同侧机器人集合。
 该结构构成刚性图，能够在二维平面中唯一确定编队形状（除整体刚体变换外）。
@@ -132,15 +132,15 @@ GCPL 是在配置空间加速度层进行多任务融合的几何控制框架，
 \paragraph{3) 圆形编队（Circle Formation）}
 
 圆形编队采用环形拓扑结构，即每个机器人仅与其相邻两个机器人建立连接：
-\begin{equation}
+\begin{equation*}
     \mathcal{E}_{\text{circle}} =
     \{ (i, (i+1) \bmod N) \mid i = 0,1,\ldots,N-1 \}.
-\end{equation}
+\end{equation*}
 
 对应的期望距离设置为相邻机器人在圆周上的弧长近似：
-\begin{equation}
+\begin{equation*}
     d_{i,i+1}^* = 2R \sin\left(\frac{\pi}{N}\right),
-\end{equation}
+\end{equation*}
 
 其中 $R$ 为期望圆半径。
 
@@ -150,7 +150,7 @@ GCPL 是在配置空间加速度层进行多任务融合的几何控制框架，
 \begin{figure}
     \centering
     \includegraphics[width=1\linewidth]{images/RMPflow framework.png}
-    \caption{GCPL 算法框架}
+    \figcap{GCPL 算法框架}{Framework of the geo-constrained policy learning (GCPL) method.}
     \label{fig:RMPflow framework}
 \end{figure}
 
@@ -690,7 +690,7 @@ mini-batch数量 & 1  & 方向叶度量$c_\theta$ & 10.0 \\
 
 \hline
 \end{tabular}
-\caption{训练参数与GCPL参数}
+\tabcap{训练参数与GCPL参数}{Training hyperparameters and GCPL-related parameters}
 \label{tab:GCPL_params}
 \end{table}
 
@@ -709,7 +709,7 @@ mini-batch数量 & 1  & 方向叶度量$c_\theta$ & 10.0 \\
 
 \begin{table}[htbp]
     \centering
-    \caption{线形编队实验结果}
+    \tabcap{线形编队实验结果}{Experimental results for line formation}
     \label{tab:line_formation_result}
     \resizebox{\textwidth}{!}{%
     \begin{tabular}{lcccc}
@@ -728,7 +728,7 @@ mini-batch数量 & 1  & 方向叶度量$c_\theta$ & 10.0 \\
 
 \begin{table}[htbp]
     \centering
-    \caption{楔形编队实验结果}
+    \tabcap{楔形编队实验结果}{Experimental results for wedge formation}
     \label{tab:wedge_formation_result}
     \resizebox{\textwidth}{!}{%
     \begin{tabular}{lcccc}
@@ -747,7 +747,7 @@ mini-batch数量 & 1  & 方向叶度量$c_\theta$ & 10.0 \\
 
 \begin{table}[htbp]
     \centering
-    \caption{圆形编队实验结果}
+    \tabcap{圆形编队实验结果}{Experimental results for circular formation}
     \label{tab:circle_formation_result}
     \resizebox{\textwidth}{!}{%
     \begin{tabular}{lcccc}
@@ -775,7 +775,7 @@ mini-batch数量 & 1  & 方向叶度量$c_\theta$ & 10.0 \\
     \subfloat[]{\includegraphics[width=0.3\linewidth]{images/formation_wedge.png}}
     \hfill
     \subfloat[]{\includegraphics[width=0.3\linewidth]{images/formation_circle.png}}
-    \caption{GCPL编队实验结果。(a) 线形编队；(b) 楔形编队；(c) 圆形编队。}
+    \figcap{GCPL编队实验结果。(a) 线形编队；(b) 楔形编队；(c) 圆形编队。}{GCPL formation results: (a) line formation; (b) wedge formation; (c) circular formation.}
     \label{fig:formation_result}
 \end{figure}
 
@@ -788,14 +788,14 @@ mini-batch数量 & 1  & 方向叶度量$c_\theta$ & 10.0 \\
     \subfloat[]{\includegraphics[width=0.45\linewidth]{images/ablation_line_training_reward.png}}
     \hfill
     \subfloat[]{\includegraphics[width=0.45\linewidth]{images/ablation_line_training_cost.png}}
-    \caption{消融实验结果（线形编队）。(a) 训练回报；(b) 训练代价。}
+    \figcap{消融实验结果（线形编队）。(a) 训练回报；(b) 训练代价。}{Ablation on line formation: (a) training return; (b) training cost.}
     \label{fig:ablation_line}
 \end{figure}
 \begin{table}[htbp]
     % \small
     % \setlength{\tabcolsep}{4pt}
     \centering
-    \caption{消融实验结果（线形编队）}
+    \tabcap{消融实验结果（线形编队）}{Ablation results on line formation}
     \label{tab:ablation_line}
     \resizebox{\textwidth}{!}{%
     \begin{tabular}{lcccc}

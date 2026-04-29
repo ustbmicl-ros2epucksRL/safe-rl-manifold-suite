@@ -17,7 +17,7 @@
 % 利用卷积神经网络（CNN）学习噪声参数，使测量协方差能够适应与速度相关的传感器噪声，
 % 对机器人自身状态进行更加精确和鲁棒的估计，从而显著降低了因感知不确定性引发的安全风险。
 \section{问题定义}
-为刻画机器人安全导航中的安全关系，考虑一个机器人在包含 $n$ 个障碍物的复杂环境中进行导航任务。令 $s_t = [p_t^\top, v_t^\top]^\top \in \mathcal{S} \subseteq \mathbb{R}^d$ 表示机器人在离散时间步 $t$ 时的状态，其中 $p_t \in \mathbb{R}^{d_p}$ 代表位置向量，$v_t \in \mathbb{R}^{d_p}$ 代表速度向量（$d_p$ 通常为 2 或 3）。为了定量描述安全，引入基于距离的约束函数。安全性的核心要求是机器人与环境中任何障碍物之间必须保持一定的物理间隔。定义约束集合如下：$$c_i(s_t) := d_{\text{safe}} - \|p_t - o_i\|_2 \leq 0, \quad \forall i \in \{1, \ldots, n\}$$其中，$d_{\text{safe}} > 0$ 表示预设的最小安全距离阈值，$o_i \in \mathbb{R}^{d_p}$ 为第 $i$ 个障碍物在空间中的坐标，$\|\cdot\|_2$ 为欧几里得范数。
+为刻画机器人安全导航中的安全关系，考虑一个机器人在包含 $n$ 个障碍物的复杂环境中进行导航任务。令 $s_t = [p_t^\top, v_t^\top]^\top \in \mathcal{S} \subseteq \mathbb{R}^d$ 表示机器人在离散时间步 $t$ 时的状态，其中 $p_t \in \mathbb{R}^{d_p}$ 代表位置向量，$v_t \in \mathbb{R}^{d_p}$ 代表速度向量。为了定量描述安全，引入基于距离的约束函数。安全性的核心要求是机器人与环境中任何障碍物之间必须保持一定的物理间隔。定义约束集合如下：$$c_i(s_t) := d_{\text{safe}} - \|p_t - o_i\|_2 \leq 0, \quad \forall i \in \{1, \ldots, n\}$$其中，$d_{\text{safe}} > 0$ 表示预设的最小安全距离阈值，$o_i \in \mathbb{R}^{d_p}$ 为第 $i$ 个障碍物在空间中的坐标，$\|\cdot\|_2$ 为欧几里得范数。
 
 若状态 $s_t$ 满足对所有 $i$ 均有 $c_i(s_t) \leq 0$，则称该状态是安全的。在物理上意味着机器人的中心与所有障碍物的中心的距离均大于等于 $d_{\text{safe}}$。在实际应用中，该距离通常考虑了机器人自身的几何半径以及感知系统的不确定性冗余。
 
@@ -44,8 +44,8 @@
 
 \begin{figure}
     \centering
-    \includegraphics[width=1\linewidth]{images/framework.png}
-    \caption{约束流形策略学习方法框架}
+    \includegraphics[width=1\linewidth]{images/framework (1).png}
+    \figcap{约束流形策略学习方法框架}{Framework of the constrained manifold policy learning method.}
     \label{fig:placeholder}
 \end{figure}
 \subsection{约束流形投影}
@@ -171,18 +171,18 @@ $O(\Delta t^2)$
 其中，$\alpha$ 是惩罚权重，$P$ 是基于修正的惩罚函数，$a_{applied,t}$是实际应用于系统的动作（在标准 RL 训练中为$a_{uncert,t}$ 而在过滤训练动作时为$a_{safe,t}$）。
 
 \begin{algorithm}
-\caption{Policy Iteration with Constraints}
+\caption{约束流形过滤训练算法}
 \begin{algorithmic}[1]
-\STATE \textbf{Input:} $c(s)$, parameters
-\FOR{ $i=1$ \TO $N$ }
-    \STATE Initialize feasible state $s_0$ and slack variable $\mu_0$
-    \FOR{ $k=0$ \TO $T-1$ }
-        \STATE Sample action $\alpha_k \sim \pi(\cdot \mid s_k)$
-        \STATE Observe state $s_k$
-        \STATE Compute $J_c(s_k,\mu_k)$, $N_c(s_k,\mu_k)$, and action $a_k$
-        \STATE Apply action $a_k$
-        \STATE Observe next state $s_{k+1}$ and reward $r_k$
-        \STATE Provide the tuple $(s_k, a_k, s_{k+1}, r_k)$ to the RL
+\STATE \textbf{输入：} 约束函数 $c(s)$ 及相关参数
+\FOR{$i=1$ \TO $N$}
+    \STATE 初始化可行状态 $s_0$ 与松弛变量 $\mu_0$
+    \FOR{$k=0$ \TO $T-1$}
+        \STATE 采样动作 $\alpha_k \sim \pi(\cdot \mid s_k)$
+        \STATE 观测状态 $s_k$
+        \STATE 计算 $J_c(s_k,\mu_k)$、$N_c(s_k,\mu_k)$，并得到安全投影后的动作 $a_k$
+        \STATE 执行动作 $a_k$
+        \STATE 观测下一时刻状态 $s_{k+1}$ 及奖励 $r_k$
+        \STATE 将样本 $(s_k, a_k, s_{k+1}, r_k)$ 提供给强化学习更新
     \ENDFOR
 \ENDFOR
 \end{algorithmic}
@@ -206,7 +206,6 @@ Hamilton–Jacobi 变分不等式（HJ-VI）刻画了后向可达管（Backward 
 \end{equation}
 
 以及零次水平集 ${s : V(s) \leq 0}$， 表示最大可行核（viability kernel）——即 $\mathcal{K}$ 中最大的受控不变子集。
-
 对于离散时间系统 $s_{t+1} = f(s_t, a_t)$，HJ-VI~\eqref{eq:hj_vi} 可以化简为如下不动点方程：
 \begin{equation}
     V(s) = \max{c(s), \min_a V(f(s,a))}
@@ -379,7 +378,7 @@ R_{t} =
             \includegraphics [width=0.4\textwidth, height=0.25\textwidth]{images/push.png}}
     \subfloat[MultiGoal Task]{
             \includegraphics [width=0.4\textwidth, height=0.25\textwidth]{images/multiGoal.png}}
-    \caption{不同任务场景图}
+    \figcap{不同任务场景图}{Illustrations of different task scenarios in Safety-Gymnasium.}
     \end{figure}
 
 \subsection{安全可达空间实验}
@@ -393,19 +392,19 @@ R_{t} =
 \begin{figure*}[thpb]
 	\centering
 	\includegraphics[width=\textwidth]{images/safe_space.png}
-	\caption{安全空间分布图。蓝色曲线所包围的区域（安全值 > 0）表示危险区域，其余区域为安全区域。安全域会随着输入速度和方向的变化而发生改变。}
+	\figcap{安全空间分布图}{Distribution of the learned safe reachable space.}
 	\label{fig:safety_space}
 \end{figure*}
 
 \subsection{对比实验}
 为评估完整框架在安全性与任务性能上的综合表现，本文在 Safety-Gymnasium 的 Goal、Circle、Push 与 MultiGoal 任务中与其他基准算法进行对比。
 
-\subsubsection{基线方法}
+\subsubsection{（1）基线方法}
 本文在单智能体和多智能体场景中，与多种经典的安全强化学习算法进行对比，包括 PPO~\cite{schulman2017ppo}、 PCPO~\cite{yang2020projection} 、 PPO-Lag~\cite{stooke2020responsive} 、 TRPO-Lag~\cite{achiam2017cpo} ，多智能体实验包含了 MAPPO 、 HAPPO~\cite{kuba2022happo} 、 MACPO 以及 MAPPO\_Lag。
 
 需要注意的是，ATACOM~\cite{liu2022atacom} 需要任务特定的约束雅可比矩阵以及扩展动作空间，因此在 Safety-Gymnasium 基准环境上进行直接比较较为困难；相比之下，本文的方法采用一种基于距离的简化安全过滤器，用于在点机器人任务中近似实现流形投影。
 
-\subsubsection{评估指标与实现细节}
+\subsubsection{（2）评估指标与实现细节}
 
 \begin{itemize}
 \item \textbf{Reward}：每个回合的累计奖励（越高越好）。
@@ -417,7 +416,7 @@ R_{t} =
 
 \begin{table}[t]
 \centering
-\caption{实验超参数设置}
+\tabcap{实验超参数设置}{Experimental hyperparameter settings}
 \label{tab:hyperparams}
 \resizebox{0.8\columnwidth}{!}{
 \begin{tabular}{ll|ll}
@@ -444,7 +443,7 @@ Clip ratio $\epsilon$ & 0.2 & 安全裕度参数 $\eta$ / $\delta$ & 0.1,m / 1.0
 
 % 本文选用累计奖励（Reward）和累计成本（Cost）作为主要评估指标，其中成本值越低表示策略越安全。考虑到机器人系统通常属于安全关键型应用场景，本文在实验评估中将安全性作为首要指标，在满足安全约束的前提下进一步追求更高的任务回报。为增强不同方法在安全维度上的区分度，并突出安全约束的重要性，本文对 SafePO 中的原始奖励函数进行了改造，引入了不同强度的碰撞惩罚项，并系统分析了碰撞惩罚强度变化对各类方法性能的影响。
 
-\subsubsection{实验结果}
+\subsubsection{（3）实验结果}
 实验结果汇总于表~\ref{tab:main_results} 中。
 本文的方法（CMPL）在所有任务和惩罚设置下都取得了最低的代价（cost），表明该方法对惩罚参数调节具有很强的鲁棒性。相比之下，基线方法对惩罚系数非常敏感。例如，在 Goal 任务中，PPO-Lag 的 cost 从 5.46（$r_{\text{col}}=0.1$）变化到 13.91（$r_{\text{col}}=0.5$），波动达到 $2.5\times$。
 在 Circle 和 Push 任务中，基线方法仍表现出较明显的约束违背，cost 大致分布在 5-38 之间；相比之下，CMPL 的 cost 始终维持在较低水平，Circle 任务为 1.38-1.55，Push 任务为 0.92-1.23。可以看到，当碰撞惩罚降低至 $r_{\text{col}}=0.1$ 时，cost 有小幅上升。其原因在于，较低的碰撞惩罚会使强化学习策略更倾向于选择激进探索动作，这类动作虽然可能提高短期任务收益，但也会给安全过滤器带来更大的修正压力。
@@ -454,7 +453,7 @@ Clip ratio $\epsilon$ & 0.2 & 安全裕度参数 $\eta$ / $\delta$ & 0.1,m / 1.0
 在包含两个智能体的 Multi-Goal 任务中，约束违背主要来自智能体之间的相互碰撞以及智能体与障碍物之间的碰撞。由于多智能体场景中的交互关系更加复杂，所有基线方法的 cost 均处于较高水平，约为 $12.48$-$36.13$。CMPL 则将 cost 降至 $0.07$，同时仍保持正向奖励。该结果说明，本文提出的约束流形安全过滤方法并不局限于单智能体避障任务，也可以扩展到多智能体场景中，用于同时处理静态障碍物避让和智能体间避碰问题。
 \begin{table*}[h!]
     \begin{center}
-      \caption{Safety-Gymnasium 在不同任务和惩罚系数设置下的结果}
+      \tabcap{Safety-Gymnasium 在不同任务和惩罚系数设置下的结果}{Results on Safety-Gymnasium under different tasks and collision-penalty settings}
       \label{tab:main_results}
       \resizebox{\textwidth}{26mm}{
       \begin{tabular}{cc|*{4}{ccc|}ccc} \hline
@@ -560,12 +559,15 @@ Clip ratio $\epsilon$ & 0.2 & 安全裕度参数 $\eta$ / $\delta$ & 0.1,m / 1.0
 \subsection{消融实验}
 在单智能体导航避障任务中，为更真实地刻画实际机器人在感知与定位过程中面临的不确定性，本文通过在环境中引入随机噪声来模拟传感器误差。
 采用 PPO 算法作为基础强化学习方法，通过在 PPO 基线方法上逐步加入各个模块，
-验证每个组件的贡献。实验结果为 3 个随机种子、$10^5$ 训练步以及 50 个评估回合的平均值。完整系统在速度相关传感器噪声条件下运行（$\sigma_{\text{base}} = 0.1$m，$k=5$）（见表~\ref{tab:ablation}）。
+验证每个组件的贡献。实验结果为 3 个随机种子、$10^5$ 训练步以及 50 个评估回合的平均值。完整系统在速度相关传感器噪声条件下运行（$\sigma_{\text{base}} = 0.1$m，$k=5$）。
+
+需要特别指出的是，若移除奖励校准，智能体虽可获得更高 reward（$16.83$），但同时会产生显著更多的违规（$71.63$ 对比 $12.51$）。各配置下的定量结果见表~\ref{tab:ablation}。
 \begin{table}[t]
 \centering
-\caption{Goal 任务消融实验结果}
+\tabcap{Goal 任务消融实验结果}{Ablation results on the Goal task}
 \label{tab:ablation}
-\begin{tabular}{l|cc}
+\setlength{\tabcolsep}{11pt}% 增大列间距
+\begin{tabular}{@{}l|cc@{}}
 \toprule
 配置 & Reward & Cost \\
 \midrule
@@ -582,7 +584,7 @@ PPO（baseline） & $19.08 \pm 4.93$ & $64.59 \pm 8.51$ \\
 \begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{images/training_curves.png}
-\caption{学习曲线体现各组件的贡献。(a) 不同配置下的回合奖励；(b) 回合 cost（安全违规次数）}
+\figcap{学习曲线体现各组件的贡献}{Training curves showing component contributions.}
 \label{fig:training_curves}
 \end{figure}
 
@@ -594,7 +596,7 @@ PPO（baseline） & $19.08 \pm 4.93$ & $64.59 \pm 8.51$ \\
 
 \item \textbf{数据驱动 EKF}：即使在速度相关的传感器噪声存在的情况下，仍然能够保持相近的安全性（$12.51$），说明该方法在感知不确定性下依然能够稳健地执行约束。
 
-\item \textbf{奖励校准（Reward Calibration）}：对安全性至关重要——如果移除该机制，智能体会利用约束边界来获得更高奖励（$16.83$），但同时会产生显著更多的违规（$71.63$ 对比 $12.51$）。
+\item \textbf{奖励校准（Reward Calibration）}：对安全性至关重要；若移除该机制，智能体会利用约束边界换取更高 reward，从而显著放大安全代价，与表~\ref{tab:ablation} 中末两行及上文分析一致。
 \end{itemize}
 
 \subsection{EKF 对比实验}
@@ -602,10 +604,10 @@ PPO（baseline） & $19.08 \pm 4.93$ & $64.59 \pm 8.51$ \\
 
 \begin{table}[t]
 \centering
-\caption{Goal 任务 EKF 对比实验}
+\tabcap{Goal 任务 EKF 对比实验}{Comparative EKF experiments on the Goal task}
 \label{tab:ekf_comparison}
-\resizebox{0.8\columnwidth}{!}{
-\begin{tabular}{l|ccc}
+\setlength{\tabcolsep}{11pt}% 增大列间距
+\begin{tabular}{@{}l|ccc@{}}
 \toprule
 方法 & 位置误差 (m) & Reward & Cost \\
 \midrule
@@ -614,7 +616,6 @@ EKF（固定 $R$） & $0.41 {\pm} 0.13$ & $-7.86 {\pm} 1.21$ & $9.58 {\pm} 2.15$
 EKF（学习得到的 $R$） & $\mathbf{0.27 {\pm} 0.05}$ & $-7.87 {\pm} 0.94$ & $\mathbf{9.31 {\pm} 1.68}$ \\
 \bottomrule
 \end{tabular}
-}
 \end{table}
 
 采用学习得到协方差矩阵的 EKF 在位置精度方面表现最佳（$0.27$m），相比原始 GPS 将误差降低了 49\%，相比固定 $R$ 的 EKF 降低了 34\%。同时，其误差方差也显著降低，为原始 GPS 的约 $1/3.6$（$0.05$ 对比 $0.18$）。
@@ -634,7 +635,7 @@ EKF（学习得到的 $R$） & $\mathbf{0.27 {\pm} 0.05}$ & $-7.87 {\pm} 0.94$ &
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{images/ros_architecture.png}
-\caption{ROS2 集成架构}
+\figcap{ROS2 集成架构}{ROS~2 integration architecture.}
 \label{fig:ros2arch}
 \end{figure}
 
@@ -644,7 +645,7 @@ EKF（学习得到的 $R$） & $\mathbf{0.27 {\pm} 0.05}$ & $-7.87 {\pm} 0.94$ &
 
 \begin{table}[t]
 \centering
-\caption{Webots E-puck 实验验证}
+\tabcap{Webots E-puck 实验验证}{Webots E-puck experimental validation}
 \label{tab:webots}
 \begin{tabular}{l|cc}
 \toprule
@@ -663,7 +664,7 @@ EKF（学习得到的 $R$） & $\mathbf{0.27 {\pm} 0.05}$ & $-7.87 {\pm} 0.94$ &
 \subfloat[实验环境]{\includegraphics[height=4cm]{images/ros_setup.png}}
 \hfill
 \subfloat[轨迹对比]{\includegraphics[height=4cm]{images/trajectory.png}}
-\caption{Webots 中 E-puck 实验验证。(a) 含 6 个障碍物的实验环境。(b) 轨迹对比：带安全过滤器 + EKF（左）与无过滤（右，$\times$ 表示碰撞）。}
+\figcap{Webots 中 E-puck 实验验证}{Webots validation on E-puck robots.}
 \label{fig:ros}
 \end{figure*}
 

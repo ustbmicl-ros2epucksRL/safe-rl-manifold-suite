@@ -28,12 +28,20 @@ style=gb7714-2015,%utf8,
 \usepackage[labelfont=bf,textfont=bf,font=small]{subfig}
 \newcommand{\figref}[1]{~\ref{#1}~}
 \newcommand{\tabref}[1]{~\ref{#1}~}
+%% 图题：中文 + 英文副题（英文行前加 Fig.~章-序号；插图清单仅显示中文行）
+\newcommand{\figcap}[2]{%
+  \caption[#1]{#1\\[0.35em]\small Fig.~\thefigure\quad #2}%
+}
+%% 表题：中文 + 英文副题（英文行前加 Tab.~章-序号；表目录仅显示中文行）
+\newcommand{\tabcap}[2]{%
+  \caption[#1]{#1\\[0.35em]\small Tab.~\thetable\quad #2}%
+}
 
 \newcolumntype{P}[1]{>{\centering\arraybackslash}p{#1}}
 %\addbibresource{myrefs.bib}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%封面信息%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% 作者
-\Author{成孜卓}
+\Author{[本论文作者]}
 \EnglishAuthor{}
 %% 标题
 \Title{不确定环境下多机器人的强化学习安全策略研究}
@@ -41,7 +49,7 @@ style=gb7714-2015,%utf8,
 % \Subtitle{酵母菌催化反应机理和咪唑类离子液体酸度的研究}
 % \EnglishSubtitle{Mechanistic Aspects of Baker's Yeast Mediated Reduction and Measurements of Acidity of Imidazolium Ionic Liquids}
 %% 日期
-\Date{2026年 04月 22日}
+\Date{2026年 04月 28日}
 \EnglishDate{April, 2026}
 %% 学院
 \College{计算机与通信工程学院}
@@ -62,7 +70,7 @@ style=gb7714-2015,%utf8,
 \Country{中国}
 \EnglishCountry{P.R.CHINA}
 %%学号%%
-\StudentCode{M202310641}
+\StudentCode{[论文作者学号]}
 %%专业%%
 \Major{计算机科学与技术}
 \EnglishMajor{Computer Science and Technology}
@@ -70,7 +78,7 @@ style=gb7714-2015,%utf8,
 \Direction{安全多智能体强化学习方向}
 \EnglishDirection{Safe Multi-Agent Reinforcement Learning}
 %%导师%%
-\Supervisor{万亚东}
+\Supervisor{[本论文导师]}
 \EnglishSupervisor{}
 
 \DegreeType{学术型}
@@ -86,7 +94,7 @@ style=gb7714-2015,%utf8,
 %% 密级
 \SecurityLevel{公开}
 %% 提交日期
-\SubmissionDate{2026年 04月 22日}
+\SubmissionDate{2026年 04月 28日}
 \EnglishSubmissionDate{April, 2026}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%封面信息%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
@@ -95,7 +103,7 @@ style=gb7714-2015,%utf8,
 
 \TitlePage
 
-\SecondPage
+% \SecondPage
 
 \ThirdPage
 
