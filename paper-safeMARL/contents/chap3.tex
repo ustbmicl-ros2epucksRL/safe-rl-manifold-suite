@@ -399,8 +399,8 @@ R_{t} =
 \subsection{对比实验}
 为评估完整框架在安全性与任务性能上的综合表现，本文在 Safety-Gymnasium 的 Goal、Circle、Push 与 MultiGoal 任务中与其他基准算法进行对比。
 
-\subsubsection{（1）基线方法}
-本文在单智能体和多智能体场景中，与多种经典的安全强化学习算法进行对比，包括 PPO~\cite{schulman2017ppo}、 PCPO~\cite{yang2020projection} 、 PPO-Lag~\cite{stooke2020responsive} 、 TRPO-Lag~\cite{achiam2017cpo} ，多智能体实验包含了 MAPPO 、 HAPPO~\cite{kuba2022happo} 、 MACPO 以及 MAPPO\_Lag。
+\subsubsection{基线方法}
+本文在单智能体和多智能体场景中，与多种经典的安全强化学习算法进行对比，包括 PPO~\cite{schulman2017ppo}、 PCPO~\cite{yang2020projection} 、 PPO-Lag~\cite{stooke2020responsive} 、 TRPO-Lag~\cite{ray2019benchmarking} ，多智能体实验包含了 MAPPO 、 HAPPO~\cite{kuba2022happo} 、 MACPO 以及 MAPPO-Lag。
 
 需要注意的是，ATACOM~\cite{liu2022atacom} 需要任务特定的约束雅可比矩阵以及扩展动作空间，因此在 Safety-Gymnasium 基准环境上进行直接比较较为困难；相比之下，本文的方法采用一种基于距离的简化安全过滤器，用于在点机器人任务中近似实现流形投影。
 
@@ -561,7 +561,7 @@ Clip ratio $\epsilon$ & 0.2 & 安全裕度参数 $\eta$ / $\delta$ & 0.1,m / 1.0
 采用 PPO 算法作为基础强化学习方法，通过在 PPO 基线方法上逐步加入各个模块，
 验证每个组件的贡献。实验结果为 3 个随机种子、$10^5$ 训练步以及 50 个评估回合的平均值。完整系统在速度相关传感器噪声条件下运行（$\sigma_{\text{base}} = 0.1$m，$k=5$）。
 
-需要特别指出的是，若移除奖励校准，智能体虽可获得更高 reward（$16.83$），但同时会产生显著更多的违规（$71.63$ 对比 $12.51$）。各配置下的定量结果见表~\ref{tab:ablation}。
+表~\ref{tab:ablation} 给出各配置下的定量结果。前三行在无噪声条件下评估，后两行启用速度相关传感器噪声。
 \begin{table}[t]
 \centering
 \tabcap{Goal 任务消融实验结果}{Ablation results on the Goal task}
@@ -571,12 +571,12 @@ Clip ratio $\epsilon$ & 0.2 & 安全裕度参数 $\eta$ / $\delta$ & 0.1,m / 1.0
 \toprule
 配置 & Reward & Cost \\
 \midrule
-PPO（baseline） & $19.08 \pm 4.93$ & $64.59 \pm 8.51$ \\
-+流形过滤器 & $12.20 \pm 5.06$ & $38.22 \pm 13.61$ \\
-+可达性预训练 & $-8.44 \pm 8.21$ & $18.97 \pm 9.00$ \\
-+EKF（完整系统，含噪声） & $-4.32 \pm 3.68$ & $\mathbf{12.51 \pm 6.32}$ \\
+PPO（baseline） & $-4.28 \pm 2.98$ & $50.58 \pm 32.63$ \\
++流形过滤器 & $\phantom{-}0.50 \pm 0.53$ & $\phantom{0}3.29 \pm 0.75$ \\
++可达性预训练 & $\phantom{-}0.14 \pm 1.11$ & $10.16 \pm 8.65$ \\
++EKF（完整系统，含噪声） & $-0.61 \pm 0.46$ & $\mathbf{\phantom{0}5.87 \pm 5.31}$ \\
   \midrule
-  完整系统（无奖励校准） & $16.83 \pm 0.92$ & $71.63 \pm 10.02$ \\
+  完整系统（无奖励校准） & $\phantom{-}0.05 \pm 0.44$ & $10.25 \pm 6.90$ \\
   \bottomrule
   \end{tabular}
   \end{table}
@@ -584,20 +584,21 @@ PPO（baseline） & $19.08 \pm 4.93$ & $64.59 \pm 8.51$ \\
 \begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{images/training_curves.png}
-\figcap{学习曲线体现各组件的贡献}{Training curves showing component contributions.}
+\figcap{消融实验训练曲线}{Training curves of ablation configurations.}
 \label{fig:training_curves}
 \end{figure}
 
-图~\ref{fig:training_curves} 展示了各配置的训练曲线。结果表明，每个组件都对整体性能产生了重要贡献：
+图~\ref{fig:training_curves} 给出各配置的训练曲线。各组件作用如下：
 \begin{itemize}
-\item \textbf{流形过滤器（Manifold Filter）}：通过零空间投影（null-space projection）将 cost 降低了 41\%（$64.59 \rightarrow 38.22$），但由于不安全动作被修正，reward 有一定下降。
+\item \textbf{流形过滤器}：主导贡献，cost 下降 94\%（$50.58 \rightarrow 3.29$），3 个种子稳定收敛于 $[2.62, 4.10]$ 区间。
 
-\item \textbf{可达性预训练（Reachability Pretraining）}：通过将策略约束在可行区域 $\mathcal{S}^*_f$ 内，并引入更大的安全裕度，使 cost 相比基线进一步降低了 71\%（$64.59 \rightarrow 18.97$）。
+\item \textbf{可达性预训练}：为完整系统提供可行域初始化先验；单独加入时受种子敏感性影响，3 个种子的 cost 分别为 $\{2.58, 19.58, 8.32\}$，均值上升至 $10.16$。
 
-\item \textbf{数据驱动 EKF}：即使在速度相关的传感器噪声存在的情况下，仍然能够保持相近的安全性（$12.51$），说明该方法在感知不确定性下依然能够稳健地执行约束。
+\item \textbf{完整系统（含 EKF 与噪声）}：cost 均值降至 $5.87$，其中一个种子达到 $0.00$，表明完整安全栈在感知噪声下仍然有效。
 
-\item \textbf{奖励校准（Reward Calibration）}：对安全性至关重要；若移除该机制，智能体会利用约束边界换取更高 reward，从而显著放大安全代价，与表~\ref{tab:ablation} 中末两行及上文分析一致。
+\item \textbf{奖励校准}：完整系统中移除奖励校准后 cost 上升 74\%（$5.87 \rightarrow 10.25$），逐种子比较中 2/3 种子支持校准的必要性。
 \end{itemize}
+完整系统相比无约束 PPO 基线实现了 88\% 的 cost 下降（$50.58 \rightarrow 5.87$）。
 
 \subsection{EKF 对比实验}
 为了单独评估 EKF 的贡献，首先在无噪声条件下训练一个带安全过滤器的单智能体策略，然后在部署阶段引入速度相关噪声~\eqref{eq:vel_noise}（$\sigma_{\text{base}} = 0.1$m，$k = 5$），并比较三种状态估计配置。表~\ref{tab:ekf_comparison} 给出了在 5 个随机种子和 50 个评估回合上的平均结果。
@@ -620,7 +621,7 @@ EKF（学习得到的 $R$） & $\mathbf{0.27 {\pm} 0.05}$ & $-7.87 {\pm} 0.94$ &
 
 采用学习得到协方差矩阵的 EKF 在位置精度方面表现最佳（$0.27$m），相比原始 GPS 将误差降低了 49\%，相比固定 $R$ 的 EKF 降低了 34\%。同时，其误差方差也显著降低，为原始 GPS 的约 $1/3.6$（$0.05$ 对比 $0.18$）。
 
-虽然在这一独立评估中各方法的 cost 差异不大，但消融实验（表~\ref{tab:ablation}）展示了完整系统的优势：在包含传感器噪声的训练条件下，cost 从 $18.97$ 进一步降低到 $12.51$。
+虽然在这一独立评估中各方法的 cost 差异不大，但消融实验（表~\ref{tab:ablation}）展示了完整系统的优势：在含噪声的训练条件下，cost 从 $10.16$ 降至 $5.87$。
 
 \textbf{计算开销。} NoiseAdapter CNN 带来的计算开销非常小：该网络约有 5K 个参数，在 CPU 上每一步推理时间小于 $0.1$,ms，相比环境步进时间（5ms）和 PPO 前向传播时间（1ms）几乎可以忽略不计。
 
