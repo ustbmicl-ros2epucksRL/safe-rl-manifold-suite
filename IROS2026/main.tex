@@ -182,16 +182,16 @@ With $\bar{c}(0) = 0$, the unique solution is $\bar{c}(t) = 0$ for all $t \geq 0
 
 \textbf{Remark (Implementation).} In practice, we use the damped pseudoinverse $\hat{J}_c^+ = J_c^\top (J_c J_c^\top + \epsilon I)^{-1}$ with small $\epsilon > 0$ for numerical stability. This introduces a residual $\| J_c \hat{J}_c^+ - I_k \| = O(\epsilon)$, so the exact invariance $\bar{c}(t) = 0$ becomes $\bar{c}(t) = O(\epsilon)$. The correction term $-K_c \hat{J}_c^+ \bar{c}$ actively drives accumulated drift back toward the manifold, maintaining low constraint violation for sufficiently small $\epsilon$.
 
-\textbf{Remark (Discrete time).} Discrete-time application of~\eqref{eq:safe_action} at timestep $\Delta t$ introduces bounded error $O(\Delta t^2)$ per step. Combined with the correction term, constraint satisfaction is maintained for sufficiently small $\Delta t$ relative to $K_c$.
+\textbf{Remark (Discrete time and practical instantiation).} Discrete-time application of~\eqref{eq:safe_action} at $\Delta t$ introduces $O(\Delta t^2)$ per-step error, kept bounded by the correction term. For the Safety-Gymnasium Point Robot ($\Delta t = 0.1$\,s, momentum-based dynamics) we instantiate~\eqref{eq:safe_action} as a distance-based velocity-scaling filter, equivalent to the null-space projection in the low-speed limit; the reachability layer (Section~\ref{sec:reach}) takes the form of a velocity-adaptive margin $d_{\text{danger}}(v) = d_0(1 + \kappa\|v\|)$, approximating a one-step backward-reachable tube.
 
 \subsubsection{Reward Calibration}
 
-We calibrate the reward based on correction magnitude:
+We calibrate the reward by penalizing filter intervention:
 \begin{equation}
-    R_{\text{calibrated}} = R(s_t, a_{\text{safe}}) - \lambda \| a_{\text{unsafe}} - a_{\text{safe}} \|_2^2
+    R_{\text{calibrated}} = R(s_t, a_{\text{safe}}) - \lambda \, \rho(s_t, a_{\text{unsafe}})
     \label{eq:reward_calib}
 \end{equation}
-where $\lambda > 0$ is the penalty weight, $a_{\text{unsafe}}$ is the original policy output, and $a_{\text{safe}}$ is the projected action. This encourages the policy to produce actions that require minimal correction, reducing reliance on the safety filter over time.
+with $\lambda > 0$ and $\rho \in [0, 1]$ a monotone intervention indicator. In the practical instantiation we take $\rho = 1 - \sigma(s_t)$, where $\sigma \in [0, 1]$ is the filter's velocity-scaling factor; equivalently, in the null-space form $\rho = \|a_{\text{unsafe}} - a_{\text{safe}}\|_2^2$. This drives the policy to act inside the manifold interior.
 
 \begin{algorithm}[t]
 \caption{Safe RL with Constraint Manifold Projection}
@@ -214,6 +214,7 @@ where $\lambda > 0$ is the penalty weight, $a_{\text{unsafe}}$ is the original p
 \end{algorithm}
 
 \subsection{Safe Reachability Analysis}
+\label{sec:reach}
 \label{sec:reachability}
 
 The constraint manifold filter requires knowledge of obstacle positions, which we assume available as a prior map of static obstacles (e.g., from offline mapping or simulation ground truth). To further construct environment-aware safe regions that adaptively modulate safety margins, we employ offline HJ reachability analysis~\cite{bansal2017hj_reachability}.
@@ -384,7 +385,7 @@ Network & MLP(256, 256) & Calibration weight $\lambda$ & 0.1 \\
 Rollout buffer & 2048 steps & Correction gain $K_c$ & 10.0 \\
 Training steps & $10^5$ & EKF window $L$ & 10 \\
 Eval episodes & 50 & CNN architecture & Conv1d $\to$ FC \\
-Seeds (Table I,III / IV) & 3 / 5 & CNN parameters & $\sim$5K \\
+Seeds (Table II,III / IV) & 3 / 5 & CNN parameters & $\sim$5K \\
 Batch size (PPO) & 64 & Pretraining epochs & 100 \\
 Clip ratio $\epsilon$ & 0.2 & Margin scale $\eta$ / $\delta$ & 0.1\,m / 1.0 \\
  &  & Noise $\sigma_{\text{base}}$ / $k$ & 0.1\,m / 5.0 \\
@@ -511,38 +512,32 @@ On Multi-Goal with 2 agents, all baselines incur substantial cost ($12.48$--$36.
 
 \subsection{Ablation Study}
 
-We validate the contribution of each component by incrementally adding them to the PPO baseline (Table~\ref{tab:ablation}).
+We validate each component by incrementally adding it to the PPO baseline on Goal (Table~\ref{tab:ablation}); the first three rows are noise-free, the last two enable velocity-dependent noise. Numbers are mean$\pm$std over 3 seeds.
 
 \begin{table}[t]
 \centering
-\caption{Ablation Study on Goal Task. Results averaged over 3 seeds, $10^5$ training steps, 50 evaluation episodes. Full system operates under velocity-dependent sensor noise ($\sigma_{\text{base}} = 0.1$m, $k=5$).}
+\caption{Ablation on Goal Task (3 seeds, $10^5$ steps, 50 eval episodes). Sensor noise ($\sigma_{\text{base}}{=}0.1$m, $k{=}5$) is active only in the last two rows. The baseline uses our in-house PPO (\texttt{src/ppo.py}); absolute cost is not directly comparable to Table~\ref{tab:main_results} (OmniSafe/SafePO baselines).}
 \label{tab:ablation}
 \begin{tabular}{l|cc}
 \toprule
 Configuration & Reward & Cost \\
 \midrule
-PPO (baseline) & $19.08 \pm 4.93$ & $64.59 \pm 8.51$ \\
-+ Manifold Filter & $12.20 \pm 5.06$ & $38.22 \pm 13.61$ \\
-+ Reachability Pretraining & $-8.44 \pm 8.21$ & $18.97 \pm 9.00$ \\
-+ EKF (Full, with noise) & $-4.32 \pm 3.68$ & $\mathbf{12.51 \pm 6.32}$ \\
+PPO (baseline) & $-4.28 \pm 2.98$ & $50.58 \pm 32.63$ \\
++ Manifold Filter & $\phantom{-}0.50 \pm 0.53$ & $\phantom{0}3.29 \pm 0.75$ \\
++ Adaptive Margin (Reachability) & $\phantom{-}1.12 \pm 0.51$ & $\mathbf{\phantom{0}0.54 \pm 0.94}$ \\
++ EKF (Full, with noise) & $-0.78 \pm 1.23$ & $\phantom{0}4.91 \pm 5.81$ \\
 \midrule
-Full w/o Reward Calibration & $16.83 \pm 0.92$ & $71.63 \pm 10.02$ \\
+Full w/o Reward Calibration & $\phantom{-}0.59 \pm 0.76$ & $\phantom{0}8.47 \pm 4.98$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Fig.~\ref{fig:training_curves} shows the learning curves for each configuration. Each component contributes meaningfully:
-\begin{itemize}
-    \item \textbf{Manifold Filter}: Reduces cost by 41\% ($64.59 \rightarrow 38.22$) via null-space projection, at the expense of some reward reduction as unsafe actions are corrected.
-    \item \textbf{Reachability Pretraining}: Further reduces cost by 71\% from baseline ($64.59 \rightarrow 18.97$) by constraining the policy to the feasible region $\mathcal{S}^*_f$ with enlarged safety margins.
-    \item \textbf{Data-driven EKF}: Maintains comparable safety ($12.51$) \emph{despite} velocity-dependent sensor noise, demonstrating robust constraint enforcement under perception uncertainty.
-    \item \textbf{Reward Calibration}: Critical for safety---without it, the agent exploits constraint boundaries for higher reward ($16.83$) but incurs significantly more violations ($71.63$ vs.\ $12.51$).
-\end{itemize}
+Each component contributes as follows. The \textbf{Manifold Filter} drives a $94\%$ cost reduction ($50.58 \rightarrow 3.29$), tightly concentrated across 3 seeds ($[2.62, 4.10]$). Adding the \textbf{Adaptive Margin (Reachability)}---a velocity-adaptive one-step BRT proxy---cuts cost a further $83\%$ to $0.54$, with $2/3$ seeds at zero violations (the lowest-cost row). The \textbf{full system} under sensor noise retains a $90\%$ reduction over baseline ($4.91$); EKF and the learned noise adapter keep safety functional under perception uncertainty. Removing \textbf{reward calibration} from the noisy full system raises cost by $73\%$ ($4.91 \rightarrow 8.47$, $3/3$ seeds), confirming that calibration's role is noise-robustness rather than nominal-cost reduction.
 
 \begin{figure}[t]
     \centering
     \includegraphics[width=\linewidth]{figures/training_curves.png}
-    \caption{Learning curves showing component contributions. (a) Episode reward across configurations. (b) Episode cost (safety violations) decreases progressively with each component, with the full system maintaining low cost under sensor noise.}
+    \caption{Learning curves across configurations. (a) Episode reward. (b) Episode cost. The Manifold Filter and Adaptive Margin together drive cost to near-zero in the noise-free regime; EKF + Reward Calibration maintain a $90\%$ cost reduction under velocity-dependent sensor noise.}
     \label{fig:training_curves}
 \end{figure}
 
@@ -559,15 +554,15 @@ To isolate the EKF contribution, we train a single agent with the safety filter 
 \toprule
 Method & Pos.\ Err.\ (m) & Reward & Cost \\
 \midrule
-Raw GPS & $0.54 {\pm} 0.18$ & $-7.92 {\pm} 1.43$ & $9.14 {\pm} 2.37$ \\
+Raw GPS & $0.54 {\pm} 0.18$ & $-7.92 {\pm} 1.43$ & $\mathbf{9.14 {\pm} 2.37}$ \\
 EKF (fixed $R$) & $0.41 {\pm} 0.13$ & $-7.86 {\pm} 1.21$ & $9.58 {\pm} 2.15$ \\
-EKF (learned $R$) & $\mathbf{0.27 {\pm} 0.05}$ & $-7.87 {\pm} 0.94$ & $\mathbf{9.31 {\pm} 1.68}$ \\
+EKF (learned $R$) & $\mathbf{0.27 {\pm} 0.05}$ & $-7.87 {\pm} 0.94$ & $9.31 {\pm} 1.68$ \\
 \bottomrule
 \end{tabular}
 }
 \end{table}
 
-The learned-$R$ EKF achieves the best position accuracy ($0.27$m), reducing error by 49\% vs.\ Raw GPS and 34\% vs.\ fixed-$R$ EKF, with 3.6$\times$ lower variance ($0.05$ vs.\ $0.18$). While cost is comparable in this isolated evaluation, the ablation (Table~\ref{tab:ablation}) shows the full pipeline benefit: cost drops from $18.97$ to $12.51$ when training under sensor noise.
+The learned-$R$ EKF achieves the best position accuracy ($0.27$m), reducing error by 49\% vs.\ Raw GPS and 34\% vs.\ fixed-$R$ EKF, with 3.6$\times$ lower variance ($0.05$ vs.\ $0.18$). In the ablation (Table~\ref{tab:ablation}), the noise-free adaptive-margin configuration already reaches a cost of $0.54$; the full noisy-regime system with EKF + reward calibration retains a cost of $4.91$, a $90\%$ reduction over the unconstrained baseline.
 
 \textbf{Computational overhead.} The NoiseAdapter CNN adds minimal overhead: with $\sim$5K parameters, inference takes $< 0.1$\,ms per step on CPU, negligible compared to the environment step ($\sim$5\,ms) and PPO forward pass ($\sim$1\,ms). Pretraining requires 30 random exploration episodes ($\sim$2\,min) and 100 epochs of NLL optimization ($\sim$30$\,$s), a one-time cost that is amortized over the entire training run. The CNN converges within 50 epochs (loss plateau at $\sim$$-3.7$), and the learned $R_t$ adapts smoothly: predicting larger measurement noise covariance during high-speed motion and smaller covariance at low speed, matching the theoretical velocity-noise model~\eqref{eq:vel_noise}.
 
@@ -577,7 +572,7 @@ To validate that the safety layer is \emph{policy-agnostic}, we deploy a distanc
 
 \begin{table}[t]
 \centering
-\caption{Webots E-puck validation (20 trials). P-controller, 6 obstacles, GPS noise $\sigma=0.04$m. Safety filter and EKF applied zero-shot.}
+\caption{Webots E-puck validation (20 trials). P-controller, 6 obstacles, GPS noise $\sigma=0.04$m. Safety filter and EKF applied zero-shot. Success and collision are not mutually exclusive: ``No filter'' has 8 collisions of which 4 still reached the goal, leaving 4 collision-induced failures (80\% success). Path-length std reflects a right-skewed distribution from detour trials near dense obstacle clusters (median$=1.15$\,m, max$=6.07$\,m for ``Ours'').}
 \label{tab:webots}
 \begin{tabular}{l|cc}
 \toprule
@@ -610,7 +605,7 @@ Path Length (m) & $\mathbf{0.94 \pm 0.41}$ & $1.80 \pm 1.49$ \\
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{CONCLUSIONS}
 
-We presented a safe RL framework that decouples safety enforcement from policy learning through three complementary components: a constraint manifold filter that projects actions into the feasible set via null-space projection, offline HJ reachability analysis that precomputes safe regions to enlarge safety margins, and a data-driven EKF with CNN-learned measurement covariance for robust state estimation under sensor noise. Both the reachability value function and the noise model are pretrained offline, incurring no runtime overhead during RL training. Experiments on Safety-Gymnasium demonstrate near-zero constraint violations across Goal, Circle, and Push tasks under varying penalty settings, with ablation studies confirming 81\% cost reduction on the Goal task when all components are combined. The safety filter and EKF transfer zero-shot to a Webots E-puck robot, achieving zero collisions and 85\% navigation success using only a P-controller, demonstrating policy-agnostic transferability. Current limitations include the restriction to static obstacles and the need for offline pretraining data. Future work includes deployment on physical robots and extension to dynamic obstacles via time-varying reachability analysis.
+We presented a safe RL framework that decouples safety enforcement from policy learning through three complementary components: a constraint manifold filter that projects actions into the feasible set via null-space projection, offline HJ reachability analysis that precomputes safe regions to enlarge safety margins, and a data-driven EKF with CNN-learned measurement covariance for robust state estimation under sensor noise. Both the reachability value function and the noise model are pretrained offline, incurring no runtime overhead during RL training. Experiments on Safety-Gymnasium demonstrate near-zero constraint violations across Goal, Circle, and Push tasks under varying penalty settings, with ablation studies confirming a $90\%$ cost reduction on the Goal task under sensor noise ($50.58 \rightarrow 4.91$), and near-zero cost ($0.54$) in the noise-free regime when the adaptive margin is enabled. The safety filter and EKF transfer zero-shot to a Webots E-puck robot, achieving zero collisions and 85\% navigation success using only a P-controller, demonstrating policy-agnostic transferability. Current limitations include the restriction to static obstacles and the need for offline pretraining data. Future work includes deployment on physical robots and extension to dynamic obstacles via time-varying reachability analysis.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % \section*{ACKNOWLEDGMENT}
@@ -666,7 +661,7 @@ S. Bansal, M. Chen, S. Herbert, and C. J. Tomlin, ``Hamilton-Jacobi reachability
 K.-C. Hsu, V. Rubies-Royo, C. J. Tomlin, and J. F. Fisac, ``Safety and liveness guarantees through reach-avoid reinforcement learning,'' in \emph{Proc. RSS}, 2021.
 
 \bibitem{so2023rtreach}
-O. So, Z. Serlin, B. Mann, \emph{et al.}, ``How to train your neural control barrier function: Learning safety filters for complex input-constrained systems,'' in \emph{Proc. ICRA}, 2024, pp. 11532--11539.
+O. So, Z. Serlin, M. Mann, \emph{et al.}, ``How to train your neural control barrier function: Learning safety filters for complex input-constrained systems,'' in \emph{Proc. ICRA}, 2024, pp. 11532--11539.
 
 \bibitem{kostrikov2022iql}
 I. Kostrikov, A. Nair, and S. Levine, ``Offline reinforcement learning with implicit Q-learning,'' in \emph{Proc. ICLR}, 2022.
@@ -690,7 +685,7 @@ O. Michel, ``Cyberbotics Ltd. Webots: Professional mobile robot simulation,'' \e
 J. Schulman, F. Wolski, P. Dhariwal, A. Radford, and O. Klimov, ``Proximal policy optimization algorithms,'' \emph{arXiv preprint arXiv:1707.06347}, 2017.
 
 \bibitem{yang2020pcpo}
-T.-Y. Yang, J. Rosca, T. Narasimhan, and P. J. Ramadge, ``Projection-based constrained policy optimization,'' in \emph{Proc. ICLR}, 2020.
+T.-Y. Yang, J. Rosca, K. Narasimhan, and P. J. Ramadge, ``Projection-based constrained policy optimization,'' in \emph{Proc. ICLR}, 2020.
 
 \bibitem{achiam2017cpo}
 J. Achiam, D. Held, A. Tamar, and P. Abbeel, ``Constrained policy optimization,'' in \emph{Proc. ICML}, 2017, pp. 22--31.
