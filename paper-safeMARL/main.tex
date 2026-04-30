@@ -28,13 +28,13 @@ style=gb7714-2015,%utf8,
 \usepackage[labelfont=bf,textfont=bf,font=small]{subfig}
 \newcommand{\figref}[1]{~\ref{#1}~}
 \newcommand{\tabref}[1]{~\ref{#1}~}
-%% 图题：中文 + 英文副题（英文行前加 Fig.~章-序号；插图清单仅显示中文行）
+%% 图题：中文 + 英文副题（英文行：Fig.~章-序号: ……；插图清单仅显示中文行）
 \newcommand{\figcap}[2]{%
-  \caption[#1]{#1\\[0.35em]\small Fig.~\thefigure\quad #2}%
+  \caption[#1]{#1\\[0.35em]\small Fig.~\thefigure:\kern0.2em #2}%
 }
-%% 表题：中文 + 英文副题（英文行前加 Tab.~章-序号；表目录仅显示中文行）
+%% 表题：中文 + 英文副题（英文行：Tab.~章-序号: ……；表目录仅显示中文行）
 \newcommand{\tabcap}[2]{%
-  \caption[#1]{#1\\[0.35em]\small Tab.~\thetable\quad #2}%
+  \caption[#1]{#1\\[0.35em]\small Tab.~\thetable:\kern0.2em #2}%
 }
 
 \newcolumntype{P}[1]{>{\centering\arraybackslash}p{#1}}

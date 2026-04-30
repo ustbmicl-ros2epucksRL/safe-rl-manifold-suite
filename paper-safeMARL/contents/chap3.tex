@@ -19,13 +19,20 @@
 \section{问题定义}
 为刻画机器人安全导航中的安全关系，考虑一个机器人在包含 $n$ 个障碍物的复杂环境中进行导航任务。令 $s_t = [p_t^\top, v_t^\top]^\top \in \mathcal{S} \subseteq \mathbb{R}^d$ 表示机器人在离散时间步 $t$ 时的状态，其中 $p_t \in \mathbb{R}^{d_p}$ 代表位置向量，$v_t \in \mathbb{R}^{d_p}$ 代表速度向量。为了定量描述安全，引入基于距离的约束函数。安全性的核心要求是机器人与环境中任何障碍物之间必须保持一定的物理间隔。定义约束集合如下：$$c_i(s_t) := d_{\text{safe}} - \|p_t - o_i\|_2 \leq 0, \quad \forall i \in \{1, \ldots, n\}$$其中，$d_{\text{safe}} > 0$ 表示预设的最小安全距离阈值，$o_i \in \mathbb{R}^{d_p}$ 为第 $i$ 个障碍物在空间中的坐标，$\|\cdot\|_2$ 为欧几里得范数。
 
-若状态 $s_t$ 满足对所有 $i$ 均有 $c_i(s_t) \leq 0$，则称该状态是安全的。在物理上意味着机器人的中心与所有障碍物的中心的距离均大于等于 $d_{\text{safe}}$。在实际应用中，该距离通常考虑了机器人自身的几何半径以及感知系统的不确定性冗余。
+若状态 $s_t$ 满足对所有 $i$ 均有 $c_i(s_t) \leq 0$，则称该状态是安全的。在物理上意味着机器人的中心与所有障碍物的中心的距离均大于等于 $d_{\text{safe}}$。在实际应用中，该距离考虑了机器人自身的几何半径以及感知系统的不确定性冗余。
 
 在强化学习（RL）框架下，将安全导航任务建模为一个约束马尔可夫决策过程（CMDP），记为六元组 $(\mathcal{S}, \mathcal{A}, P, R, \gamma, C)$。其中：$\mathcal{S}$ 和 $\mathcal{A}$ 分别为状态空间和动作空间；$P: \mathcal{S} \times \mathcal{A} \times \mathcal{S} \rightarrow [0, 1]$ 为环境的状态转移概率核；$R: \mathcal{S} \times \mathcal{A} \rightarrow \mathbb{R}$ 为奖励函数，鼓励机器人靠近目标点；$\gamma \in [0, 1)$ 为折扣因子；$C = \{c_i: \mathcal{S} \rightarrow \mathbb{R}\}_{i=1}^k$ 为与环境障碍物对应的约束集合。在具有 $k=n$ 个硬约束（每个障碍物对应一个约束）的设置下，安全强化学习的目标是寻找到一个最优策略 $\pi: \mathcal{S} \rightarrow \mathcal{A}$，使得在满足所有时间步的硬安全约束前提下，最大化累积期望回报：$$\max_{\pi} \mathbb{E}_{\pi}\left[ \sum_{t=0}^{T} \gamma^t R(s_t, a_t) \right]$$$$\text{s.t. } c_i(s_t) \leq 0, \quad \forall t \in \{0, \dots, T\}, \forall i \in \{1, \dots, n\}$$与传统的强化学习不同，CMDP 要求算法在探索过程中不仅要学习任务技能，还必须严格遵守状态空间的边界，避免任何形式的碰撞。
 
 此外，考虑到机器人系统（如差速驱动轮式机器人或无人机）普遍存在非完整约束（Nonholonomic Constraints），不能简单地假设状态可以任意改变。因此，本文将机器人的底层运动学建模为连续时间的控制仿射系统（Control-Affine System）：$$\dot{s} = f(s) + G(s) a$$
 
 在该模型中：$a \in \mathcal{A} \subseteq \mathbb{R}^m$ 是 $m$ 维控制控制量（如推力、转矩或速度指令）；$f(s): \mathcal{S} \rightarrow \mathbb{R}^d$ 称为漂移项（Drift term），代表系统在无控制输入时的固有动力学演化；$G(s): \mathcal{S} \rightarrow \mathbb{R}^{d \times m}$ 为控制输入矩阵，定义了控制动作如何映射到状态的变化率上。动力学特例：质点模型（Single-Integrator）： 若 $f(s) = 0$ 且 $G(s) = I$，系统简化为全向移动模型。差速驱动模型： $G(s)$ 包含三角函数项（如 $\cos\theta, \sin\theta$），用以体现机器人朝向与运动速度之间的耦合关系。通过结合上述动力学模型与 CMDP 框架，本文的研究重点在于如何在复杂的动力学约束下，保证机器人在轨迹执行过程中的实时安全性。
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1\linewidth]{images/framework (1).png}
+    \figcap{约束流形策略学习方法框架}{Framework of the constrained manifold policy learning method.}
+    \label{fig:placeholder}
+\end{figure}
 
 \section{约束流形策略学习方法}
 本文构建了一种面向安全强化学习的约束流形策略方法（Constrained Manifold Policy Learning，CMPL），通过约束流形建模、可达性分析与状态估计的协同设计，实现策略安全性。整体框架由以下三个核心模块组成：
@@ -42,12 +49,6 @@
 
 在具体实现中，可达性分析与状态估计模块均采用离线构建方式。前者利用环境数据提前学习安全裕度分布，后者根据交互数据刻画传感器噪声随运动状态变化的特征。部署阶段，系统只需调用已经得到的安全边界和噪声估计结果，无需重新进行在线训练或复杂优化。这样的设计降低了运行时计算开销，也提高了方法在资源受限机器人平台上的部署可行性。
 
-\begin{figure}
-    \centering
-    \includegraphics[width=1\linewidth]{images/framework (1).png}
-    \figcap{约束流形策略学习方法框架}{Framework of the constrained manifold policy learning method.}
-    \label{fig:placeholder}
-\end{figure}
 \subsection{约束流形投影}
 流形是一个局部与欧几里得空间同胚的拓扑空间， 可以用于描述复杂的几何对象，例如曲线、曲面以及更高维的结构。约束流形是由某些约束条件定义的流形，这些约束条件限制系统的状态或行为。在几何上，这些约束可以用方程或不等式来描述。
 \subsubsection{（1）松弛变量}
@@ -199,13 +200,13 @@ $O(\Delta t^2)$
 
 以及系统动力学 $\dot{s} = f(s, a)$，HJ可达性分析将机器人状态分为可行状态和不可行状态，当机器人不存在满足硬约束的策略时，此时的状态被称为不可行状态，其余状态为可行状态。 可行区域则包含所有至少存在一个满足硬约束策略的可行状态。 
 
-Hamilton–Jacobi 变分不等式（HJ-VI）刻画了后向可达管（Backward Reachable Tube, BRT）——即从某些初始状态出发，无论采取何种控制策略都无法避免最终违反约束的状态集合~\cite{bansal2017hj_reachability}：
+Hamilton–Jacobi 变分不等式（HJ-VI）刻画了后向可达管（Backward Reachable Tube, BRT），即从某些初始状态出发，无论采取何种控制策略都无法避免最终违反约束的状态集合~\cite{bansal2017hj_reachability}：
 \begin{equation}
 \max\{c(s) - V(s), \min_{a} \nabla_s V(s)^\top f(s, a)\} = 0
 \label{eq:hj_vi}
 \end{equation}
 
-以及零次水平集 ${s : V(s) \leq 0}$， 表示最大可行核（viability kernel）——即 $\mathcal{K}$ 中最大的受控不变子集。
+以及零次水平集 ${s : V(s) \leq 0}$， 表示最大可行核（viability kernel），即 $\mathcal{K}$ 中最大的受控不变子集。
 对于离散时间系统 $s_{t+1} = f(s_t, a_t)$，HJ-VI~\eqref{eq:hj_vi} 可以化简为如下不动点方程：
 \begin{equation}
     V(s) = \max{c(s), \min_a V(f(s,a))}
@@ -254,18 +255,17 @@ d_{\text{danger}}(s) = d_0 + \eta  w(s)
 \end{equation}
 
 其中 $d_0$ 为基础半径，$\eta > 0$ 控制安全裕度。
-
 在可行区域内（$V^*_c \leq 0$），有 $w \in (0,1]$：
 当状态接近边界（$V^*_c \approx 0$）时，$w \approx 1$，危险半径为 $d_0 + \eta$，即完整的扩展安全裕度；
 当状态处于安全区域内部（$V^*_c \ll 0$）时，$w \approx 0$，危险半径约为 $d_0$，即接近名义安全距离。
 对于不可行状态（$V^*_c > 0$），有 $w > 1$，此时系统会进一步增大安全裕度，从而提升保守性。
 
-这种机制使得安全过滤器在部署阶段具备环境感知能力（environment-aware），而无需进行实时的障碍物检测或跟踪——预先计算得到的 $V^*_c$ 已经编码了来自先验地图的静态环境可达性结构。
+这种机制使得安全过滤器在部署阶段具备环境感知能力，而无需进行实时的障碍物检测或跟踪，预先计算得到的 $V^*_c$ 已经编码了来自先验地图的静态环境可达性结构。
 
-% 通过离线交互数据训练后，可以获得一个可达安全动作值函数，用于预测在给定状态下执行某一动作是否会导致未来进入危险区域。由此获得一个连续、可微的安全判别函数，用于定义隐式安全约束边界。利用学习得到的安全动作值函数，在每个状态下定义安全可行动作集合。对于任意状态，该函数将动作空间划分为可执行的安全动作区域以及会导致未来危险的违规动作区域。由此，通过学习得到的值函数零水平面刻画的连续边界结，在状态–动作空间中形成安全流形。
+通过离线交互数据训练后，可以获得一个可达安全动作值函数，用于预测在给定状态下执行某一动作是否会导致未来进入危险区域。由此获得一个连续、可微的安全判别函数，用于定义隐式安全约束边界。利用学习得到的安全动作值函数，在每个状态下定义安全可行动作集合。对于任意状态，该函数将动作空间划分为可执行的安全动作区域以及会导致未来危险的违规动作区域。由此，通过学习得到的值函数零水平面刻画的连续边界结，在状态–动作空间中形成安全流形。
 
 \subsection{数据驱动的状态估计}
-状态估计的精度会直接影响安全过滤器的判断结果。机器人在导航过程中通常依赖 GPS、视觉里程计等位置传感器获取状态信息，但这类测量并不稳定，噪声大小会随运行条件发生变化。以高速运动为例，机体振动、GPS 多路径效应以及视觉图像中的运动模糊都会更加明显，此时传感器观测误差往往高于低速运动状态。本文将这种与速度相关（velocity-dependent）的测量不确定性表示为：
+状态估计的精度会直接影响安全过滤器的判断结果。机器人在导航过程中通常依赖 GPS、视觉里程计等位置传感器获取状态信息，但这类测量并不稳定，噪声大小会随运行条件发生变化。以高速运动为例，机体振动、GPS 多路径效应以及视觉图像中的运动模糊都会更加明显，此时传感器观测误差往往高于低速运动状态。本文将这种与速度相关的测量不确定性表示为：
 \begin{equation}
 \sigma(v) = \sigma_{\text{base}}(1 + k |v|)
 \label{eq:vel_noise}
@@ -317,8 +317,24 @@ R_{t} =
 其中$\phi(z) = 10^{\beta \tanh(z)}$,$\sigma_{\text{lat}}$ 和 $\sigma_{\text{hdg}}$ 分别表示位置和航向角的基准噪声估计。前两个对角元素共享 $z^{\text{lat}}_t$，对应 各向同性的 GPS 位置噪声；参数 $\beta > 0$ 用于控制噪声自适应的变化范围。$\tanh$ 非线性函数用于限制输出范围，指数形式的参数化确保协方差矩阵满足 $R_t \succ 0$。当 $z_t \approx 0$（例如在模型尚未收敛时），$R_t$ 会退化为基准协方差，从而保证系统的稳定性。
 
 \subsubsection{（3）离线预训练}
+
+\begin{figure}[!t]
+    \centering
+    %\includegraphics[width=3in]{fig5}
+    \subfloat[Goal Task]{
+            \includegraphics [width=0.4\textwidth, height=0.25\textwidth]{images/goal.png}}
+    \subfloat[Circle Task]{
+            \includegraphics [width=0.4\textwidth, height=0.25\textwidth]{images/circle.png}}
+    \\
+    \subfloat[Push Task]{
+            \includegraphics [width=0.4\textwidth, height=0.25\textwidth]{images/push.png}}
+    \subfloat[MultiGoal Task]{
+            \includegraphics [width=0.4\textwidth, height=0.25\textwidth]{images/multiGoal.png}}
+    \figcap{不同任务场景图}{Illustrations of different task scenarios in Safety-Gymnasium.}
+    \end{figure}
+
 该 CNN 在离线阶段进行预训练，训练数据由随机探索得到的三元组 $(\mathbf{w}_t, \tilde{y}_t, y_t)$ 构成，其中：$\mathbf{w}_t \in \mathbb{R}^{L \times 6}$ 表示 IMU 测量窗口，$\tilde{y}_t$ 表示带噪声的测量值，$y_t$ 表示真实值。
-训练目标是最小化负对数似然（Negative Log-Likelihood）损失：
+训练目标是最小化负对数似然损失：
 \begin{equation}
 \mathcal{L}_{\text{NLL}}
 =
@@ -341,7 +357,8 @@ R_{t} =
 
 其中$\epsilon_t \sim \mathcal{N}(0, \sigma^2(v_t)I)$，噪声方差与机器人速度相关，其形式遵循公式~\eqref{eq:vel_noise}。
 
-\section{实验}
+\section{实验验证}
+
 \subsection{任务与环境}
 为了验证所提出方法在不确定环境下安全导航任务中的有效性，本文围绕以下四个核心问题展开实验分析：
 \begin{itemize}
@@ -366,20 +383,7 @@ R_{t} =
 % （该任务需要涉及接触丰富的操作）。
 \item \textbf{MultiGoal}：多个智能体在避开圆形危险区域的同时导航至目标位置。
 \end{itemize}
-\begin{figure}[!t]
-    \centering
-    %\includegraphics[width=3in]{fig5}
-    \subfloat[Goal Task]{
-            \includegraphics [width=0.4\textwidth, height=0.25\textwidth]{images/goal.png}}
-    \subfloat[Circle Task]{
-            \includegraphics [width=0.4\textwidth, height=0.25\textwidth]{images/circle.png}}
-    \\
-    \subfloat[Push Task]{
-            \includegraphics [width=0.4\textwidth, height=0.25\textwidth]{images/push.png}}
-    \subfloat[MultiGoal Task]{
-            \includegraphics [width=0.4\textwidth, height=0.25\textwidth]{images/multiGoal.png}}
-    \figcap{不同任务场景图}{Illustrations of different task scenarios in Safety-Gymnasium.}
-    \end{figure}
+
 
 \subsection{安全可达空间实验}
 为刻画机器人在不确定环境中的可行运动范围，本文基于包含智能体状态及环境观测的离线数据，对系统进行可达性分析预训练，从而构建机器人的安全可达空间。该安全空间用于刻画在给定动力学约束和环境条件下，系统状态是否能够在未来演化过程中满足安全约束，为后续在线决策提供安全判据。
@@ -640,7 +644,7 @@ EKF（学习得到的 $R$） & $\mathbf{0.27 {\pm} 0.05}$ & $-7.87 {\pm} 0.94$ &
 \label{fig:ros2arch}
 \end{figure}
 
-为了验证安全层具有策略无关性（policy-agnostic），本文在 E-puck 机器人（直径 $\varnothing70mm$）上部署了基于距离的安全过滤器和标准 EKF（固定 $R$），并在 Webots 仿真环境中进行实验。实验场景为一个 $2\text{m} \times 2\text{m}$ 的区域，其中放置 6 个圆柱形障碍物，GPS 噪声为 $\sigma=0.04$m，IMU 航向角噪声为 $\sigma=0.05$,rad。名义控制策略刻意采用一个简单的 P 控制器——而不是训练得到的强化学习策略——以证明该安全架构可以在无需重新训练的情况下迁移到新的机器人平台和控制器上。
+为了验证安全层具有策略无关性（policy-agnostic），本文在 E-puck 机器人（直径 $\varnothing70mm$）上部署了基于距离的安全过滤器和标准 EKF（固定 $R$），并在 Webots 仿真环境中进行实验。实验场景为一个 $2\text{m} \times 2\text{m}$ 的区域，其中放置 6 个圆柱形障碍物，GPS 噪声为 $\sigma=0.04$m，IMU 航向角噪声为 $\sigma=0.05$,rad。名义控制策略刻意采用一个简单的 P 控制器而不是训练得到的强化学习策略，以证明该安全架构可以在无需重新训练的情况下迁移到新的机器人平台和控制器上。
 
 在 Webots 实验中，安全过滤器采用基于距离的速度缩放机制（相比流形过滤器更为简单），同时使用具有固定噪声协方差的标准 EKF。实验结果如图~\ref{fig:ros}，在没有安全过滤的情况下，20 次实验中有 8 次发生碰撞（碰撞率 40\%），其中 4 次由于碰撞导致导航错误而未能到达目标（成功率 80\%）。而本文的方法实现了零碰撞，成功率达到 85\%。其中 3 次失败是由于机器人在密集障碍区域附近发生导航超时，但均在没有碰撞的情况下安全结束。值得注意的是，安全过滤器实际上提高了成功率（85\% 对比 80\%），因为未过滤的碰撞会破坏导航稳定性。EKF 通过融合里程计和 GPS 测量，将位置误差降低了 27\%（$0.051 \rightarrow 0.037$m）（见表~\ref{tab:webots}）。
 

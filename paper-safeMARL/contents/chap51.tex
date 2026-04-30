@@ -126,7 +126,7 @@
 上述机制进一步支撑了\ref{sec:chap5_webots_4mode} 中的多配置对比实验（CMPL\_only、GCPL\_only、full、MAPPO\_only）。相关指标统计结果（表~\ref{tab:chap5_webots_metrics}）均由该标准化评估管线自动生成。整体流程实现了实验执行与结果分析的一体化，在提升效率的同时保证了不同算法比较的客观性与一致性。
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.95\linewidth]{figs/chap5_safety_eval.pdf}
+    \includegraphics[width=0.9\linewidth]{figs/chap5_safety_eval.pdf}
     \figcap{安全评估与模型验证机制}{Safety evaluation and model verification mechanism.}
     \label{fig:chap5_safety_eval}
 \end{figure}
@@ -198,7 +198,7 @@ v = \frac{r_w}{2}(\omega_R + \omega_L), \qquad
     \label{fig:follow_line}
 \end{figure}
 
-运行管理界面如图~\ref{fig:running}所示，用于展示当前运行的实验任务及其运行状态。
+运行管理界面如图~\ref{fig:running}所示，用于展示当前运行的实验任务及其运行状态。该界面能够集中呈现实验任务的基本信息、执行进度和状态变化情况，便于用户实时了解任务运行过程
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.88\linewidth,height=0.38\textheight,keepaspectratio]{images/running(1).png}
@@ -220,7 +220,7 @@ v = \frac{r_w}{2}(\omega_R + \omega_L), \qquad
 
 后端服务模块基于 Django 框架实现，主要负责业务逻辑处理、实验资源管理和任务运行调度。系统采用 RESTful 架构向前端提供统一的数据访问接口，使前端页面与后端业务逻辑保持相对独立，便于后续功能扩展和模块维护。
 
-从功能划分来看，后端服务主要包括实验任务管理、API 接口服务、数据库管理以及系统调度与控制四个部分。
+从功能划分来看，后端服务主要包括实验任务管理、数据库管理以及系统调度与控制三个部分。
 
 \subsubsection{（1）实验任务管理}
 
@@ -228,13 +228,12 @@ v = \frac{r_w}{2}(\omega_R + \omega_L), \qquad
 
 % 当用户在前端选择某个实验任务后，后端会根据任务标识查询数据库，读取与该任务对应的配置信息，并将结果返回给前端。前端再依据这些配置加载相应的仿真环境、参数信息和界面组件，从而完成实验初始化。通过这种方式，任务配置与前端显示逻辑相互分离，平台在增加新任务时不需要大幅修改前端页面结构。
 
-\subsubsection{（2）API 服务提供}
+% \subsubsection{（2）API 服务提供}
 
-为实现前后端之间的数据交互，平台设计了一组 REST API 接口，用于提供实验任务查询、实验配置加载和代码模板下载等服务。前端应用在不同操作阶段通过 HTTP 请求调用对应接口，后端则根据请求内容完成数据查询、权限校验和结果返回。
 
 % 例如，用户进入平台后，前端会先调用任务列表接口，从后端获取当前可用的实验任务；当用户进一步选择某个任务时，系统再调用实验配置接口，加载该任务对应的仿真环境、机器人模型和默认算法模板。基于 REST API 的通信方式降低了页面逻辑与后端实现之间的耦合程度，也使后续增加新的任务类型或评估接口更加方便。
 
-\subsubsection{（3）数据库管理}
+\subsubsection{（2）数据库管理}
 
 平台采用 PostgreSQL 作为后台数据库，用于存储实验任务、仿真环境配置、机器人模型和辅助工具等核心数据。
 % PostgreSQL 在稳定性、扩展性和复杂查询支持方面较为成熟，能够满足机器人实验平台对结构化数据管理的需求。
@@ -251,7 +250,8 @@ v = \frac{r_w}{2}(\omega_R + \omega_L), \qquad
 通过上述数据对象，平台可以对实验任务、场景资源和机器人配置进行统一管理，并支持不同仿真环境之间的组合与复用。
 % Django 提供的对象关系映射（ORM）机制也简化了数据库访问过程，开发人员可以通过 Python 对象完成数据查询和更新，减少直接编写 SQL 带来的维护成本。
 
-\subsubsection{（4）系统调度与控制}
+\subsubsection{（3）系统调度与控制}
+为实现前后端之间的数据交互，平台设计了一组 REST API 接口，用于提供实验任务查询、实验配置加载和代码模板下载等服务。前端应用在不同操作阶段通过 HTTP 请求调用对应接口，后端则根据请求内容完成数据查询、权限校验和结果返回。
 
 系统调度模块负责管理实验任务从启动到结束的完整生命周期。当用户提交实验运行请求后，后端会根据任务配置启动对应的容器实例，并建立前端、算法进程和仿真环境之间的通信连接。在实验执行过程中，后端持续维护任务运行状态，支持启动、暂停、终止等控制操作，同时记录容器和任务进程的基本状态信息。该模块保证了实验执行流程的有序性，也为运行监控、异常排查和结果记录提供了基础。
 
