@@ -409,9 +409,9 @@ Webots 世界文件定义了 5~m $\times$ 5~m 的方形地面、四堵外围边�
 观察与结论归纳如下：
 
 \begin{itemize}
-    \item \textbf{碰撞情况}：所有 12 次实验均满足 $\min d_{\text{pair}} \ge R_{\text{hard}}=0.25$~m，最小两两距离稳定在 $0.39$~m 量级（裕度约 56\%），验证了分层栈中安全层在不同档位下的鲁棒性。其中 \textit{CMPL\_only} 档保留了 GCPL 的碰撞软叶为 chap3 提供 lookahead，避免速度上限下纯 CBF 速度反馈无法压平 3 机汇聚阶段约 12~mm 的瞬态违例。
-    \item \textbf{任务到达}：开启任意几何引导的三档（\textit{CMPL\_only / GCPL\_only / full}）在 32~s 仿真窗内均能驱使多数智能体进入目标半径，平均到达数 $\ge 1.67/3$；其中 \textit{CMPL\_only} 因软层最少、运动最直接，到达数最高（$2.67/3$）。\textit{MAPPO\_only} 档因 MAPPO 训练欠收敛且无吸引器兜底，无法稳定推进至目标。
-    \item \textbf{编队保持}：编队误差由 \textit{full}（$0.082$~m，最优）→ \textit{GCPL\_only}（$0.097$~m）→ \textit{MAPPO\_only}（$0.132$~m）→ \textit{CMPL\_only}（$0.157$~m）依次升高。\textit{full} 档同时受益于 chap4 完整软层的几何协调与 chap3 硬层的安全保护，是编队精度最优的配置；\textit{CMPL\_only} 因 chap4 软层只保留碰撞叶、缺少 formation/orientation 引导，整体队形最松散，体现了"几何引导深度↔编队精度"的可调 trade-off。
+    \item \textbf{碰撞情况}：12 次实验均满足 $\min d_{\text{pair}} \ge R_{\text{hard}}=0.25$~m，最小两两距离稳定在 $0.39$~m 左右，安全裕度约为 56\%，说明各档位下系统都能稳定满足碰撞约束。其中，\textit{CMPL\_only} 档保留了碰撞叶节点，能够提供一定前瞻信息，从而避免三机汇聚时出现短时安全距离不足。
+    \item \textbf{任务到达}：开启几何引导的三种配置（\textit{CMPL\_only / GCPL\_only / full}）均能在 32~s 仿真窗口内驱使多数智能体进入目标半径，平均到达数均不低于 $1.67/3$。其中，\textit{CMPL\_only} 由于约束最少、运动更直接，到达数最高（$2.67/3$）；\textit{MAPPO\_only} 由于缺少额外引导，难以稳定到达目标。
+    \item \textbf{编队保持}：编队误差由 \textit{full}（$0.082$~m，最优）到 \textit{GCPL\_only}（$0.097$~m）、\textit{MAPPO\_only}（$0.132$~m）再到 \textit{CMPL\_only}（$0.157$~m）依次增大。说明 \textit{full} 档在安全保护和几何协调之间取得了最好平衡，而 \textit{CMPL\_only} 由于缺少编队引导，整体队形相对更松散。
     \item \textbf{平台侧说明}：本章所设计的容器化仿真平台完成了 4 档配置 $\times$ 3 seed 共 12 次可复现实验，期间控制链路、ROS\,2 话题与执行管线均稳定运行，验证了平台对 CMPL 与 GCPL 在多机器人任务下的承载与对比能力。
 \end{itemize}
 
