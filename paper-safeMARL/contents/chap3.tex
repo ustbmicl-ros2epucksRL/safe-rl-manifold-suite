@@ -171,23 +171,75 @@ $O(\Delta t^2)$
 
 其中，$\alpha$ 是惩罚权重，$P$ 是基于修正的惩罚函数，$a_{applied,t}$是实际应用于系统的动作（在标准 RL 训练中为$a_{uncert,t}$ 而在过滤训练动作时为$a_{safe,t}$）。
 
+% \begin{algorithm}
+% \caption{约束流形策略学习方法（CMPL）}
+% \begin{algorithmic}[1]
+% \STATE \textbf{输入：} 约束函数 $c(s)$ 及相关参数
+% \FOR{$i=1$ \TO $N$}
+%     \STATE 初始化可行状态 $s_0$ 与松弛变量 $\mu_0$
+%     \FOR{$k=0$ \TO $T-1$}
+%         \STATE 采样动作 $\alpha_k \sim \pi(\cdot \mid s_k)$
+%         \STATE 观测状态 $s_k$
+%         \STATE 计算 $J_c(s_k,\mu_k)$、$N_c(s_k,\mu_k)$，并得到安全投影后的动作 $a_k$
+%         \STATE 执行动作 $a_k$
+%         \STATE 观测下一时刻状态 $s_{k+1}$ 及奖励 $r_k$
+%         \STATE 将样本 $(s_k, a_k, s_{k+1}, r_k)$ 提供给强化学习更新
+%     \ENDFOR
+% \ENDFOR
+% \end{algorithmic}
+% \end{algorithm}
+
 \begin{algorithm}
-\caption{约束流形过滤训练算法}
-\begin{algorithmic}[1]
-\STATE \textbf{输入：} 约束函数 $c(s)$ 及相关参数
-\FOR{$i=1$ \TO $N$}
-    \STATE 初始化可行状态 $s_0$ 与松弛变量 $\mu_0$
-    \FOR{$k=0$ \TO $T-1$}
-        \STATE 采样动作 $\alpha_k \sim \pi(\cdot \mid s_k)$
-        \STATE 观测状态 $s_k$
-        \STATE 计算 $J_c(s_k,\mu_k)$、$N_c(s_k,\mu_k)$，并得到安全投影后的动作 $a_k$
-        \STATE 执行动作 $a_k$
-        \STATE 观测下一时刻状态 $s_{k+1}$ 及奖励 $r_k$
-        \STATE 将样本 $(s_k, a_k, s_{k+1}, r_k)$ 提供给强化学习更新
+    \caption{约束流形策略学习方法（CMPL）}
+    \label{alg:cmpl}
+    \begin{algorithmic}[1]
+    \STATE \textbf{输入：} 约束函数 $c(s)$，策略网络 $\pi_{\theta}$，价值网络 $V_{\phi}$，安全过滤参数 $K_c$，奖励校准权重 $\alpha$
+    \STATE \textbf{初始化：} 策略参数 $\theta$，价值函数参数 $\phi$，经验缓冲区 $\mathcal{B}$
+    \FOR{$i=1$ \TO $N$}
+        \STATE 清空经验缓冲区 $\mathcal{B}$
+        \STATE 初始化可行状态 $s_0$ 与松弛变量 $\mu_0$
+        \FOR{$k=0$ \TO $T-1$}
+            \STATE 根据当前策略采样名义动作 $a_{\text{unc},k} \sim \pi_{\theta}(\cdot \mid s_k)$
+            \STATE 计算 $J_c(s_k,\mu_k)$ 与 $N_c(s_k,\mu_k)$
+            \STATE 根据约束流形投影得到安全动作 $a_{\text{safe},k}$
+            \STATE 执行 $a_{\text{safe},k}$，观测 $s_{k+1}$、原始奖励 $r_k$ 与约束代价 $c_k$
+            \STATE 根据动作修正幅度得到校准奖励
+            \[
+            \tilde{r}_k = r_k - \alpha P(a_{\text{unc},k},a_{\text{safe},k})
+            \]
+            \STATE 存储样本 $(s_k,a_{\text{unc},k},a_{\text{safe},k},\tilde{r}_k,c_k,s_{k+1})$ 至 $\mathcal{B}$
+            \STATE 更新松弛变量 $\mu_{k+1}$
+        \ENDFOR
+        \STATE 基于 $\mathcal{B}$ 计算折扣回报 $\hat{R}_k$ 与优势函数 $\hat{A}_k$
+        \STATE 使用 PPO 目标函数更新策略网络 $\pi_{\theta}$
+        \[
+        \theta \leftarrow \arg\max_{\theta}
+        \mathbb{E}_{\mathcal{B}}
+        \left[
+        \min \left(
+        \rho_k(\theta)\hat{A}_k,
+        \operatorname{clip}(\rho_k(\theta),1-\epsilon,1+\epsilon)\hat{A}_k
+        \right)
+        \right]
+        \]
+        \STATE 其中，
+        \[
+        \rho_k(\theta)=
+        \frac{\pi_{\theta}(a_{\text{unc},k}\mid s_k)}
+        {\pi_{\theta_{\text{old}}}(a_{\text{unc},k}\mid s_k)}
+        \]
+        \STATE 更新价值网络 $V_{\phi}$
+        \[
+        \phi \leftarrow \arg\min_{\phi}
+        \mathbb{E}_{\mathcal{B}}
+        \left[
+        \left(V_{\phi}(s_k)-\hat{R}_k\right)^2
+        \right]
+        \]
     \ENDFOR
-\ENDFOR
-\end{algorithmic}
-\end{algorithm}
+    \STATE \textbf{输出：} 训练后的策略网络 $\pi_{\theta}$ 与约束流形安全过滤器
+    \end{algorithmic}
+    \end{algorithm}
 
 \subsection{安全可达性分析}
 约束流形过滤器需要已知障碍物的位置，本文假设这些信息可以通过静态障碍物的先验地图获得（例如来自离线建图或仿真中的真实环境数据）。为了进一步构建能够自适应调节安全裕度的环境感知安全区域，本文采用离线HJ 可达性分析（Hamilton–Jacobi reachability analysis）。
@@ -404,7 +456,7 @@ R_{t} =
 为评估完整框架在安全性与任务性能上的综合表现，本文在 Safety-Gymnasium 的 Goal、Circle、Push 与 MultiGoal 任务中与其他基准算法进行对比。
 
 \subsubsection{基线方法}
-本文在单智能体和多智能体场景中，与多种经典的安全强化学习算法进行对比，包括 PPO~\cite{schulman2017ppo}、 PCPO~\cite{yang2020projection} 、 PPO-Lag~\cite{stooke2020responsive} 、 TRPO-Lag~\cite{ray2019benchmarking} ，多智能体实验包含了 MAPPO 、 HAPPO~\cite{kuba2022happo} 、 MACPO 以及 MAPPO-Lag。
+本文在单智能体和多智能体场景中，与多种经典的安全强化学习算法进行对比，包括 PPO~\cite{schulman2017ppo}、 PCPO~\cite{yang2020projection} 、 PPO-Lag~\cite{stooke2020responsive} 、 TRPO-Lag~\cite{achiam2017cpo} ，多智能体实验包含了 MAPPO 、 HAPPO~\cite{kuba2022happo} 、 MACPO 以及 MAPPO-Lag。
 
 需要注意的是，ATACOM~\cite{liu2022atacom} 需要任务特定的约束雅可比矩阵以及扩展动作空间，因此在 Safety-Gymnasium 基准环境上进行直接比较较为困难；相比之下，本文的方法采用一种基于距离的简化安全过滤器，用于在点机器人任务中近似实现流形投影。
 
