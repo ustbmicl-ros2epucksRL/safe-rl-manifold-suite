@@ -262,6 +262,7 @@ Hamilton–Jacobi 变分不等式（HJ-VI）刻画了后向可达管（Backward 
 对于离散时间系统 $s_{t+1} = f(s_t, a_t)$，HJ-VI~\eqref{eq:hj_vi} 可以化简为如下不动点方程：
 \begin{equation}
     V(s) = \max{c(s), \min_a V(f(s,a))}
+    \label{eq:viability_fixed_point}
 \end{equation}
 
 据此定义对应的最佳可行状态值函数 $V^*_c$ 和最佳可行动作值函数 $Q^*_c$ 被定义为：
@@ -277,7 +278,10 @@ Hamilton–Jacobi 变分不等式（HJ-VI）刻画了后向可达管（Backward 
 对于策略 $\pi$ 的可行区域定义为 $S^{\pi}_f:=\{s|V^{\pi}_c(s) \leq 0\}$ ，即策略 $\pi$ 能够满足硬约束的状态集合。最大可行区域（viability kernel）定义为 $S^*_f:=\{s|V^*_c(s) \leq 0\}$ ，即包括所有存在至少一个满足硬约束策略的状态。 对于状态 $s$ ，可行策略集合定义为 $\Pi_{f(s)}:=\{\pi |V^{\pi}_c(s) \leq 0\}$ ，即包含所有从状态 出发能够满足硬约束的策略。
 
 \subsubsection{（2）离线近似}
-HJ 可达性分析在计算最优可行值函数需要通过与环境交互进行蒙特卡罗估计，这在离线设置中是不可行的。为了保证 Bellman 算子的收敛性，本文引入折扣因子 $\gamma \in (0, 1)$。通过反复利用带有折扣因子 $\gamma\to 1$的可行 Bellman 算子来获得近似的最优可行值。与 BRT 不动点对应的折扣可行 Bellman 算子定义为：
+HJ 可达性分析在计算最优可行值函数需要通过与环境交互进行蒙特卡罗估计，这在离线设置中是不可行的。
+因此本文采用基于 HJ 可达性思想的离线安全可达空间近似方法，首先利用采集得到的轨迹数据构造离线数据集 $\mathcal{D}=\{(s,a,s')\}$，再通过函数逼近方式学习状态及状态-动作对的安全可行性。
+在前文式~\eqref{eq:viability_fixed_point} 中，HJ 可达性分析对应的可行性不动点刻画了当前约束风险与后继状态风险之间的关系。
+直接求解上述非折扣不动点需要充分覆盖状态-动作空间，在离线数据条件下较难实现。为提高数值稳定性，本文引入折扣因子 $\gamma\in(0,1)$，构造如下折扣可行 Bellman 目标：
 \begin{equation}
 \mathcal{T}^* Q_c(s, a) := (1{-}\gamma) c(s) + \gamma \max{c(s), V_c(s')}
 \label{eq:bellman}
@@ -286,13 +290,13 @@ HJ 可达性分析在计算最优可行值函数需要通过与环境交互进�
 其中 $s' = f(s,a)$ 表示后继状态，而 $\max{c(s), \cdot}$ 对应于 HJ-VI~\eqref{eq:hj_vi} 中的 $\max$ 项：
 该项确保值函数不会低于当前的约束违背程度，从而保持 BRT 的结构特性。
 
-由于离线数据集无法全面覆盖所有的动作分布，因此在离线训练时可能出现数据集中未包含的动作。为了处理离线数据集 $\mathcal{D}$ 中的分布外动作，本文采用 expectile regression~\cite{kostrikov2022iql} 来近似 HJ-VI 中的 $\min_a$，而无需显式进行最小化：
+由于离线数据集 $\mathcal{D}$ 不能覆盖全部动作空间，若直接对 $\min_a V(f(s,a))$ 进行显式优化，容易选择到数据分布之外的动作，进而造成不可靠的安全估计。为避免这一问题，本文采用 expectile regression 对数据集中较安全的动作进行加权拟合，从而在不显式枚举动作空间的情况下近似 HJ-VI 中的 $\min_a$ 项：
 \begin{align}
 L_{V_c} &= \mathbb{E}*{(s,a) \sim \mathcal{D}} \left[ L^\tau*{\text{rev}}(Q_c(s,a) - V_c(s)) \right] \label{eq:loss_v} \\
 L_{Q_c} &= \mathbb{E}_{(s,a,s') \sim \mathcal{D}} \left[ (\mathcal{T}^* Q_c - Q_c(s,a))^2 \right] \label{eq:loss_q}
 \end{align}
 
-其中$L^\tau_{\text{rev}}(u) = |\tau - \mathbf{1}(u > 0)| \cdot u^2$ ， $\tau \in [0.5, 1]$。该损失函数会对较小的 $Q_c$ 值赋予更高权重，从而偏向选择最安全（最乐观）的动作——这对应于 HJ-VI 中 $\min_a$ 的离散近似。
+其中，$L^\tau_{\text{rev}}(u)=|\tau-\mathbf{1}(u>0)|u^2$，$\tau\in[0.5,1]$。该损失对具有较低安全风险的动作赋予更高权重，使学习得到的值函数更接近可行策略所对应的安全边界。
 
 \subsubsection{（3）与安全过滤器的集成}
 在部署阶段，学习得到的 $V^*_c$ 用于调节安全过滤器的保守程度。定义平滑权重函数：
