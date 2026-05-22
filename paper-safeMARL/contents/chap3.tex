@@ -17,7 +17,7 @@
 % 利用卷积神经网络（CNN）学习噪声参数，使测量协方差能够适应与速度相关的传感器噪声，
 % 对机器人自身状态进行更加精确和鲁棒的估计，从而显著降低了因感知不确定性引发的安全风险。
 \section{问题定义}
-为刻画机器人安全导航中的安全关系，考虑一个机器人在包含 $n$ 个障碍物的复杂环境中进行导航任务。令 $s_t = [p_t^\top, v_t^\top]^\top \in \mathcal{S} \subseteq \mathbb{R}^d$ 表示机器人在离散时间步 $t$ 时的状态，其中 $p_t \in \mathbb{R}^{d_p}$ 代表位置向量，$v_t \in \mathbb{R}^{d_p}$ 代表速度向量。为了定量描述安全，引入基于距离的约束函数。安全性的核心要求是机器人与环境中任何障碍物之间必须保持一定的物理间隔。定义约束集合如下：$$c_i(s_t) := d_{\text{safe}} - \|p_t - o_i\|_2 \leq 0, \quad \forall i \in \{1, \ldots, n\}$$其中，$d_{\text{safe}} > 0$ 表示预设的最小安全距离阈值，$o_i \in \mathbb{R}^{d_p}$ 为第 $i$ 个障碍物在空间中的坐标，$\|\cdot\|_2$ 为欧几里得范数。
+为刻画机器人安全导航中的安全关系，考虑一个机器人在包含 $n$ 个障碍物的复杂环境中进行导航任务。令 $s_t = [p_t^\top, v_t^\top]^\top \in \mathcal{S} \subseteq \mathbb{R}^d$ 表示机器人在离散时间步 $t$ 时的状态，其中 $p_t \in \mathbb{R}^{d_p}$ 代表位置向量，$v_t \in \mathbb{R}^{d_p}$ 代表速度向量。为了定量描述安全，引入基于距离的约束函数。安全性的核心要求是机器人与环境中任何障碍物之间必须保持一定的物理间隔。定义约束集合如下：$$c_i(s_t) = d_{\text{safe}} - \|p_t - o_i\|_2 \leq 0, \quad \forall i \in \{1, \ldots, n\}$$其中，$d_{\text{safe}} > 0$ 表示预设的最小安全距离阈值，$o_i \in \mathbb{R}^{d_p}$ 为第 $i$ 个障碍物在空间中的坐标，$\|\cdot\|_2$ 为欧几里得范数。
 
 若状态 $s_t$ 满足对所有 $i$ 均有 $c_i(s_t) \leq 0$，则称该状态是安全的。在物理上意味着机器人的中心与所有障碍物的中心的距离均大于等于 $d_{\text{safe}}$。在实际应用中，该距离考虑了机器人自身的几何半径以及感知系统的不确定性冗余。
 
@@ -54,12 +54,12 @@
 \subsubsection{（1）松弛变量}
 然而，不等式约束在优化和控制律设计中往往难以直接处理，且难以定义稳定的切空间（Tangent Space）。为此，本研究引入非负松弛变量（Slack Variables） $\mu \in \mathbb{R}^k_{\geq 0}$。通过将原始约束函数与松弛变量结合，可以将不等式约束转化为严格的等式约束形式：
 \begin{equation}
-    \bar{c}(s, \mu) := c(s) + \mu = 0, \quad \text{其中 } \mu \geq 0\label{eq:slack}
+    \bar{c}(s, \mu) = c(s) + \mu = 0, \quad \text{其中 } \mu \geq 0\label{eq:slack}
 \end{equation}
 
 引入松弛变量后，由于 $\mu$ 被限制为非负，任何满足等式 $\bar{c}(s, \mu) = 0$ 的点都必然满足 $c(s) = -\mu \leq 0$，安全性得到了自然的保证。这种转化允许将安全状态的搜索范围从一个区域（区域约束）缩小到一个精确定义的数学流形上。基于此，本文定义约束流形 $\mathcal{M}$ 为满足所有安全准则的状态集合：
 \begin{equation}
-    \mathcal{M} := { (s, \mu) \in \mathcal{D} \mid \bar{c}(s, \mu) = 0 
+    \mathcal{M} = { (s, \mu) \in \mathcal{D} \mid \bar{c}(s, \mu) = 0 
 }\end{equation}
 
 其中 $\mathcal{D} = \mathcal{S} \times \mathbb{R}^k_{\geq 0}$ 代表由原始状态与松弛变量构成的增广状态空间（Augmented State Space）。
@@ -171,153 +171,198 @@ $O(\Delta t^2)$
 
 其中，$\alpha$ 是惩罚权重，$P$ 是基于修正的惩罚函数，$a_{applied,t}$是实际应用于系统的动作（在标准 RL 训练中为$a_{uncert,t}$ 而在过滤训练动作时为$a_{safe,t}$）。
 
-% \begin{algorithm}
-% \caption{约束流形策略学习方法（CMPL）}
-% \begin{algorithmic}[1]
-% \STATE \textbf{输入：} 约束函数 $c(s)$ 及相关参数
-% \FOR{$i=1$ \TO $N$}
-%     \STATE 初始化可行状态 $s_0$ 与松弛变量 $\mu_0$
-%     \FOR{$k=0$ \TO $T-1$}
-%         \STATE 采样动作 $\alpha_k \sim \pi(\cdot \mid s_k)$
-%         \STATE 观测状态 $s_k$
-%         \STATE 计算 $J_c(s_k,\mu_k)$、$N_c(s_k,\mu_k)$，并得到安全投影后的动作 $a_k$
-%         \STATE 执行动作 $a_k$
-%         \STATE 观测下一时刻状态 $s_{k+1}$ 及奖励 $r_k$
-%         \STATE 将样本 $(s_k, a_k, s_{k+1}, r_k)$ 提供给强化学习更新
-%     \ENDFOR
-% \ENDFOR
-% \end{algorithmic}
-% \end{algorithm}
-
 \begin{algorithm}
-    \caption{约束流形策略学习方法（CMPL）}
-    \label{alg:cmpl}
-    \begin{algorithmic}[1]
-    \STATE \textbf{输入：} 约束函数 $c(s)$，策略网络 $\pi_{\theta}$，价值网络 $V_{\phi}$，安全过滤参数 $K_c$，奖励校准权重 $\alpha$
-    \STATE \textbf{初始化：} 策略参数 $\theta$，价值函数参数 $\phi$，经验缓冲区 $\mathcal{B}$
-    \FOR{$i=1$ \TO $N$}
-        \STATE 清空经验缓冲区 $\mathcal{B}$
-        \STATE 初始化可行状态 $s_0$ 与松弛变量 $\mu_0$
-        \FOR{$k=0$ \TO $T-1$}
-            \STATE 根据当前策略采样名义动作 $a_{\text{unc},k} \sim \pi_{\theta}(\cdot \mid s_k)$
-            \STATE 计算 $J_c(s_k,\mu_k)$ 与 $N_c(s_k,\mu_k)$
-            \STATE 根据约束流形投影得到安全动作 $a_{\text{safe},k}$
-            \STATE 执行 $a_{\text{safe},k}$，观测 $s_{k+1}$、原始奖励 $r_k$ 与约束代价 $c_k$
-            \STATE 根据动作修正幅度得到校准奖励
-            \[
-            \tilde{r}_k = r_k - \alpha P(a_{\text{unc},k},a_{\text{safe},k})
-            \]
-            \STATE 存储样本 $(s_k,a_{\text{unc},k},a_{\text{safe},k},\tilde{r}_k,c_k,s_{k+1})$ 至 $\mathcal{B}$
-            \STATE 更新松弛变量 $\mu_{k+1}$
-        \ENDFOR
-        \STATE 基于 $\mathcal{B}$ 计算折扣回报 $\hat{R}_k$ 与优势函数 $\hat{A}_k$
-        \STATE 使用 PPO 目标函数更新策略网络 $\pi_{\theta}$
-        \[
-        \theta \leftarrow \arg\max_{\theta}
-        \mathbb{E}_{\mathcal{B}}
-        \left[
-        \min \left(
-        \rho_k(\theta)\hat{A}_k,
-        \operatorname{clip}(\rho_k(\theta),1-\epsilon,1+\epsilon)\hat{A}_k
-        \right)
-        \right]
-        \]
-        \STATE 其中，
-        \[
-        \rho_k(\theta)=
-        \frac{\pi_{\theta}(a_{\text{unc},k}\mid s_k)}
-        {\pi_{\theta_{\text{old}}}(a_{\text{unc},k}\mid s_k)}
-        \]
-        \STATE 更新价值网络 $V_{\phi}$
-        \[
-        \phi \leftarrow \arg\min_{\phi}
-        \mathbb{E}_{\mathcal{B}}
-        \left[
-        \left(V_{\phi}(s_k)-\hat{R}_k\right)^2
-        \right]
-        \]
+\caption{约束流形策略学习方法（CMPL）}
+\begin{algorithmic}[1]
+\STATE \textbf{输入：} 约束函数 $c(s)$ 及相关参数
+\FOR{$i=1$ \TO $N$}
+    \STATE 初始化可行状态 $s_0$ 与松弛变量 $\mu_0$
+    \FOR{$k=0$ \TO $T-1$}
+        \STATE 采样动作 $\alpha_k \sim \pi(\cdot \mid s_k)$
+        \STATE 观测状态 $s_k$
+        \STATE 计算 $J_c(s_k,\mu_k)$、$N_c(s_k,\mu_k)$，并得到安全投影后的动作 $a_k$
+        \STATE 执行动作 $a_k$
+        \STATE 观测下一时刻状态 $s_{k+1}$ 及奖励 $r_k$
+        \STATE 将样本 $(s_k, a_k, s_{k+1}, r_k)$ 提供给强化学习更新
     \ENDFOR
-    \STATE \textbf{输出：} 训练后的策略网络 $\pi_{\theta}$ 与约束流形安全过滤器
-    \end{algorithmic}
-    \end{algorithm}
+\ENDFOR
+\end{algorithmic}
+\end{algorithm}
+
+% \begin{algorithm}
+    % \caption{约束流形策略学习方法（CMPL）}
+    % \label{alg:cmpl}
+    % \begin{algorithmic}[1]
+    % \STATE \textbf{输入：} 约束函数 $c(s)$，策略网络 $\pi_{\theta}$，价值网络 $V_{\phi}$，安全过滤参数 $K_c$，奖励校准权重 $\alpha$
+    % \STATE \textbf{初始化：} 策略参数 $\theta$，价值函数参数 $\phi$，经验缓冲区 $\mathcal{B}$
+    % \FOR{$i=1$ \TO $N$}
+    %     \STATE 清空经验缓冲区 $\mathcal{B}$
+    %     \STATE 初始化可行状态 $s_0$ 与松弛变量 $\mu_0$
+    %     \FOR{$k=0$ \TO $T-1$}
+    %         \STATE 根据当前策略采样名义动作 $a_{\text{unc},k} \sim \pi_{\theta}(\cdot \mid s_k)$
+    %         \STATE 计算 $J_c(s_k,\mu_k)$ 与 $N_c(s_k,\mu_k)$
+    %         \STATE 根据约束流形投影得到安全动作 $a_{\text{safe},k}$
+    %         \STATE 执行 $a_{\text{safe},k}$，观测 $s_{k+1}$、原始奖励 $r_k$ 与约束代价 $c_k$
+    %         \STATE 根据动作修正幅度得到校准奖励
+    %         \[
+    %         \tilde{r}_k = r_k - \alpha P(a_{\text{unc},k},a_{\text{safe},k})
+    %         \]
+    %         \STATE 存储样本 $(s_k,a_{\text{unc},k},a_{\text{safe},k},\tilde{r}_k,c_k,s_{k+1})$ 至 $\mathcal{B}$
+    %         \STATE 更新松弛变量 $\mu_{k+1}$
+    %     \ENDFOR
+    %     \STATE 基于 $\mathcal{B}$ 计算折扣回报 $\hat{R}_k$ 与优势函数 $\hat{A}_k$
+    %     \STATE 使用 PPO 目标函数更新策略网络 $\pi_{\theta}$
+    %     \[
+    %     \theta \leftarrow \arg\max_{\theta}
+    %     \mathbb{E}_{\mathcal{B}}
+    %     \left[
+    %     \min \left(
+    %     \rho_k(\theta)\hat{A}_k,
+    %     \operatorname{clip}(\rho_k(\theta),1-\epsilon,1+\epsilon)\hat{A}_k
+    %     \right)
+    %     \right]
+    %     \]
+    %     \STATE 其中，
+    %     \[
+    %     \rho_k(\theta)=
+    %     \frac{\pi_{\theta}(a_{\text{unc},k}\mid s_k)}
+    %     {\pi_{\theta_{\text{old}}}(a_{\text{unc},k}\mid s_k)}
+    %     \]
+    %     \STATE 更新价值网络 $V_{\phi}$
+    %     \[
+    %     \phi \leftarrow \arg\min_{\phi}
+    %     \mathbb{E}_{\mathcal{B}}
+    %     \left[
+    %     \left(V_{\phi}(s_k)-\hat{R}_k\right)^2
+    %     \right]
+    %     \]
+    % \ENDFOR
+    % \STATE \textbf{输出：} 训练后的策略网络 $\pi_{\theta}$ 与约束流形安全过滤器
+    % \end{algorithmic}
+    % \end{algorithm}
 
 \subsection{安全可达性分析}
-约束流形过滤器需要已知障碍物的位置，本文假设这些信息可以通过静态障碍物的先验地图获得（例如来自离线建图或仿真中的真实环境数据）。为了进一步构建能够自适应调节安全裕度的环境感知安全区域，本文采用离线HJ 可达性分析（Hamilton–Jacobi reachability analysis）。
-
-\subsubsection{（1）从 HJ 偏微分方程到可行性值函数}
-在连续时间系统中，给定约束函数 $c(s) \leq 0$ 定义安全集合
+约束流形过滤器需要已知障碍物的位置，本文假设这些信息可以通过静态障碍物的先验地图获得，例如来自离线建图或仿真中的真实环境数据。
+为了进一步刻画状态和动作对安全性的影响，本文引入基于 HJ 可达性分析（Hamilton–Jacobi reachability analysis）的安全可达性分析方法，通过可行性值函数描述机器人从当前状态出发是否存在满足硬安全约束的控制策略。
+与传统基于期望累计代价的软约束方法不同，本文关注的是状态级硬约束，即要求机器人在未来轨迹的所有时刻均满足
 \begin{equation}
-    \mathcal{K} = {s : c(s) \leq 0}
+    c(s_t)\leq 0,\quad \forall t\in\mathbb{N}.
 \end{equation}
 
-以及系统动力学 $\dot{s} = f(s, a)$，HJ可达性分析将机器人状态分为可行状态和不可行状态，当机器人不存在满足硬约束的策略时，此时的状态被称为不可行状态，其余状态为可行状态。 可行区域则包含所有至少存在一个满足硬约束策略的可行状态。 
+\subsubsection{（1）可行性值函数}
 
-Hamilton–Jacobi 变分不等式（HJ-VI）刻画了后向可达管（Backward Reachable Tube, BRT），即从某些初始状态出发，无论采取何种控制策略都无法避免最终违反约束的状态集合~\cite{bansal2017hj_reachability}：
+给定策略 $\pi$，定义其对应的可行性状态值函数为
 \begin{equation}
-\max\{c(s) - V(s), \min_{a} \nabla_s V(s)^\top f(s, a)\} = 0
-\label{eq:hj_vi}
+    V_c^\pi(s)
+    =
+    \max_{t\in\mathbb{N}} c(s_t),
+    \quad
+    s_0=s,\ a_t\sim\pi(\cdot|s_t).
+    \label{eq:vc_pi}
 \end{equation}
 
-以及零次水平集 ${s : V(s) \leq 0}$， 表示最大可行核（viability kernel），即 $\mathcal{K}$ 中最大的受控不变子集。
-对于离散时间系统 $s_{t+1} = f(s_t, a_t)$，HJ-VI~\eqref{eq:hj_vi} 可以化简为如下不动点方程：
+该函数表示从状态 $s$ 出发并按照策略 $\pi$ 执行时，整条未来轨迹中最大的约束违反程度。若 $V_c^\pi(s)\leq 0$ ,则说明未来所有状态均满足 $c(s_t)\leq 0,\quad \forall t\in\mathbb{N}$,
+即策略 $\pi$ 能够从状态 $s$ 出发持续满足硬安全约束。若 $V_c^\pi(s)>0$，则说明未来轨迹中至少存在某一时刻发生约束违反。
+
+进一步在所有策略中选择未来最大约束违反程度最小的策略，可以得到最优可行性状态值函数
 \begin{equation}
-    V(s) = \max{c(s), \min_a V(f(s,a))}
-    \label{eq:viability_fixed_point}
+    V_c^*(s)
+    =
+    \min_{\pi}V_c^\pi(s)
+    =
+    \min_{\pi}\max_{t\in\mathbb{N}}c(s_t).
+    \label{eq:vc_star}
 \end{equation}
 
-据此定义对应的最佳可行状态值函数 $V^*_c$ 和最佳可行动作值函数 $Q^*_c$ 被定义为：
+该函数表示从状态 $s$ 出发时，在所有可能策略中所能达到的最小未来最大约束违反程度。若 $V_c^*(s)\leq 0$，则说明至少存在一种策略能够使机器人未来全程满足安全约束，因此状态 $s$ 为可行状态；若 $V_c^*(s)>0$，则说明即便选择最安全策略，未来仍然会出现约束违反，因此状态 $s$ 为不可行状态。
+
+类似地，最优可行性动作值函数表示为
 \begin{equation}
-    V^*_c(s):=\min_{\pi}V^{\pi}_c(s):=\min_{\pi}\max_{y\in N}c(s_t) 
-\end{equation}
-\begin{equation}
-    Q^*_c(s,a):=\min_{\pi}Q^{\pi}_c(s,a):=\min_{\pi} \max_{t\in \mathbb{N}}c(s_t).
+    Q_c^*(s,a)
+    =
+    \min_{\pi}Q_c^\pi(s,a)
+    =
+    \min_{\pi}\max_{t\in\mathbb{N}}c(s_t).
+    \label{eq:qc_star}
 \end{equation}
 
-这里，$V^{\pi}_c(s)$表示策略 $\pi$ 从状态 $s$ 出发的轨迹中最大的约束违反值。如果$V^{\pi}_c(s) \leq 0$，说明策略 $\pi$ 能够满足从状态 $s$ 开始的硬约束。这意味着在所有的时间点 $t$ ，$c(s_t)\leq 0$ 。如果$V^*_c(s) \leq 0$，则存在至少一个策略 $\pi$ 能够满足状态 $s$ 开始的硬约束。可行价值函数表明策略是否能够满足硬约束（即策略的可行性）；而最优可行价值函数表示是否存在实现硬约束（即状态可行性）的策略。
-
-对于策略 $\pi$ 的可行区域定义为 $S^{\pi}_f:=\{s|V^{\pi}_c(s) \leq 0\}$ ，即策略 $\pi$ 能够满足硬约束的状态集合。最大可行区域（viability kernel）定义为 $S^*_f:=\{s|V^*_c(s) \leq 0\}$ ，即包括所有存在至少一个满足硬约束策略的状态。 对于状态 $s$ ，可行策略集合定义为 $\Pi_{f(s)}:=\{\pi |V^{\pi}_c(s) \leq 0\}$ ，即包含所有从状态 出发能够满足硬约束的策略。
+其中，$Q_c^*(s,a)$ 表示在状态 $s$ 执行动作 $a$ 后，未来轨迹中能够达到的最小最大约束违反程度。与 $V_c^*(s)$ 相比，$Q_c^*(s,a)$ 固定了第一步动作，从而用于判断某个具体动作是否可能导致未来进入危险区域。
 
 \subsubsection{（2）离线近似}
-HJ 可达性分析在计算最优可行值函数需要通过与环境交互进行蒙特卡罗估计，这在离线设置中是不可行的。
-因此本文采用基于 HJ 可达性思想的离线安全可达空间近似方法，首先利用采集得到的轨迹数据构造离线数据集 $\mathcal{D}=\{(s,a,s')\}$，再通过函数逼近方式学习状态及状态-动作对的安全可行性。
-在前文式~\eqref{eq:viability_fixed_point} 中，HJ 可达性分析对应的可行性不动点刻画了当前约束风险与后继状态风险之间的关系。
-直接求解上述非折扣不动点需要充分覆盖状态-动作空间，在离线数据条件下较难实现。为提高数值稳定性，本文引入折扣因子 $\gamma\in(0,1)$，构造如下折扣可行 Bellman 目标：
+
+上述可行性值函数直接依赖未来整条轨迹。若要精确计算 $V_c^*$ 和 $Q_c^*$，通常需要从任意状态出发与环境交互。
+然而，在离线设置中，机器人只能利用已经采集的轨迹数据。因此，本文借助贝尔曼递推思想，构造如下折扣可行贝尔曼算子，将当前状态--动作对的未来风险分解为当前状态风险和后继状态未来风险：
 \begin{equation}
-\mathcal{T}^* Q_c(s, a) := (1{-}\gamma) c(s) + \gamma \max{c(s), V_c(s')}
-\label{eq:bellman}
+    \mathcal{T}^*Q_c(s,a)
+    =
+    (1-\gamma)c(s)
+    +
+    \gamma\max\{c(s),V_c^*(s')\},
+    V_c^*(s')=\min_{a'}Q_c(s',a').
+    \label{eq:feasible_bellman}
 \end{equation}
 
-其中 $s' = f(s,a)$ 表示后继状态，而 $\max{c(s), \cdot}$ 对应于 HJ-VI~\eqref{eq:hj_vi} 中的 $\max$ 项：
-该项确保值函数不会低于当前的约束违背程度，从而保持 BRT 的结构特性。
+其中，$\mathcal{T}^*$ 表示最优可行贝尔曼算子，$\gamma\in(0,1)$ 为折扣因子。本文的安全可行性关注未来轨迹中的最大约束违反程度，因此递推核心为$\max\{c(s),V_c(s')\}$，
+该项表示当前状态风险 $c(s)$ 与后继状态未来风险 $V_c(s')$ 中的较大者。
 
-由于离线数据集 $\mathcal{D}$ 不能覆盖全部动作空间，若直接对 $\min_a V(f(s,a))$ 进行显式优化，容易选择到数据分布之外的动作，进而造成不可靠的安全估计。为避免这一问题，本文采用 expectile regression 对数据集中较安全的动作进行加权拟合，从而在不显式枚举动作空间的情况下近似 HJ-VI 中的 $\min_a$ 项：
+式~\eqref{eq:feasible_bellman} 中的 $V_c^*(s')=\min_{a'}Q_c(s',a')$
+表示在后继状态 $s'$ 中选择未来风险最小的动作。因此，本文采用反向期望分位回归，在数据范围内近似低风险动作对应的状态值函数。
+反向期望分位损失定义为
+\begin{equation}
+    L_{\mathrm{rev}}^\tau(u)
+    =
+    \left|\tau-\mathbf{I}(u>0)\right|u^2.
+    \label{eq:rev_expectile}
+\end{equation}
+其中，$\tau\in(0.5,1)$，$u=Q_c(s,a)-V_c(s)$。
+当 $Q_c(s,a)>V_c(s)$ 时，说明动作 $a$ 的风险高于当前状态基准，此时 $u>0$，有 $\mathbf{I}(u>0)=1$，损失权重为 $1-\tau$，由于 $\tau>0.5$，因此高风险动作的权重会削弱，反之低风险动作会被赋予更大的权重。因此，$V_c(s)$ 会被推向数据范围内较小的 $Q_c(s,a)$，即更安全的动作价值。由此可以近似得到
+\begin{equation}
+    V_c(s)\approx \min_{a\sim\mathcal{D}_{\mathrm{off}}}Q_c(s,a).
+\end{equation}
+
+在上述反向期望分位回归及贝尔曼递推的基础上，状态值函数 $V_c$ 和动作值函数 $Q_c$ 通过以下两个损失函数联合学习：
 \begin{align}
-L_{V_c} &= \mathbb{E}*{(s,a) \sim \mathcal{D}} \left[ L^\tau*{\text{rev}}(Q_c(s,a) - V_c(s)) \right] \label{eq:loss_v} \\
-L_{Q_c} &= \mathbb{E}_{(s,a,s') \sim \mathcal{D}} \left[ (\mathcal{T}^* Q_c - Q_c(s,a))^2 \right] \label{eq:loss_q}
+    L_{V_c}
+    &=
+    \mathbb{E}_{(s,a)\sim\mathcal{D}_{\mathrm{off}}}
+    \left[
+    L_{\mathrm{rev}}^\tau
+    \left(
+    Q_c(s,a)-V_c(s)
+    \right)
+    \right],
+    \label{eq:loss_vc}
+    \\
+    L_{Q_c}
+    &=
+    \mathbb{E}_{(s,a,s')\sim\mathcal{D}_{\mathrm{off}}}
+    \left[
+    \left(
+    (1-\gamma)c(s)
+    +
+    \gamma\max\{c(s),V_c(s')\}
+    -
+    Q_c(s,a)
+    \right)^2
+    \right].
+    \label{eq:loss_qc}
 \end{align}
 
-其中，$L^\tau_{\text{rev}}(u)=|\tau-\mathbf{1}(u>0)|u^2$，$\tau\in[0.5,1]$。该损失对具有较低安全风险的动作赋予更高权重，使学习得到的值函数更接近可行策略所对应的安全边界。
+式~\eqref{eq:loss_vc} 用于学习状态 $s$ 下的低风险基准值。它通过反向期望分位损失对不同动作样本赋予不同权重，使 $V_c(s)$ 更接近离线数据中较低风险动作对应的 $Q_c(s,a)$，而不是简单拟合所有动作风险的平均水平。因此，$L_{V_c}$ 的作用可以理解为在数据范围内近似状态 $s$ 下的最小未来风险。
+
+式~\eqref{eq:loss_qc} 用于学习从状态--动作对 $(s,a)$ 出发的未来最大风险。其回归目标来自式~\eqref{eq:feasible_bellman} 所定义的可行贝尔曼递推，即同时考虑当前约束值 $c(s)$ 和后继状态未来风险 $V_c(s')$：
+\begin{equation}
+    (1-\gamma)c(s)
+    +
+    \gamma\max\{c(s),V_c(s')\}.
+\end{equation}
+其中，$\max\{c(s),V_c(s')\}$ 表示当前状态风险和后继状态未来风险中的较大者，符合可行性值函数对未来最大约束违反程度的定义。因此，$L_{Q_c}$ 使 $Q_c(s,a)$ 能够估计执行动作 $a$ 后可能产生的未来最大安全风险。
+
+通过联合优化式~\eqref{eq:loss_vc} 和式~\eqref{eq:loss_qc}，可以在不进行在线交互的条件下学习得到近似的安全可行性状态值函数 $V_c$ 和安全可行性动作值函数 $Q_c$。其中，$V_c(s)$ 用于判断状态是否处于可行区域，$Q_c(s,a)$ 用于判断具体动作是否可能导致未来进入约束违反区域。
 
 \subsubsection{（3）与安全过滤器的集成}
-在部署阶段，学习得到的 $V^*_c$ 用于调节安全过滤器的保守程度。定义平滑权重函数：
-\begin{equation}
-    w(s) = \exp(V^*_c(s) / \delta)
-\end{equation}
-
-其中 $\delta > 0$ 为尺度参数，并据此调整危险半径：
-\begin{equation}
-d_{\text{danger}}(s) = d_0 + \eta  w(s)
-\label{eq:danger_radius}
-\end{equation}
-
-其中 $d_0$ 为基础半径，$\eta > 0$ 控制安全裕度。
-在可行区域内（$V^*_c \leq 0$），有 $w \in (0,1]$：
-当状态接近边界（$V^*_c \approx 0$）时，$w \approx 1$，危险半径为 $d_0 + \eta$，即完整的扩展安全裕度；
-当状态处于安全区域内部（$V^*_c \ll 0$）时，$w \approx 0$，危险半径约为 $d_0$，即接近名义安全距离。
-对于不可行状态（$V^*_c > 0$），有 $w > 1$，此时系统会进一步增大安全裕度，从而提升保守性。
-
+在部署阶段，学习得到的 $V^*_c$ 用于调节安全过滤器的边界情况。
 这种机制使得安全过滤器在部署阶段具备环境感知能力，而无需进行实时的障碍物检测或跟踪，预先计算得到的 $V^*_c$ 已经编码了来自先验地图的静态环境可达性结构。
-
 通过离线交互数据训练后，可以获得一个可达安全动作值函数，用于预测在给定状态下执行某一动作是否会导致未来进入危险区域。由此获得一个连续、可微的安全判别函数，用于定义隐式安全约束边界。利用学习得到的安全动作值函数，在每个状态下定义安全可行动作集合。对于任意状态，该函数将动作空间划分为可执行的安全动作区域以及会导致未来危险的违规动作区域。由此，通过学习得到的值函数零水平面刻画的连续边界结，在状态–动作空间中形成安全流形。
 
 \subsection{数据驱动的状态估计}
@@ -446,7 +491,7 @@ R_{t} =
 
 通过对离线数据进行可达性分析，可以在状态空间中学习得到一类安全值函数，从而衡量不同状态的安全程度。如图 ~\ref{fig:safety_space} 所示，其中蓝色标记的区域表示安全值大于 0，说明系统在该区域内存在潜在的安全风险，即危险区域；其余区域则对应安全值小于等于 0，被视为满足安全约束的安全区域。该分布结果表明，可达性分析能够有效区分安全与非安全状态，为后续安全控制提供明确的边界信息。
 
-此外，当改变机器人速度的大小与运动方向时，可以观察到安全域分布的显著变化。表明，安全可达空间与机器人的运动状态的相关性。当智能体速度增大或朝向发生变化时，其在有限时间内的可达集合随之改变，安全域边界也会发生调整。
+此外，当改变机器人速度的大小与运动方向时，可以观察到安全域分布的显著变化。表明安全可达空间与机器人的运动状态的相关性。当智能体速度增大或朝向发生变化时，其在有限时间内的可达集合随之改变，安全域边界也会发生调整。
 
 上述结果表明，基于可达性分析构建的安全空间能够较好地反映环境风险与运动状态之间的关系。将该安全空间作为先验信息引入后续策略学习过程，有助于强化学习策略在在线决策时获得更明确的安全约束参考。
 \begin{figure*}[thpb]
