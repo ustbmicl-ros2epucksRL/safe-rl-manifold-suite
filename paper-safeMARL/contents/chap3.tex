@@ -23,18 +23,18 @@
 
 在强化学习（RL）框架下，将安全导航任务建模为一个约束马尔可夫决策过程（CMDP），记为六元组 $(\mathcal{S}, \mathcal{A}, P, R, \gamma, C)$。其中：$\mathcal{S}$ 和 $\mathcal{A}$ 分别为状态空间和动作空间；$P: \mathcal{S} \times \mathcal{A} \times \mathcal{S} \rightarrow [0, 1]$ 为环境的状态转移概率核；$R: \mathcal{S} \times \mathcal{A} \rightarrow \mathbb{R}$ 为奖励函数，鼓励机器人靠近目标点；$\gamma \in [0, 1)$ 为折扣因子；$C = \{c_i: \mathcal{S} \rightarrow \mathbb{R}\}_{i=1}^k$ 为与环境障碍物对应的约束集合。在具有 $k=n$ 个硬约束（每个障碍物对应一个约束）的设置下，安全强化学习的目标是寻找到一个最优策略 $\pi: \mathcal{S} \rightarrow \mathcal{A}$，使得在满足所有时间步的硬安全约束前提下，最大化累积期望回报：$$\max_{\pi} \mathbb{E}_{\pi}\left[ \sum_{t=0}^{T} \gamma^t R(s_t, a_t) \right]$$$$\text{s.t. } c_i(s_t) \leq 0, \quad \forall t \in \{0, \dots, T\}, \forall i \in \{1, \dots, n\}$$与传统的强化学习不同，CMDP 要求算法在探索过程中不仅要学习任务技能，还必须严格遵守状态空间的边界，避免任何形式的碰撞。
 
-此外，考虑到机器人系统（如差速驱动轮式机器人或无人机）普遍存在非完整约束（Nonholonomic Constraints），不能简单地假设状态可以任意改变。因此，本文将机器人的底层运动学建模为连续时间的控制仿射系统（Control-Affine System）：$$\dot{s} = f(s) + G(s) a$$
+此外，考虑到机器人系统（如差速驱动轮式机器人或无人机）普遍存在非完整约束，不能简单地假设状态可以任意改变。因此，本文将机器人的底层运动学建模为连续时间的控制仿射系统：$$\dot{s} = f(s) + G(s) a$$
 
-在该模型中：$a \in \mathcal{A} \subseteq \mathbb{R}^m$ 是 $m$ 维控制控制量（如推力、转矩或速度指令）；$f(s): \mathcal{S} \rightarrow \mathbb{R}^d$ 称为漂移项（Drift term），代表系统在无控制输入时的固有动力学演化；$G(s): \mathcal{S} \rightarrow \mathbb{R}^{d \times m}$ 为控制输入矩阵，定义了控制动作如何映射到状态的变化率上。动力学特例：质点模型（Single-Integrator）： 若 $f(s) = 0$ 且 $G(s) = I$，系统简化为全向移动模型。差速驱动模型： $G(s)$ 包含三角函数项（如 $\cos\theta, \sin\theta$），用以体现机器人朝向与运动速度之间的耦合关系。通过结合上述动力学模型与 CMDP 框架，本文的研究重点在于如何在复杂的动力学约束下，保证机器人在轨迹执行过程中的实时安全性。
+在该模型中：$a \in \mathcal{A} \subseteq \mathbb{R}^m$ 是 $m$ 维控制控制量（如推力、转矩或速度指令）；$f(s): \mathcal{S} \rightarrow \mathbb{R}^d$ 称为漂移项，代表系统在无控制输入时的固有动力学演化；$G(s): \mathcal{S} \rightarrow \mathbb{R}^{d \times m}$ 为控制输入矩阵，定义了控制动作如何映射到状态的变化率上。动力学特例：质点模型（Single-Integrator）： 若 $f(s) = 0$ 且 $G(s) = I$，系统简化为全向移动模型。差速驱动模型： $G(s)$ 包含三角函数项（如 $\cos\theta, \sin\theta$），用以体现机器人朝向与运动速度之间的耦合关系。通过结合上述动力学模型与 CMDP 框架，本文的研究重点在于如何在复杂的动力学约束下，保证机器人在轨迹执行过程中的实时安全性。
 
 \begin{figure}
     \centering
     \includegraphics[width=1\linewidth]{images/framework (1).png}
-    \figcap{约束流形策略学习方法框架}{Framework of the constrained manifold policy learning method.}
+    \figcap{基于约束流形过滤的安全强化学习方法框架}{Framework of the constrained manifold policy learning method.}
     \label{fig:placeholder}
 \end{figure}
 
-\section{约束流形策略学习方法}
+\section{基于约束流形过滤的安全强化学习方法}
 本文构建了一种面向安全强化学习的约束流形策略方法（Constrained Manifold Policy Learning，CMPL），通过约束流形建模、可达性分析与状态估计的协同设计，实现策略安全性。整体框架由以下三个核心模块组成：
 \begin{itemize}
 \item \textbf{基于约束流形的安全过滤器}：
@@ -52,7 +52,7 @@
 \subsection{约束流形投影}
 流形是一个局部与欧几里得空间同胚的拓扑空间， 可以用于描述复杂的几何对象，例如曲线、曲面以及更高维的结构。约束流形是由某些约束条件定义的流形，这些约束条件限制系统的状态或行为。在几何上，这些约束可以用方程或不等式来描述。
 \subsubsection{（1）松弛变量}
-然而，不等式约束在优化和控制律设计中往往难以直接处理，且难以定义稳定的切空间（Tangent Space）。为此，本研究引入非负松弛变量（Slack Variables） $\mu \in \mathbb{R}^k_{\geq 0}$。通过将原始约束函数与松弛变量结合，可以将不等式约束转化为严格的等式约束形式：
+然而，不等式约束在优化和控制律设计中往往难以直接处理，且难以定义稳定的切空间。为此，本研究引入非负松弛变量 $\mu \in \mathbb{R}^k_{\geq 0}$。通过将原始约束函数与松弛变量结合，可以将不等式约束转化为严格的等式约束形式：
 \begin{equation}
     \bar{c}(s, \mu) = c(s) + \mu = 0, \quad \text{其中 } \mu \geq 0\label{eq:slack}
 \end{equation}
@@ -62,10 +62,10 @@
     \mathcal{M} = { (s, \mu) \in \mathcal{D} \mid \bar{c}(s, \mu) = 0 
 }\end{equation}
 
-其中 $\mathcal{D} = \mathcal{S} \times \mathbb{R}^k_{\geq 0}$ 代表由原始状态与松弛变量构成的增广状态空间（Augmented State Space）。
+其中 $\mathcal{D} = \mathcal{S} \times \mathbb{R}^k_{\geq 0}$ 代表由原始状态与松弛变量构成的增广状态空间。
 
 \subsubsection{（2）零空间投影}
-设$a_{\text{unsafe}} \in \mathbb{R}^m$表示由强化学习策略输出的未受约束的动作（unconstrained action）。
+设$a_{\text{unsafe}} \in \mathbb{R}^m$表示由强化学习策略输出的未受约束的动作。
 为了保证系统在执行控制输入时始终满足安全约束，安全过滤器首先在内部构造一个增广参考向量：
 $u_{\text{ref}} =
 \begin{bmatrix}
@@ -172,7 +172,7 @@ $O(\Delta t^2)$
 其中，$\alpha$ 是惩罚权重，$P$ 是基于修正的惩罚函数，$a_{applied,t}$是实际应用于系统的动作（在标准 RL 训练中为$a_{uncert,t}$ 而在过滤训练动作时为$a_{safe,t}$）。
 
 \begin{algorithm}
-\caption{约束流形策略学习方法（CMPL）}
+\caption{基于约束流形过滤的安全强化学习方法（CMPL）}
 \begin{algorithmic}[1]
 \STATE \textbf{输入：} 约束函数 $c(s)$ 及相关参数
 \FOR{$i=1$ \TO $N$}
@@ -190,7 +190,7 @@ $O(\Delta t^2)$
 \end{algorithm}
 
 % \begin{algorithm}
-    % \caption{约束流形策略学习方法（CMPL）}
+    % \caption{基于约束流形过滤的安全强化学习方法（CMPL）}
     % \label{alg:cmpl}
     % \begin{algorithmic}[1]
     % \STATE \textbf{输入：} 约束函数 $c(s)$，策略网络 $\pi_{\theta}$，价值网络 $V_{\phi}$，安全过滤参数 $K_c$，奖励校准权重 $\alpha$
@@ -292,21 +292,21 @@ $O(\Delta t^2)$
 
 上述可行性值函数直接依赖未来整条轨迹。若要精确计算 $V_c^*$ 和 $Q_c^*$，通常需要从任意状态出发与环境交互。
 然而，在离线设置中，机器人只能利用已经采集的轨迹数据。因此，本文借助贝尔曼递推思想，构造如下折扣可行贝尔曼算子，将当前状态--动作对的未来风险分解为当前状态风险和后继状态未来风险：
-\begin{equation}
+\begin{align}
     \mathcal{T}^*Q_c(s,a)
-    =
+    &=
     (1-\gamma)c(s)
     +
-    \gamma\max\{c(s),V_c^*(s')\},
-    V_c^*(s')=\min_{a'}Q_c(s',a').
+    \gamma\max\{c(s),V_c^*(s')\}, \\
+    V_c^*(s')&=\min_{a'}Q_c(s',a').
     \label{eq:feasible_bellman}
-\end{equation}
+\end{align}
 
 其中，$\mathcal{T}^*$ 表示最优可行贝尔曼算子，$\gamma\in(0,1)$ 为折扣因子。本文的安全可行性关注未来轨迹中的最大约束违反程度，因此递推核心为$\max\{c(s),V_c(s')\}$，
 该项表示当前状态风险 $c(s)$ 与后继状态未来风险 $V_c(s')$ 中的较大者。
 
 式~\eqref{eq:feasible_bellman} 中的 $V_c^*(s')=\min_{a'}Q_c(s',a')$
-表示在后继状态 $s'$ 中选择未来风险最小的动作。因此，本文采用反向期望分位回归，在数据范围内近似低风险动作对应的状态值函数。
+表示在后继状态 $s'$ 中选择未来风险最小的动作。由于本文处于离线学习设置，训练过程仅使用离线数据集 $D_off$中已经采集到的状态–动作样本。本文采用反向期望分位回归，在数据范围内近似低风险动作对应的状态值函数。
 反向期望分位损失定义为
 \begin{equation}
     L_{\mathrm{rev}}^\tau(u)
@@ -348,22 +348,31 @@ $O(\Delta t^2)$
     \label{eq:loss_qc}
 \end{align}
 
-式~\eqref{eq:loss_vc} 用于学习状态 $s$ 下的低风险基准值。它通过反向期望分位损失对不同动作样本赋予不同权重，使 $V_c(s)$ 更接近离线数据中较低风险动作对应的 $Q_c(s,a)$，而不是简单拟合所有动作风险的平均水平。因此，$L_{V_c}$ 的作用可以理解为在数据范围内近似状态 $s$ 下的最小未来风险。
+式~\eqref{eq:loss_vc} 用于学习状态 $s$ 下的低风险基准值。它通过反向期望分位损失对不同动作样本赋予不同权重，使 $V_c(s)$ 更接近离线数据中较低风险动作对应的 $Q_c(s,a)$。
 
-式~\eqref{eq:loss_qc} 用于学习从状态--动作对 $(s,a)$ 出发的未来最大风险。其回归目标来自式~\eqref{eq:feasible_bellman} 所定义的可行贝尔曼递推，即同时考虑当前约束值 $c(s)$ 和后继状态未来风险 $V_c(s')$：
-\begin{equation}
-    (1-\gamma)c(s)
-    +
-    \gamma\max\{c(s),V_c(s')\}.
-\end{equation}
-其中，$\max\{c(s),V_c(s')\}$ 表示当前状态风险和后继状态未来风险中的较大者，符合可行性值函数对未来最大约束违反程度的定义。因此，$L_{Q_c}$ 使 $Q_c(s,a)$ 能够估计执行动作 $a$ 后可能产生的未来最大安全风险。
+式~\eqref{eq:loss_qc} 用于学习从状态--动作对 $(s,a)$ 出发的未来最大风险。其回归目标来自式~\eqref{eq:feasible_bellman} 所定义的可行贝尔曼递推，即同时考虑当前约束值 $c(s)$ 和后继状态未来风险 $V_c(s')$。因此，$L_{Q_c}$ 使 $Q_c(s,a)$ 能够估计执行动作 $a$ 后可能产生的未来最大安全风险。
 
 通过联合优化式~\eqref{eq:loss_vc} 和式~\eqref{eq:loss_qc}，可以在不进行在线交互的条件下学习得到近似的安全可行性状态值函数 $V_c$ 和安全可行性动作值函数 $Q_c$。其中，$V_c(s)$ 用于判断状态是否处于可行区域，$Q_c(s,a)$ 用于判断具体动作是否可能导致未来进入约束违反区域。
 
 \subsubsection{（3）与安全过滤器的集成}
-在部署阶段，学习得到的 $V^*_c$ 用于调节安全过滤器的边界情况。
-这种机制使得安全过滤器在部署阶段具备环境感知能力，而无需进行实时的障碍物检测或跟踪，预先计算得到的 $V^*_c$ 已经编码了来自先验地图的静态环境可达性结构。
-通过离线交互数据训练后，可以获得一个可达安全动作值函数，用于预测在给定状态下执行某一动作是否会导致未来进入危险区域。由此获得一个连续、可微的安全判别函数，用于定义隐式安全约束边界。利用学习得到的安全动作值函数，在每个状态下定义安全可行动作集合。对于任意状态，该函数将动作空间划分为可执行的安全动作区域以及会导致未来危险的违规动作区域。由此，通过学习得到的值函数零水平面刻画的连续边界结，在状态–动作空间中形成安全流形。
+在部署阶段，学习得到的 $V^*_c$ 用于调节安全过滤器的保守程度。我们定义一个平滑权重函数：
+\begin{equation}
+    w(s) = \exp(V^*_c(s) / \delta)
+\end{equation}
+其中 $\delta > 0$ 为尺度参数，并据此调整危险半径：
+\begin{equation}
+d_{\text{danger}}(s) = d_0 + \eta  w(s)
+\label{eq:danger_radius}
+\end{equation}
+其中 $d_0$ 为基础半径，$\eta > 0$ 控制安全裕度。
+
+在可行区域内（$V^*_c \leq 0$），有 $w \in (0,1]$：
+当状态接近边界（$V^*_c \approx 0$）时，$w \approx 1$，危险半径为 $d_0 + \eta$，即完整的扩展安全裕度；
+当状态处于安全区域内部（$V^*_c \ll 0$）时，$w \approx 0$，危险半径约为 $d_0$，即接近名义安全距离。
+
+对于不可行状态（$V^*_c > 0$），有 $w > 1$，此时系统会进一步增大安全裕度，从而提升保守性。
+
+这种机制使得安全过滤器在部署阶段具备环境感知能力，而无需进行实时的障碍物检测或跟踪——预先计算得到的 $V^*_c$ 已经编码了来自先验地图的静态环境可达性结构。
 
 \subsection{数据驱动的状态估计}
 状态估计的精度会直接影响安全过滤器的判断结果。机器人在导航过程中通常依赖 GPS、视觉里程计等位置传感器获取状态信息，但这类测量并不稳定，噪声大小会随运行条件发生变化。以高速运动为例，机体振动、GPS 多路径效应以及视觉图像中的运动模糊都会更加明显，此时传感器观测误差往往高于低速运动状态。本文将这种与速度相关的测量不确定性表示为：
@@ -377,42 +386,37 @@ $O(\Delta t^2)$
 \subsubsection{（1）扩展卡尔曼滤波}
 本文采用扩展卡尔曼滤波（EKF）对非线性系统动力学进行线性化处理，其线性化点为当前的状态估计。预测步骤如下：
 \begin{align}
-\hat{s}*{t|t-1} &= f(\hat{s}*{t-1}, a_{t-1}) \\
-P_{t|t-1} &= F_t P_{t-1} F_t^\top + Q_t
+    \hat{s}_{t|t-1} &= f(\hat{s}_{t-1}, a_{t-1}) \\
+    P_{t|t-1} &= F_t P_{t-1} F_t^\top + Q_t
 \end{align}
 
-其中，$F_t = \frac{\partial f}{\partial s}\big|*{\hat{s}*{t-1}}$ 表示动力学函数对状态的雅可比矩阵，$Q_t$ 为过程噪声协方差。
+其中，$F_t = \frac{\partial f}{\partial s}\big|_{\hat{s}_{t-1}}$ 表示动力学函数对状态的雅可比矩阵，$Q_t$ 为过程噪声协方差。
 
 EKF 的状态向量在导航状态基础上进一步扩展，引入了姿态角与角速度：$s = [x, y, \theta, v_x, v_y, \omega]^\top \in \mathbb{R}^6$测量向量为$y_t = [x_{\text{GPS}}, y_{\text{GPS}}, \theta_{\text{compass}}]^\top \in \mathbb{R}^3,$该测量融合了 GPS 位置与电子罗盘航向角信息，并采用线性观测模型：$h(s) = H s,$其中$H = [I_3 \mid \mathbf{0}_{3\times3}]$.
 EKF 的卡尔曼更新步骤为：
 \begin{align}
-K_t &= P_{t|t-1} H^\top (H P_{t|t-1} H^\top + R_t)^{-1} \\
-\hat{s}*t &= \hat{s}*{t|t-1} + K_t(y_t - H\hat{s}_{t|t-1})
+    K_t &= P_{t|t-1} H^\top (H P_{t|t-1} H^\top + R_t)^{-1} \\
+    \hat{s}_t &= \hat{s}_{t|t-1} + K_t(y_t - H\hat{s}_{t|t-1})
 \end{align}
 
 其中，$K_t$为卡尔曼增益，$R_t$ 为测量噪声协方差矩阵，通过该更新步骤将预测状态与传感器观测进行融合，从而得到更精确的状态估计。
 
  \subsubsection{（2）噪声参数适配器}
-为了避免手动设置的误差，本文通过一个卷积神经网络 NoiseAdapter 来进行学习。该网络以一段 IMU 测量的滑动窗口 作为输入：
+为了避免手动设置的误差，本文通过一个卷积神经网络噪声参数适配器来进行学习。该网络以一段 IMU 测量的滑动窗口 作为输入：
 \begin{equation}
-z_t = \text{CNN}\left({\omega^{\text{IMU}}_i, a^{\text{IMU}}*i}*{i=t-L}^{t}\right)
+    z_t = \text{CNN}\left(\{\omega^{\text{IMU}}_i, a^{\text{IMU}}_i\}_{i=t-L}^{t}\right)
 \label{eq:noise_cnn}
 \end{equation}
 
-其中 $L=10$ 表示窗口长度（在 10 Hz 采样频率下对应 1 秒的数据）。NoiseAdapter 是一个轻量级 CNN（约 5K 参数）：网络结构包含两层一维卷积层（通道数 $6 \rightarrow 32 \rightarrow 64$，卷积核大小为 3），每层后接 ReLU 激活函数；随后通过 自适应平均池化（adaptive average pooling），并接两层全连接层（$64 \rightarrow 64 \rightarrow 2$），最终输出
+其中 $L=10$ 表示窗口长度（在 10 Hz 采样频率下对应 1 秒的数据）。噪声参数适配器是一个轻量级 CNN（约 5K 参数）：网络结构包含两层一维卷积层（通道数 $6 \rightarrow 32 \rightarrow 64$，卷积核大小为 3），每层后接 ReLU 激活函数；随后通过自适应平均池化（adaptive average pooling），并接两层全连接层（$64 \rightarrow 64 \rightarrow 2$），最终输出
 \begin{equation}
     z_t = [z^{\text{lat}}_t, z^{\text{hdg}}_t]^\top \in \mathbb{R}^2.
 \end{equation}
 
 基于该输出，测量噪声协方差被自适应地定义为：
 \begin{equation}
-R_{t} =
-\text{diag}\Big(
-\sigma^2_{\text{lat}},\phi(z^{\text{lat}}*t),
-\sigma^2*{\text{lat}},\phi(z^{\text{lat}}*t),
-\sigma^2*{\text{hdg}},\phi(z^{\text{hdg}}_t)
-\Big)
-\label{eq:learned_R}
+    R_{t} = \text{diag}\!\Big(\sigma^2_{\text{lat}}\,\phi(z^{\text{lat}}_t),\;\sigma^2_{\text{lat}}\,\phi(z^{\text{lat}}_t),\;\sigma^2_{\text{hdg}}\,\phi(z^{\text{hdg}}_t)\Big)
+    \label{eq:learned_R}
 \end{equation}
 
 其中$\phi(z) = 10^{\beta \tanh(z)}$,$\sigma_{\text{lat}}$ 和 $\sigma_{\text{hdg}}$ 分别表示位置和航向角的基准噪声估计。前两个对角元素共享 $z^{\text{lat}}_t$，对应 各向同性的 GPS 位置噪声；参数 $\beta > 0$ 用于控制噪声自适应的变化范围。$\tanh$ 非线性函数用于限制输出范围，指数形式的参数化确保协方差矩阵满足 $R_t \succ 0$。当 $z_t \approx 0$（例如在模型尚未收敛时），$R_t$ 会退化为基准协方差，从而保证系统的稳定性。
@@ -437,16 +441,8 @@ R_{t} =
 该 CNN 在离线阶段进行预训练，训练数据由随机探索得到的三元组 $(\mathbf{w}_t, \tilde{y}_t, y_t)$ 构成，其中：$\mathbf{w}_t \in \mathbb{R}^{L \times 6}$ 表示 IMU 测量窗口，$\tilde{y}_t$ 表示带噪声的测量值，$y_t$ 表示真实值。
 训练目标是最小化负对数似然损失：
 \begin{equation}
-\mathcal{L}_{\text{NLL}}
-=
-\frac{1}{|\mathcal{D}|}
-\sum_{(\mathbf{w}, \tilde{y}, y)}
-\Big[
-\log |R(\mathbf{w})|
-+
-(\tilde{y} - y)^\top R(\mathbf{w})^{-1} (\tilde{y} - y)
-\Big]
-\label{eq:nll_loss}
+    \mathcal{L}_{\text{NLL}} \!=\! \frac{1}{|\mathcal{D}|} \!\sum_{(\mathbf{w}, \tilde{y}, y)}\! \Big[ \log |R(\mathbf{w})| + (\tilde{y} {-} y)^\top R(\mathbf{w})^{-1} (\tilde{y} {-} y) \Big]
+    \label{eq:nll_loss}
 \end{equation}
 
 该损失函数鼓励模型在高速运动时预测较大的测量噪声协方差，而在低速运动时预测较小的噪声协方差，从而直接学习速度与传感器噪声之间的相关关系。
@@ -728,7 +724,7 @@ EKF（学习得到的 $R$） & $\mathbf{0.27 {\pm} 0.05}$ & $-7.87 {\pm} 0.94$ &
 
 虽然在这一独立评估中各方法的 cost 差异不大，但消融实验（表~\ref{tab:ablation}）展示了完整系统的优势：无噪场景下自适应裕度已将 cost 降至 $0.54$，含噪声的完整系统仍维持 $4.91$（较 baseline 下降 90\%）。
 
-\textbf{计算开销。} NoiseAdapter CNN 带来的计算开销非常小：该网络约有 5K 个参数，在 CPU 上每一步推理时间小于 $0.1$,ms，相比环境步进时间（5ms）和 PPO 前向传播时间（1ms）几乎可以忽略不计。
+\textbf{计算开销。} 噪声参数适配器 CNN 带来的计算开销非常小：该网络约有 5K 个参数，在 CPU 上每一步推理时间小于 $0.1$,ms，相比环境步进时间（5ms）和 PPO 前向传播时间（1ms）几乎可以忽略不计。
 
 预训练阶段需要进行 30 次随机探索回合（约 2 分钟）以及 100 个 epoch 的负对数似然（NLL）优化（约 30 秒），这是一次性的开销，可以在整个训练过程中被摊销。
 
