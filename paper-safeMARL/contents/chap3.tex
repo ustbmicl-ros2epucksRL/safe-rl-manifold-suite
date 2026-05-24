@@ -44,115 +44,85 @@
 为提升系统对环境约束的感知能力，本文引入可达性分析方法，在离线阶段基于采样轨迹与环境先验信息预计算安全可达区域。所得可行性值函数在部署时用于动态调节安全裕度，使系统在无需实时精确建模障碍物的情况下，仍能保持保守且稳定的安全行为。
 
 \item \textbf{数据驱动的状态估计模块}：  
-为缓解感知噪声对安全决策的影响，本文构建基于数据驱动的扩展卡尔曼滤波（EKF）框架，通过卷积神经网络学习观测噪声参数，使测量协方差能够随运动状态自适应调整，从而在速度相关噪声条件下维持较高的状态估计精度，保证安全过滤器输入的可靠性。
+为缓解感知噪声对安全决策的影响，本文构建基于数据驱动的扩展卡尔曼滤波（EKF）框架，通过卷积神经网络学习观测噪声参数，使测量协方差能够随运动状态自适应调整，从而在速度相关噪声条件下维持较高的状态估计精度，保证安全过滤器输入的可靠性。近年来，神经网络辅助卡尔曼滤波与自适应测量噪声估计已在部分已知动力学和惯性导航任务中得到应用~\cite{revach2022kalmannet,buchanan2023learning_ekf,cohen2025akit}，为本文的数据驱动状态估计模块提供了方法依据。
 \end{itemize}
 
 在具体实现中，可达性分析与状态估计模块均采用离线构建方式。前者利用环境数据提前学习安全裕度分布，后者根据交互数据刻画传感器噪声随运动状态变化的特征。部署阶段，系统只需调用已经得到的安全边界和噪声估计结果，无需重新进行在线训练或复杂优化。这样的设计降低了运行时计算开销，也提高了方法在资源受限机器人平台上的部署可行性。
 
 \subsection{约束流形投影}
 流形是一个局部与欧几里得空间同胚的拓扑空间， 可以用于描述复杂的几何对象，例如曲线、曲面以及更高维的结构。约束流形是由某些约束条件定义的流形，这些约束条件限制系统的状态或行为。在几何上，这些约束可以用方程或不等式来描述。
-\subsubsection{（1）松弛变量}
-然而，不等式约束在优化和控制律设计中往往难以直接处理，且难以定义稳定的切空间。为此，本研究引入非负松弛变量 $\mu \in \mathbb{R}^k_{\geq 0}$。通过将原始约束函数与松弛变量结合，可以将不等式约束转化为严格的等式约束形式：
+\subsubsection{（1）约束函数与活动约束}
+本文参考 ATACOM~\cite{liu2022atacom,liu2023safe_manipulation} 的零空间投影思想，并结合 CBF 与预测式安全过滤器中“执行前修正动作”的处理范式~\cite{ames2017cbf_qp,wabersich2021predictive_safety_filter}，将策略输出的名义动作分解为约束切空间内的自由运动和指向安全集合内部的修正项。为避免引入过多与实现无关的增广变量，本文直接从不等式约束出发。设系统安全集合为
 \begin{equation}
-    \bar{c}(s, \mu) = c(s) + \mu = 0, \quad \text{其中 } \mu \geq 0\label{eq:slack}
+    \mathcal{C}=\{s\in\mathcal{S}\mid c_i(s)\leq 0,\ i=1,\ldots,k\},
+    \label{eq:safe_set}
 \end{equation}
+其中 $c_i(s)=0$ 表示第 $i$ 个安全约束的边界，$c_i(s)<0$ 表示状态位于安全侧。
 
-引入松弛变量后，由于 $\mu$ 被限制为非负，任何满足等式 $\bar{c}(s, \mu) = 0$ 的点都必然满足 $c(s) = -\mu \leq 0$，安全性得到了自然的保证。这种转化允许将安全状态的搜索范围从一个区域（区域约束）缩小到一个精确定义的数学流形上。基于此，本文定义约束流形 $\mathcal{M}$ 为满足所有安全准则的状态集合：
+在每个控制时刻，安全过滤器只选择接近边界或已经被触发的约束构成活动约束集合 $\mathcal{I}_a(s)$，并将对应的约束函数写为
 \begin{equation}
-    \mathcal{M} = { (s, \mu) \in \mathcal{D} \mid \bar{c}(s, \mu) = 0 
-}\end{equation}
-
-其中 $\mathcal{D} = \mathcal{S} \times \mathbb{R}^k_{\geq 0}$ 代表由原始状态与松弛变量构成的增广状态空间。
+    c_a(s)=\bigl[c_i(s)\bigr]_{i\in\mathcal{I}_a(s)}\in\mathbb{R}^{r},
+    \quad
+    J_s(s)=\frac{\partial c_a(s)}{\partial s}.
+    \label{eq:active_constraints}
+\end{equation}
+这样处理后，安全过滤器只在可能发生约束违背的方向上修正动作，而不会对远离边界的安全运动施加不必要的限制。
 
 \subsubsection{（2）零空间投影}
 设$a_{\text{unsafe}} \in \mathbb{R}^m$表示由强化学习策略输出的未受约束的动作。
-为了保证系统在执行控制输入时始终满足安全约束，安全过滤器首先在内部构造一个增广参考向量：
-$u_{\text{ref}} =
-\begin{bmatrix}
-a_{\text{unsafe}}^\top , \mathbf{0}^\top
-\end{bmatrix}^\top
-\in \mathbb{R}^{m+k}$
-其中 $k$ 表示约束数量（对应引入的松弛变量）。安全过滤器随后将该参考向量转换为满足所有约束条件的安全控制量：
-$\begin{bmatrix}
-a_{\text{safe}}^\top , \dot{\mu}^\top
-\end{bmatrix}^\top$
-其中 $a_{\text{safe}}$ 为最终执行的安全动作，$\dot{\mu}$ 为松弛变量的变化率。通过这种方式，可以在尽量保持策略原始控制意图的同时，保证系统始终处于安全可行域内。
-
-对约束函数取时间导数可得：
+考虑控制仿射形式的系统动力学
+\[
+    \dot{s}=f(s)+G(s)a .
+\]
+对活动约束函数取时间导数可得：
 \begin{equation}
-\frac{d}{dt} \bar{c}(s, \mu) = J_s \dot{s} + J_\mu \dot{\mu} = J_s f(s) + J_c
-\begin{bmatrix}
-a \
-\dot{\mu}
-\end{bmatrix}
-\label{eq:constraint_deriv}
+    \dot{c}_a(s)=J_s(s)f(s)+J_c(s)a,
+    \quad
+    J_c(s)=J_s(s)G(s)\in\mathbb{R}^{r\times m}.
+    \label{eq:constraint_deriv}
 \end{equation}
 
-其中
-$J_s = \frac{\partial \bar{c}}{\partial s},\quad
-J_\mu = \frac{\partial \bar{c}}{\partial \mu}$
-分别表示约束函数关于状态变量和松弛变量的雅可比矩阵。定义组合约束雅可比矩阵$J_c = [J_s G(s), J_\mu] \in \mathbb{R}^{k \times (m+k)}$ 刻画了控制输入与松弛变量对约束变化率的整体影响。
-
-为了使系统状态始终保持在约束流形上，需要满足$\frac{d}{dt}\bar{c} = 0$ ，即系统的状态变化始终位于约束流形的切空间中。设 $J_c^\dagger$为为矩阵 $J_c$ 的 Moore--Penrose 伪逆，定义零空间投影算子：
+设 $J_c^\dagger$ 为矩阵 $J_c$ 的 Moore--Penrose 伪逆，定义零空间投影算子：
 \begin{equation}
-N_c = I - J_c^\dagger J_c
+    N_c(s)=I_m-J_c^\dagger(s)J_c(s).
 \end{equation}
-
-该投影矩阵将任意向量投影到 $J_c$ 的零空间，从而保证控制输入不会破坏约束条件。
-则安全动作通过以下公式计算：
+该投影矩阵将名义动作投影到活动约束的切空间，使其不再增加活动约束的一阶变化。安全动作计算为
 \begin{equation}
-\begin{bmatrix}
-a_{\text{safe}} \
-\dot{\mu}
-\end{bmatrix}
-=
-N_c u_{\text{ref}}
--
-J_c^\dagger
-\bigl(
-J_s f(s) + K_c \bar{c}(s, \mu)
-\bigr)
-\label{eq:safe_action}
+    a_{\text{safe}}
+    =
+    N_c(s)a_{\text{unsafe}}
+    -
+    J_c^\dagger(s)
+    \bigl(J_s(s)f(s)+K_c c_a(s)\bigr),
+    \label{eq:safe_action}
 \end{equation}
+其中 $K_c\in\mathbb{R}^{r\times r}$ 为正定对角增益。公式~\eqref{eq:safe_action} 的第一项保留了策略动作中不破坏约束的一部分，第二项补偿系统漂移动力学并将活动约束维持在安全边界以内。对于本文点机器人速度控制实验，$f(s)$ 可由低层运动模型吸收或近似为零，此时实现形式可简化为 $a_{\text{safe}}=N_c a_{\text{unsafe}}-J_c^\dagger K_c c_a(s)$。
 
-其中 $K_c > 0$ 为约束修正增益。公式中的第一项将增广参考向量投影到约束零空间（即约束流形的切空间），从而保证生成的控制输入不会导致约束违反；第二项同时补偿系统漂移动力学 $f(s)$，并驱动系统状态逐渐回到约束流形上，从而保持系统在安全集合内演化。
-
-\begin{theorem}[安全性保证]
+\begin{theorem}[活动约束不变性]
 \label{thm:safety}
-
-假设约束雅可比矩阵 $J_c$ 在系统轨迹上始终具有满行秩。若系统初始状态满足约束流形条件，即
-$\bar{c}(s_0, \mu_0) = 0$
-且 $\mu_0 \geq 0$，并且控制输入按照公式~\eqref{eq:safe_action} 进行计算，则对于任意时间 $t \geq 0$，系统始终满足$c(s_t) \leq 0$即系统始终保持安全。
+假设活动约束雅可比矩阵 $J_c(s)$ 在系统轨迹上具有满行秩，且当前可能触碰边界的约束均已包含在 $\mathcal{I}_a(s)$ 中。若初始活动约束满足 $c_a(s_0)\leq 0$，并且控制输入按照公式~\eqref{eq:safe_action} 计算，则在连续时间下活动约束不会从安全侧穿过边界。
 \end{theorem}
 
 \begin{proof}
 \renewcommand{\qedsymbol}{}%
-由于 $J_c$ 满行秩，有$J_c J_c^\dagger = I_k$且$J_c N_c = 0$，将控制律~\eqref{eq:safe_action} 代入约束导数公式~\eqref{eq:constraint_deriv}：
+由于 $J_c$ 满行秩，有 $J_cJ_c^\dagger=I_r$ 且 $J_cN_c=0$。将控制律~\eqref{eq:safe_action} 代入约束导数公式~\eqref{eq:constraint_deriv} 可得：
 \begin{align*}
-\dot{\bar{c}} &= J_s f(s) + J_c \bigl[ N_c , u_{\text{ref}} - J_c^\dagger (J_s f(s) + K_c \bar{c}) \bigr] \\
-&= J_s f(s) - J_c J_c^\dagger J_s f(s) - K_c J_c J_c^\dagger \bar{c} \\
-&= J_s f(s) - J_s f(s) - K_c \bar{c} \\
-&= -K_c \bar{c}
+    \dot{c}_a
+    &= J_s f(s)+J_c\!\left[N_c a_{\text{unsafe}}-J_c^\dagger\bigl(J_s f(s)+K_c c_a\bigr)\right] \\
+    &= J_s f(s)-J_cJ_c^\dagger J_s f(s)-J_cJ_c^\dagger K_c c_a \\
+    &= -K_c c_a .
 \end{align*}
-
-当初始条件满足$\bar{c}(0) = 0$时，该微分方程的唯一解为$\bar{c}(t) = 0$
-对所有 $t \ge 0$ 成立。由于投影操作保证 $\mu(t) \ge 0$，因此
-\[c(s_t) = \bar{c}(t) - \mu(t) = -\mu(t) \le 0\]
-从而系统始终满足安全约束。
+因此 $c_a(t)=\exp(-K_ct)c_a(0)$。若 $c_a(0)\leq 0$，则对任意 $t\geq0$ 都有 $c_a(t)\leq0$，活动约束不会越过安全边界。
 \end{proof}
 
 \textbf{说明（具体实施）.} 在实际实现中，为了提高数值稳定性，本文采用阻尼伪逆（damped pseudoinverse）
 \[
-\hat{J}_c^\dagger = J_c^\top (J_c J_c^\top + \epsilon I)^{-1}
+    \hat{J}_c^\dagger = J_c^\top (J_c J_c^\top + \epsilon I_r)^{-1}
 \]
 
-其中 $\epsilon > 0$ 为较小的正数。此时会引入残差$| J_c \hat{J}_c^+ - I_k | = O(\epsilon)$
+其中 $\epsilon > 0$ 为较小的正数。此时会引入残差 $\|J_c\hat{J}_c^\dagger-I_r\|=O(\epsilon)$。
 
-因此理论上的严格不变性 $\bar{c}(t)=0$ 将变为
-$\bar{c}(t) = O(\epsilon)$
-即约束误差保持在一个小邻域内。同时修正项
-$K_c \hat{J}_c^\dagger \bar{c}$
-会持续将系统状态拉回约束流形，从而在 $\epsilon$ 足够小时仍能保持较低的约束违反程度。
+因此理论上的严格不变性会变为带有小残差的近似不变性，即约束误差保持在 $O(\epsilon)$ 的邻域内。同时修正项 $\hat{J}_c^\dagger K_c c_a$ 会持续抑制活动约束误差，从而在 $\epsilon$ 足够小时保持较低的约束违反程度。
 
 \textbf{说明（离散时间）.} 在离散时间实现中，以时间步长 $\Delta t$ 应用公式~\eqref{eq:safe_action} 会引入每步
 $O(\Delta t^2)$
@@ -164,86 +134,37 @@ $O(\Delta t^2)$
 因此，在奖励中引入一个与修正幅度相关的惩罚项，通过惩罚修正，可以更精细地控制系统的安全性。将这种奖励修正方法与安全流形过滤器结合使用，这种修改能够鼓励安全性并最小化修正。利用安全过滤器惩罚奖励的通用框架为：
 \begin{equation}
     \begin{split}
-        &R_{\alpha}(s_t,a_{{uncert},t},a_{safe,t}) \\
-        &=R(s_t,a_{applied,t})-\alpha P(a_{uncert,t},a_{safe,t})
+        &R_{\alpha}(s_t,a_{\text{unsafe},t},a_{\text{safe},t}) \\
+        &=R(s_t,a_{\text{safe},t})-\alpha P(a_{\text{unsafe},t},a_{\text{safe},t})
     \end{split}
 \end{equation}
 
-其中，$\alpha$ 是惩罚权重，$P$ 是基于修正的惩罚函数，$a_{applied,t}$是实际应用于系统的动作（在标准 RL 训练中为$a_{uncert,t}$ 而在过滤训练动作时为$a_{safe,t}$）。
+其中，$\alpha$ 是惩罚权重，$P$ 是基于修正幅度的惩罚函数，$a_{\text{unsafe},t}$ 是策略给出的名义动作，$a_{\text{safe},t}$ 是经过安全过滤后实际应用于系统的动作。
 
 \begin{algorithm}
 \caption{基于约束流形过滤的安全强化学习方法（CMPL）}
+\label{alg:cmpl}
 \begin{algorithmic}[1]
-\STATE \textbf{输入：} 约束函数 $c(s)$ 及相关参数
+\STATE \textbf{输入：} 约束函数 $c(s)$，安全过滤参数 $K_c$，奖励校准权重 $\alpha$
 \FOR{$i=1$ \TO $N$}
-    \STATE 初始化可行状态 $s_0$ 与松弛变量 $\mu_0$
+    \STATE 初始化可行状态 $s_0$
     \FOR{$k=0$ \TO $T-1$}
-        \STATE 采样动作 $\alpha_k \sim \pi(\cdot \mid s_k)$
+        \STATE 采样名义动作 $a_{\text{unsafe},k} \sim \pi(\cdot \mid s_k)$
         \STATE 观测状态 $s_k$
-        \STATE 计算 $J_c(s_k,\mu_k)$、$N_c(s_k,\mu_k)$，并得到安全投影后的动作 $a_k$
-        \STATE 执行动作 $a_k$
+        \STATE 选择活动约束 $c_a(s_k)$，计算 $J_c(s_k)$ 与 $N_c(s_k)$
+        \STATE 根据公式~\eqref{eq:safe_action} 得到安全动作 $a_{\text{safe},k}$
+        \STATE 执行 $a_{\text{safe},k}$
         \STATE 观测下一时刻状态 $s_{k+1}$ 及奖励 $r_k$
-        \STATE 将样本 $(s_k, a_k, s_{k+1}, r_k)$ 提供给强化学习更新
+        \STATE 计算校准奖励 $\tilde{r}_k=r_k-\alpha P(a_{\text{unsafe},k},a_{\text{safe},k})$
+        \STATE 将样本 $(s_k,a_{\text{unsafe},k},a_{\text{safe},k},s_{k+1},\tilde{r}_k)$ 提供给强化学习更新
     \ENDFOR
 \ENDFOR
 \end{algorithmic}
 \end{algorithm}
 
-% \begin{algorithm}
-    % \caption{基于约束流形过滤的安全强化学习方法（CMPL）}
-    % \label{alg:cmpl}
-    % \begin{algorithmic}[1]
-    % \STATE \textbf{输入：} 约束函数 $c(s)$，策略网络 $\pi_{\theta}$，价值网络 $V_{\phi}$，安全过滤参数 $K_c$，奖励校准权重 $\alpha$
-    % \STATE \textbf{初始化：} 策略参数 $\theta$，价值函数参数 $\phi$，经验缓冲区 $\mathcal{B}$
-    % \FOR{$i=1$ \TO $N$}
-    %     \STATE 清空经验缓冲区 $\mathcal{B}$
-    %     \STATE 初始化可行状态 $s_0$ 与松弛变量 $\mu_0$
-    %     \FOR{$k=0$ \TO $T-1$}
-    %         \STATE 根据当前策略采样名义动作 $a_{\text{unc},k} \sim \pi_{\theta}(\cdot \mid s_k)$
-    %         \STATE 计算 $J_c(s_k,\mu_k)$ 与 $N_c(s_k,\mu_k)$
-    %         \STATE 根据约束流形投影得到安全动作 $a_{\text{safe},k}$
-    %         \STATE 执行 $a_{\text{safe},k}$，观测 $s_{k+1}$、原始奖励 $r_k$ 与约束代价 $c_k$
-    %         \STATE 根据动作修正幅度得到校准奖励
-    %         \[
-    %         \tilde{r}_k = r_k - \alpha P(a_{\text{unc},k},a_{\text{safe},k})
-    %         \]
-    %         \STATE 存储样本 $(s_k,a_{\text{unc},k},a_{\text{safe},k},\tilde{r}_k,c_k,s_{k+1})$ 至 $\mathcal{B}$
-    %         \STATE 更新松弛变量 $\mu_{k+1}$
-    %     \ENDFOR
-    %     \STATE 基于 $\mathcal{B}$ 计算折扣回报 $\hat{R}_k$ 与优势函数 $\hat{A}_k$
-    %     \STATE 使用 PPO 目标函数更新策略网络 $\pi_{\theta}$
-    %     \[
-    %     \theta \leftarrow \arg\max_{\theta}
-    %     \mathbb{E}_{\mathcal{B}}
-    %     \left[
-    %     \min \left(
-    %     \rho_k(\theta)\hat{A}_k,
-    %     \operatorname{clip}(\rho_k(\theta),1-\epsilon,1+\epsilon)\hat{A}_k
-    %     \right)
-    %     \right]
-    %     \]
-    %     \STATE 其中，
-    %     \[
-    %     \rho_k(\theta)=
-    %     \frac{\pi_{\theta}(a_{\text{unc},k}\mid s_k)}
-    %     {\pi_{\theta_{\text{old}}}(a_{\text{unc},k}\mid s_k)}
-    %     \]
-    %     \STATE 更新价值网络 $V_{\phi}$
-    %     \[
-    %     \phi \leftarrow \arg\min_{\phi}
-    %     \mathbb{E}_{\mathcal{B}}
-    %     \left[
-    %     \left(V_{\phi}(s_k)-\hat{R}_k\right)^2
-    %     \right]
-    %     \]
-    % \ENDFOR
-    % \STATE \textbf{输出：} 训练后的策略网络 $\pi_{\theta}$ 与约束流形安全过滤器
-    % \end{algorithmic}
-    % \end{algorithm}
-
 \subsection{安全可达性分析}
 约束流形过滤器需要已知障碍物的位置，本文假设这些信息可以通过静态障碍物的先验地图获得，例如来自离线建图或仿真中的真实环境数据。
-为了进一步刻画状态和动作对安全性的影响，本文引入基于 HJ 可达性分析（Hamilton–Jacobi reachability analysis）的安全可达性分析方法，通过可行性值函数描述机器人从当前状态出发是否存在满足硬安全约束的控制策略。
+为了进一步刻画状态和动作对安全性的影响，本文引入基于 HJ 可达性分析（Hamilton–Jacobi reachability analysis）的安全可达性分析方法，通过可行性值函数描述机器人从当前状态出发是否存在满足硬安全约束的控制策略。可达性分析和运行时安全过滤已被广泛用于安全关键自治系统~\cite{bansal2017hj_reachability,bansal2021deepreach,ganai2023iterative_reachability,hsu2024safety_filter}，本文则将其转化为离线可行性值函数，用于降低部署阶段的在线计算压力。
 与传统基于期望累计代价的软约束方法不同，本文关注的是状态级硬约束，即要求机器人在未来轨迹的所有时刻均满足
 \begin{equation}
     c(s_t)\leq 0,\quad \forall t\in\mathbb{N}.
@@ -381,7 +302,7 @@ d_{\text{danger}}(s) = d_0 + \eta  w(s)
 \label{eq:vel_noise}
 \end{equation}
 
-其中，$\sigma_{\text{base}}$ 为基础噪声标准差，$k > 0$ 表示速度缩放系数，$|v|$ 表示机器人当前运动速度。常规 EKF 一般采用固定测量噪声协方差 $R = \sigma_{\text{base}}^2 I$，这种设定在低速或噪声较稳定的情况下较为方便，但当机器人速度较高时，这种固定协方差模型往往会过度信任噪声较大的测量数据，从而降低状态估计精度。基于此，本文采用一种数据驱动的扩展卡尔曼滤波方法，利用最近时间段的 IMU 测量数据预测当前测量噪声协方差，使滤波过程能够随运动状态变化进行调整。
+其中，$\sigma_{\text{base}}$ 为基础噪声标准差，$k > 0$ 表示速度缩放系数，$|v|$ 表示机器人当前运动速度。常规 EKF 一般采用固定测量噪声协方差 $R = \sigma_{\text{base}}^2 I$，这种设定在低速或噪声较稳定的情况下较为方便，但当机器人速度较高时，这种固定协方差模型往往会过度信任噪声较大的测量数据，从而降低状态估计精度。基于此，本文采用一种数据驱动的扩展卡尔曼滤波方法，利用最近时间段的 IMU 测量数据预测当前测量噪声协方差，使滤波过程能够随运动状态变化进行调整。该设计与学习辅助滤波方法~\cite{revach2022kalmannet,buchanan2023learning_ekf,cohen2025akit} 的思路一致，但本文仅学习测量噪声协方差，以保持滤波结构的可解释性和轻量化。
 
 \subsubsection{（1）扩展卡尔曼滤波}
 本文采用扩展卡尔曼滤波（EKF）对非线性系统动力学进行线性化处理，其线性化点为当前的状态估计。预测步骤如下：
@@ -463,7 +384,7 @@ EKF 的卡尔曼更新步骤为：
     为验证离线可达性分析是否能够为在线决策提供有效安全先验，本文基于离线轨迹数据构建安全值函数，并分析其对危险区域与安全区域的区分能力，以及其随速度和方向变化的动态边界特性。
 
     \item \textbf{方法有效性与模块贡献：}
-    为评估完整框架在安全性与任务性能上的综合表现，本文在 Safety-Gymnasium ~\cite{ji2023safety_gymnasium} 的 Goal、Circle、Push 与 MultiGoal 任务中，与 PPO、PCPO、PPO-Lag、TRPO-Lag 及 MAPPO 系列方法进行对比，并进一步通过“流形过滤器—可达性预训练—数据驱动 EKF”逐步加入的消融实验，分析各模块对 Reward、Cost 与 Steps 的贡献。
+    为评估完整框架在安全性与任务性能上的综合表现，本文在 Safety-Gymnasium ~\cite{ray2019benchmarking,ji2023safety_gymnasium,ji2024omnisafe} 的 Goal、Circle、Push 与 MultiGoal 任务中，与 PPO、PCPO、PPO-Lag、TRPO-Lag 及 MAPPO 系列方法进行对比，并进一步通过“流形过滤器—可达性预训练—数据驱动 EKF”逐步加入的消融实验，分析各模块对 Reward、Cost 与 Steps 的贡献。
 
     \item \textbf{感知鲁棒性与工程可迁移性：}
     为验证方法在噪声条件与真实部署链路中的可行性，本文开展 EKF 对比实验评估噪声自适应状态估计效果。
@@ -501,7 +422,7 @@ EKF 的卡尔曼更新步骤为：
 为评估完整框架在安全性与任务性能上的综合表现，本文在 Safety-Gymnasium 的 Goal、Circle、Push 与 MultiGoal 任务中与其他基准算法进行对比。
 
 \subsubsection{基线方法}
-本文在单智能体和多智能体场景中，与多种经典的安全强化学习算法进行对比，包括 PPO~\cite{schulman2017ppo}、 PCPO~\cite{yang2020projection} 、 PPO-Lag~\cite{stooke2020responsive} 、 TRPO-Lag~\cite{achiam2017cpo} ，多智能体实验包含了 MAPPO 、 HAPPO~\cite{kuba2022happo} 、 MACPO 以及 MAPPO-Lag。
+本文在单智能体和多智能体场景中，与多种经典的安全强化学习算法进行对比，包括 PPO~\cite{schulman2017ppo}、 PCPO~\cite{yang2020projection} 、 PPO-Lag~\cite{stooke2020responsive} 、 TRPO-Lag~\cite{achiam2017constrained} ，多智能体实验包含了 MAPPO 、 HAPPO~\cite{kuba2022happo} 、 MACPO 以及 MAPPO-Lag。
 
 需要注意的是，ATACOM~\cite{liu2022atacom} 需要任务特定的约束雅可比矩阵以及扩展动作空间，因此在 Safety-Gymnasium 基准环境上进行直接比较较为困难；相比之下，本文的方法采用一种基于距离的简化安全过滤器，用于在点机器人任务中近似实现流形投影。
 
@@ -697,7 +618,7 @@ PPO（baseline） & $-4.28 \pm 2.98$ & $50.58 \pm 32.63$ \\
 
 \item \textbf{完整系统（含 EKF 与噪声）}：启用速度相关传感器噪声后 cost 均值升至 $4.91$，仍较 baseline 下降 90\%。EKF 与学习到的噪声适配器使整套安全栈在感知不确定性下仍然有效。
 
-\item \textbf{奖励校准}：完整系统中移除奖励校准后 cost 上升 74\%（$5.87 \rightarrow 10.25$），表明奖励校准的必要性。
+\item \textbf{奖励校准}：完整系统中移除奖励校准后 cost 上升约 73\%（$4.91 \rightarrow 8.47$），表明奖励校准的必要性。
 \end{itemize}
 完整带噪系统相比无约束 PPO 基线实现了 90\% 的 cost 下降（$50.58 \rightarrow 4.91$），无噪场景下加入自适应裕度可达到约 99\% 的下降（$0.54$）。
 
