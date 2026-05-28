@@ -165,7 +165,7 @@ algorithmic.  Three threads of prior work justify this framing:
       possibly also cite Lindemann 2023, Tonkens 2022
 - [ ] Add discussion of distributional Safe-RL (Yang 2021,
       Bharadhwaj 2021) — currently not in §II-A Family 2
-- [ ] Resolve cite-format placeholders (Liu 2022 etc.) once
-      the bibliography template is fixed
+- [x] Cite-format placeholders unified to `[AuthorYear]` format
+      (done 2026-05-18)
 - [ ] Cross-check Cheng 2019 statement re: explicit Δt
       awareness against the actual paper

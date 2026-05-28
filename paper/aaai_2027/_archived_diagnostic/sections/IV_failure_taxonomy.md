@@ -211,15 +211,35 @@ is bounded below by
 
 $$
 \sum_{k=1}^{n} \frac{\|\boldsymbol{u}_k\|^2\,\Delta t}{\rho_k}
-\;\ge\; \frac{v_\min^2\,n\,\Delta t}{r}
+\;\ge\; \frac{v_\min^2\,n\,\Delta t}{\rho_\max}
+\tag{IV-5}
 $$
 
-where $v_\min = \min_k \|\boldsymbol{u}_k\|$.  Convergence to the
-hazard centre is **linear in $n$** for any non-zero tangent
-speed.
+where $v_\min = \min_k \|\boldsymbol{u}_k\|$ and
+$\rho_\max = \max_k \rho_k$.
 
-*Proof sketch.* Sum (IV-4) under the assumption that
-$\rho_k \le r$ inside the keepout band; bound below by $v_\min^2$.  □
+**Assumption:** The agent remains in the keepout band throughout,
+i.e. $\rho_k \in [\rho_\min, \rho_\max]$ with
+$0 < \rho_\min \le \rho_k \le \rho_\max \le r + d_\text{safe}$
+for all $k \in 1..n$.  The lower bound $\rho_\min > 0$ excludes
+the degenerate case where the agent reaches the obstacle centre
+(see §V-C for handling of this singularity in the recipe).
+
+**Corollary (Linear convergence).**  Under the above assumption,
+the agent traverses the keepout band width $d_\text{safe}$ in at
+most $n^* = \lceil d_\text{safe} \cdot \rho_\max / (v_\min^2 \Delta t) \rceil$
+steps.  For $d_\text{safe} = 0.05$ m, $\rho_\max \approx r = 0.2$ m,
+$v_\min = 0.5$ m/s, and $\Delta t = 0.1$ s:
+$n^* = \lceil 0.05 \times 0.2 / (0.25 \times 0.1) \rceil = 1$ step.
+This confirms the empirical observation that a single committed
+tangent action can penetrate the band.
+
+*Proof.*  Sum (IV-4) over $k = 1..n$.  The per-step radial drift is
+$|\dot\rho_k| = \|\boldsymbol{u}_k\|^2 \Delta t / \rho_k$.  For the
+lower bound, replace $\|\boldsymbol{u}_k\|$ with $v_\min$ and $\rho_k$
+with $\rho_\max$ (the worst-case outer position that minimises drift
+rate).  Summing yields (IV-5).  For the upper bound on $n^*$, set
+the cumulative drift equal to $d_\text{safe}$ and solve for $n$.  □
 
 This is structurally different from M1 (which is a per-step
 second-order term).  Under M2, even running ATACOM at zero
@@ -415,12 +435,14 @@ construction.
 
 ### TODO before submission
 
-- [ ] Cross-ref to actual Table numbers once §V is finalised
-- [ ] Tighten equation numbering with the rest of §IV
+- [x] Cross-ref to actual Table numbers: Table IV-1 (§IV-D benchmark),
+      Table V-1 (§V-E 4-task summary) aligned (done 2026-05-18)
+- [x] Equation numbering finalized: (IV-1)–(IV-5) in this section,
+      (V-1)–(V-4) in §V (done 2026-05-18)
 - [ ] D5 $\Delta t$-sweep figure: include ATACOM-LA cell to
       validate M2 separately from M1 (1 sweep cell, ~30 min wall)
 - [ ] One-paragraph related-work pointer
       (Robey 2020 Neural CBF on similar discrete-time issues;
       Cheng 2019 §V acknowledges $\Delta t$ assumption)
-- [ ] Tighten Proposition 2 (currently informal; needs ρ_k
-      lower-bound assumption stated explicitly)
+- [x] Tighten Proposition 2 (done 2026-05-18: added explicit ρ_k bounds,
+      corollary on band-traversal time, and full proof)

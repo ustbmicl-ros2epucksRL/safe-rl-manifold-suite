@@ -225,5 +225,6 @@ result.
 - [ ] Tighten the opening paragraph; possibly drop the
       "the community has converged on" framing if reviewers
       find it presumptuous
-- [ ] Cite-format placeholders for all references
+- [x] Cite-format placeholders unified to `[AuthorYear]` format
+      (done 2026-05-18)
 - [ ] Word-count check (target 800–1000 in AAAI template)

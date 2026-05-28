@@ -158,10 +158,10 @@ $W(\boldsymbol{s}, \boldsymbol{a})$ for the rest of the paper.
 
 ### TODO before submission
 
-- [ ] Cross-ref (III-1) and (III-2) consistently after §V-C's
-      Prop. 4 numbering settles
-- [ ] Confirm Liu 2022 vs. Liu 2024 citation style matches the
-      rest of §II
+- [x] Cross-ref (III-1) and (III-2) aligned with §V-C Prop. 4
+      (done 2026-05-18: §V header updated to reference these equations)
+- [x] Citation style unified to `[AuthorYear]` format across all
+      sections (done 2026-05-18)
 - [ ] Tighten the GO-threshold derivation note: $\bar C \le 5$
       is a held-over Phase-2 convention; if a reviewer asks, we
       cite the legacy v4 §IV table footnote in the supplementary

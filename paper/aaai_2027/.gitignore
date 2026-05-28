@@ -1,0 +1,18 @@
+# LaTeX build artifacts (regeneratable)
+*.aux
+*.bbl
+*.blg
+*.bcf
+*.log
+*.lof
+*.lot
+*.out
+*.toc
+*.run.xml
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+
+# Local backups (date-stamped pre-rewrite copies, kept for reference only)
+main_v2_pre_*.tex
+main_v2_*backup*.tex

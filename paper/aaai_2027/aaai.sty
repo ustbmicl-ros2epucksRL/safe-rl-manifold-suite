@@ -1,0 +1,83 @@
+% AAAI Style File (Simplified for AAAI 2027)
+% Based on official AAAI formatting guidelines
+
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{aaai}[2024/01/01 AAAI Style]
+
+% Page layout
+\setlength{\paperwidth}{8.5in}
+\setlength{\paperheight}{11in}
+\setlength{\textwidth}{7in}
+\setlength{\textheight}{9.25in}
+\setlength{\oddsidemargin}{-0.25in}
+\setlength{\evensidemargin}{-0.25in}
+\setlength{\topmargin}{-0.5in}
+\setlength{\headheight}{0pt}
+\setlength{\headsep}{0pt}
+\setlength{\columnsep}{0.375in}
+
+% Two-column layout
+\twocolumn
+
+% Title formatting: title + author span both columns at the top.
+% Abstract is rendered in a single column below (standard AAAI pattern
+% for the simplified style file; sufficient at our abstract length).
+\renewcommand{\maketitle}{%
+  \twocolumn[%
+    \begin{center}
+    {\LARGE\bfseries\@title\par}
+    \vspace{1em}
+    {\large\@author\par}
+    \vspace{1.5em}
+    \end{center}
+  ]%
+}
+
+% Abstract: column-width box with bold "Abstract" header.
+\renewenvironment{abstract}{%
+  \begin{center}\small\bfseries Abstract\end{center}%
+  \vspace{0.3ex}%
+  \par\noindent\normalfont\small\ignorespaces
+}{%
+  \par\vspace{1em}\normalsize
+}
+
+% Section formatting
+\renewcommand{\section}{\@startsection{section}{1}{\z@}%
+  {-2.5ex plus -1ex minus -.2ex}%
+  {1.5ex plus .2ex}%
+  {\normalfont\large\bfseries}}
+
+\renewcommand{\subsection}{\@startsection{subsection}{2}{\z@}%
+  {-2ex plus -1ex minus -.2ex}%
+  {1ex plus .2ex}%
+  {\normalfont\normalsize\bfseries}}
+
+\renewcommand{\subsubsection}{\@startsection{subsubsection}{3}{\z@}%
+  {-1.5ex plus -1ex minus -.2ex}%
+  {0.5ex plus .2ex}%
+  {\normalfont\normalsize\bfseries}}
+
+% Paragraph spacing
+\setlength{\parindent}{0.25in}
+\setlength{\parskip}{0pt}
+
+% Caption formatting
+\long\def\@makecaption#1#2{%
+  \vskip\abovecaptionskip
+  \sbox\@tempboxa{{\small\bfseries #1:} {\small #2}}%
+  \ifdim \wd\@tempboxa >\hsize
+    {\small\bfseries #1:} {\small #2}\par
+  \else
+    \global \@minipagefalse
+    \hb@xt@\hsize{\hfil\box\@tempboxa\hfil}%
+  \fi
+  \vskip\belowcaptionskip}
+
+% Page numbers
+\pagestyle{empty}
+
+% Footnotes
+\renewcommand{\footnoterule}{\kern-3pt \hrule width 2in \kern 2.6pt}
+
+\endinput
