@@ -1,0 +1,77 @@
+\appendix
+\section{The DT-margin Heuristic Baseline}
+\label{app:dtmargin}
+%==============================================================================
+
+VA-ATACOM's velocity augmentation has a heuristic predecessor we call the \textbf{DT-margin} filter --- the ``DT-margin (heuristic)'' row of Table~\ref{tab:main}. It inflates the keepout radius linearly with speed, $r_\text{eff}(\boldsymbol{v}) = r_\text{base}(1+\alpha\|\boldsymbol{v}\|)$, projects out the inward radial component, and adds the same sim-BRT reward shaping. As shown in \S\ref{sec:design}, this linear margin is the \emph{first-order} approximation of VA-ATACOM's quadratic braking constraint (\ref{eq:vam}); under the fair hazard-radius match it reaches 14/15 GO --- one Push seed short of VA-ATACOM's 15/15 (Table~\ref{tab:main}), illustrating that the linearisation almost captures the right behaviour but leaves a residual gap that only the exact quadratic constraint closes. We characterise it here for completeness --- its two tunable knobs ($\alpha$ and the BRT horizon $h$) and their interaction with the control rate. These findings motivated, and are superseded by, the parameter-free velocity-augmented manifold of the main paper.
+
+\subsection{Ablation of the two components}
+
+\begin{table}[t]
+\centering
+\caption{DT-margin ablation on Goal (5 seeds).}
+\label{tab:ablation}
+\begin{tabular}{lcccc}
+\toprule
+Config & $\alpha$ & $h$ & Mean $\bar{C}$ & GO/5 \\
+\midrule
+Velocity-adaptive only & 0.3 & 0 & 2.90 & 5/5 \\
+BRT-only & 0.0 & 3 & 2.35 & 4/5 \\
+\textbf{DT-margin (full)} & 0.3 & 3 & \textbf{0.96} & \textbf{5/5} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\input{figures/fig_v_c_ablation_bar/fig_v_c_ablation_bar.tex}
+
+Table~\ref{tab:ablation} (Fig.~\ref{fig:v_c_ablation_bar}) shows both DT-margin components contribute: the velocity-adaptive margin alone reaches 5/5 GO but at higher variance (2.90 vs.\ 0.96); BRT shaping alone gives 4/5 GO (one seed fails at $C=7.98$ via M1); the full heuristic attains the lowest cost (0.96) and 100\% GO.
+
+\subsection{$\Delta t$ sensitivity}
+\label{sec:dt-sweep}
+
+\begin{table}[t]
+\centering
+\caption{DT-margin cost vs.\ time step ($\bar C \pm \sigma$, 5 seeds, 50K steps).}
+\label{tab:dt}
+\begin{tabular}{lccc}
+\toprule
+$\Delta t$ & ATACOM & DT-margin ($h{=}3$) & Note \\
+\midrule
+0.01s  & 0.00  & 3.02 & ATACOM OK \\
+0.02s  & 0.00  & 0.00 & ATACOM OK \\
+0.05s  & 39.95 & 4.96$\pm$6.08 (3/5 GO) & Basin regime \\
+0.10s  & 13.68 & \textbf{2.60} & DT-margin OK \\
+0.20s  &  ---  & 1.33$\pm$1.50 & $h\!\gg\!h^\star$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\input{figures/fig_iv_a_dt_sweep/fig_iv_a_dt_sweep.tex}
+
+Table~\ref{tab:dt} and Fig.~\ref{fig:iv_a_dt_sweep} corroborate the premise of \S\ref{sec:failure} (and hence Prop.~4): continuous-time ATACOM achieves zero cost at $\Delta t \le 0.02$s but fails at $\Delta t \ge 0.05$s, the phase transition matching the M1 threshold $\Delta t\|u\| \gtrsim \sqrt{d_\text{safe}\cdot r}$. The DT-margin heuristic tracks the safe regime at $\Delta t \in \{0.10, 0.20\}$s with $h{=}3$. At $\Delta t{=}0.05$s the picture is nuanced: the horizon rule (\ref{eq:h_cond}) prescribes $h^\star{=}4$, but a 5-seed sweep finds $h{=}3$ at 3/5 GO (bimodal), $h{=}4$ at 0/5, and $h{=}5$ at 3/5 (one seed at 37.05). We attribute this to a \emph{BRT-shaping basin}: near the penetration horizon the lookahead reports unavoidable penetration along multiple directions every step, integrating spurious penalty into the policy gradient and trapping training.
+
+\subsection{$\alpha$/$h$ sensitivity}
+\label{sec:alpha-h-sweep}
+
+Sweeping $\alpha \in \{0, 0.05, 0.1, 0.3, 0.5\}$ and $h \in \{1, 2, 3, 5\}$ on Goal (5 seeds $\times$ 200K):
+
+\begin{table}[t]
+\centering
+\caption{DT-margin $\alpha$/$h$ sensitivity on Goal (5 seeds $\times$ 200K).}
+\label{tab:alpha-h}
+\begin{tabular}{lcccc}
+\toprule
+Config & $\alpha$ & $h$ & mean $\bar C$ & GO/5 \\
+\midrule
+no margin            & 0.0  & 2 & 3.37$\pm$2.81 & 4/5 \\
+short horizon        & 0.05 & 1 & 1.94$\pm$1.78 & 4/5 \\
+both at minimum      & 0.05 & 2 & 2.36$\pm$2.60 & 4/5 \\
+above minimum        & 0.1  & 2 & \textbf{1.30$\pm$1.66} & \textbf{5/5} \\
+$\alpha$ generous    & 0.3  & 1 & 1.72$\pm$1.46 & 5/5 \\
+\textbf{paper choice}& 0.3  & 3 & \textbf{0.96$\pm$0.68} & \textbf{5/5} \\
+over-provisioned     & 0.5  & 5 & 3.00$\pm$3.38 & 4/5 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Only configurations at least one step above the minimum on \emph{both} axes ($\alpha{\ge}0.1$, $h{\ge}2$) reach 5/5 GO; setting $\alpha{=}0$ drops to 4/5 with a seed at $\bar C{=}8.46$. The over-provisioned config ($\alpha{=}0.5$, $h{=}5$) \emph{regresses} to 4/5 ($\bar C{=}9.26$ outlier) --- large-$h$ BRT shaping can integrate spurious penalty (\S\ref{sec:dt-sweep}) and destabilise training. The DT-margin recipe is thus robust only with margin on both knobs; VA-ATACOM eliminates $\alpha$ entirely, replacing it with the calibrated $a_{\max}$.

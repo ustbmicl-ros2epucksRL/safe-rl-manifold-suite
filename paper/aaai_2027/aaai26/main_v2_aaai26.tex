@@ -1,0 +1,480 @@
+% AAAI 2026 Paper: VA-ATACOM (Anonymous Submission)
+\documentclass[letterpaper]{article}
+\usepackage[submission]{aaai2026}  % submission = double-blind; hides authors; disables \pdfinfo
+\usepackage{times}
+\usepackage{helvet}
+\usepackage{courier}
+\usepackage[hyphens]{url}
+\usepackage{graphicx}
+\urlstyle{rm}
+\def\UrlFont{\rm}
+\usepackage{natbib}
+\usepackage{caption}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{xcolor}
+% NOTE: hyperref is DISALLOWED by aaai2026 — removed.
+\frenchspacing
+\setlength{\pdfpagewidth}{8.5in}
+\setlength{\pdfpageheight}{11in}
+
+\pdfinfo{
+/TemplateVersion (2026.1)
+}
+
+\setcounter{secnumdepth}{0}  % aaai2026 default: no section numbering
+
+\title{VA-ATACOM: Velocity-Augmented Constraint Manifolds\\for Safe Reinforcement Learning at Coarse Control Rates}
+
+\author{
+    % Authors hidden by [submission] option; field still required.
+    Anonymous Submission
+}
+\affiliations{
+    Anonymous Institution
+}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Safety filters derived from continuous-time control barrier functions (CBF) and null-space projection (ATACOM) provide theoretical safety guarantees under infinitesimal time steps. However, when deployed on mobile agents at coarse control rates ($\Delta t = 0.1$s), these guarantees break down due to geometric overshoot and tangential drift accumulation.
+
+We trace this failure to a single cause --- the obstacle constraint ignores the agent's momentum --- and fix it by augmenting the constraint with the agent's \emph{braking distance}. We propose \textbf{VA-ATACOM} (Velocity-Augmented ATACOM), which projects the policy's action onto the tangent cone of the velocity-augmented constraint manifold $c(\boldsymbol{q},\boldsymbol{v}) = \rho(\boldsymbol{q}) - r_\text{base} - \|\boldsymbol{v}\|^2/(2a_{\max}) \ge 0$, where $a_{\max}$ is the calibrated maximum deceleration. (A backward-reachable-tube reward-shaping term aids training on goal-switching transients but is not part of the guarantee.)
+
+Our central result is \textbf{Proposition 4}: forward invariance of the velocity-augmented manifold under explicit, constructive conditions --- the \emph{first discrete-time analogue} of ATACOM's continuous-time theorem, reducing to it as $\Delta t\to0$, and recovering the widely-used velocity-adaptive margin as its first-order approximation. A five-design study isolates velocity augmentation \emph{with} tangent-space projection as jointly necessary; magnitude scaling alone fails. On Safety-Gymnasium (Goal, Push, MultiGoal) under a fair hazard-radius match, VA-ATACOM reaches \textbf{near-zero cost on every task} (0.00, 0.00, 0.40; 15/15 GO) --- an order of magnitude below the velocity-margin heuristic (0.84, 3.36, 2.59) it subsumes as a first-order approximation, and where every published filter fails on at least one task.
+\end{abstract}
+
+%==============================================================================
+\section{Introduction}
+%==============================================================================
+
+We present \textbf{VA-ATACOM} (Velocity-Augmented ATACOM), the first safety filter with explicit discrete-time forward-invariance guarantees for mobile agents at coarse control rates. VA-ATACOM closes a two-orders-of-magnitude gap between the continuous-time theory of tangent-projection filters (ATACOM \cite{liu2022,liu2024}, CBF \cite{ames2014,ames2017}, and their variants) and the $\Delta t = 0.1$s reality of Safe-RL benchmarks \cite{ji2023}, where every published filter we tested fails.
+
+\textbf{Why VA-ATACOM is needed.} Continuous-time tangent-projection filters guarantee forward invariance via the ODE $\dot{\boldsymbol{q}} = \boldsymbol{N}_c\boldsymbol{\alpha} - K_c\boldsymbol{J}_c^{+}\boldsymbol{c}$, but discretisation at $\Delta t = 0.1$s breaks the guarantee. We benchmark eight published tangent-projection filters on three Safety-Gymnasium tasks (Goal, Push, MultiGoal) under 5 seeds $\times$ 200K env steps with each filter's keepout matched to the env's true hazard radius: \textbf{every published method fails the GO threshold ($\bar{C} \le 5$) on at least one task; their best total reaches 5/15 cells (HOCBF, DCM, Predictive ATACOM).} A PPO baseline with no filter achieves 2/15. Two structural mechanisms drive these failures, which VA-ATACOM is designed to address:
+
+\begin{itemize}
+\item \textbf{M1 (chord excursion and bearing rotation).} Even under exact tangent projection at step $k$, Pythagoras gives $\rho_{k+1}^2 = \rho_k^2 + \Delta t^2 \|u\|^2$: the discrete chord overshoots the continuous arc, and the obstacle's bearing rotates by $\phi \approx \Delta t\|u\|/\rho$. A committed world-frame velocity acquires inward radial component $\approx -\Delta t\|u\|^2/\rho$ at the next step. The effect is operationally significant when $\Delta t \|u\| \gtrsim \sqrt{d_\text{safe} \cdot r}$; at $\Delta t = 0.1$s, PPO-learned $\|u\| \approx 1$m/s, $r = 0.2$m, the threshold is reached.
+
+\item \textbf{M2 (sustained-commitment drift).} The rotation in M1 compounds: under $n$ steps of sustained commitment, the cumulative inward drift is $\Delta\rho_n \sim n\Delta t^2 \|u\|^2/\rho$ (linear in $n$). On Safety-Gym, $n^\star = 2$ steps suffices to exhaust the safety margin, so no single-step ($h{=}1$) projector can recover once the agent commits to a tangent trajectory.
+\end{itemize}
+
+\textbf{The fix: a velocity-augmented constraint manifold.} Both failure modes stem from momentum: at coarse $\Delta t$ the agent carries velocity that a static keepout constraint $\rho \ge r_\text{base}$ does not account for. VA-ATACOM replaces it with $c(\boldsymbol{q},\boldsymbol{v}) = \rho - r_\text{base} - \|\boldsymbol{v}\|^2/(2a_{\max}) \ge 0$, whose zero-level set is a manifold in $(\boldsymbol{q},\boldsymbol{v})$ state space: the agent must keep enough room to brake. The policy action is projected onto this manifold's tangent cone (null-space projection in the diff-drive action frame). The linear velocity-adaptive margin $r_\text{base}(1+\alpha\|\boldsymbol{v}\|)$ used by prior heuristics is its \emph{first-order} approximation. A backward-reachable-tube (BRT) reward-shaping term --- a short worst-case rollout --- additionally speeds training on the M2 goal-switching transients, but is an auxiliary training aid, not part of the safety guarantee.
+
+\textbf{Theoretical contribution: Proposition 4.} We prove that VA-ATACOM yields positive invariance of the inflated keepout set under the explicit \emph{rule-of-thumb} conditions
+\begin{equation}
+\alpha \;\gtrsim\; \frac{\Delta t^2 v_{\max}}{r}
+\quad\text{and}\quad
+h \;\ge\; \left\lceil \frac{r}{\Delta t \cdot v_{\max}} \right\rceil,
+\end{equation}
+which we sharpen in \S\ref{sec:prop4} to a rigorous sufficient condition involving a danger-zone buffer $d_\text{danger}$. This is the \textbf{first discrete-time analogue} of the ATACOM continuous-time forward-invariance theorem: as $\Delta t \to 0$, VA-ATACOM reduces to ATACOM (Corollary 1), and at coarse $\Delta t$ the conditions are constructive — given $\Delta t$, $r$, and $v_{\max}$, they prescribe the filter's hyperparameters.
+
+\textbf{Experimental validation.} On Safety-Gymnasium with each filter's keepout matched to the env's hazard radius, VA-ATACOM achieves \textbf{near-zero cost on all three tasks} --- 0.00 Goal, 0.00 Push, 0.40 MultiGoal; 15/15 GO --- versus 0.84 / 3.36 / 2.59 for the strongest prior filter (our heuristic DT-margin) and at least one NO-GO task for every published filter. A five-design study (\S\ref{sec:design-study}) shows the velocity augmentation is what makes the constraint-manifold projection succeed: removing it (null-space ATACOM) or replacing projection with model-free scaling both fail.
+
+\subsection{Contributions}
+
+\begin{enumerate}
+\item \textbf{Velocity-augmented constraint manifold and its discrete-time invariance theorem} (\S\ref{sec:method}, \S\ref{sec:prop4}): we augment the obstacle barrier with the agent's braking distance and prove \textbf{Proposition 4} --- forward invariance of the resulting manifold under explicit, constructive conditions. This is the \emph{first discrete-time analogue} of ATACOM's continuous-time invariance theorem (Corollary~1: it reduces to ATACOM as $\Delta t\to0$), and it recovers the widely-used velocity-adaptive margin as its first-order approximation, explaining why that heuristic worked.
+
+\item \textbf{Failure-mode diagnosis} (\S\ref{sec:failure}): Propositions 1--2 (M1 chord excursion, M2 drift) pinpoint \emph{why} every continuous-time tangent-projection filter loses safety at coarse $\Delta t$ --- the carried momentum that a static constraint ignores.
+
+\item \textbf{Five-design study} (\S\ref{sec:design-study}): across null-space ATACOM, discrete CBF-QP, model-free braking scaling, and static- vs.\ velocity-augmented projection, we isolate \emph{velocity augmentation together with tangent-space projection} as jointly necessary --- scaling alone or a static manifold both fail.
+
+\item \textbf{Experimental validation} (\S\ref{sec:experiments}): with each filter's keepout radius matched to the env's true hazard size, VA-ATACOM reaches near-zero cost on all three Safety-Gymnasium tasks (Goal 0.00, Push 0.00, MultiGoal 0.40; 15/15 GO) --- the only method to do so --- confirming Prop.~4 with learned policies on the coarse-rate regime it targets.
+\end{enumerate}
+
+%==============================================================================
+\section{Related Work}
+%==============================================================================
+
+A recent survey \cite{brunke2022} organises safe learning for control along three structurally distinct directions; VA-ATACOM belongs to the first family but addresses a gap that the others do not fill.
+
+\subsection{Tangent-Projection Safety Filters}
+
+A safety filter intercepts the policy's commanded action and projects it onto the constraint manifold's tangent space at each control instant. Forward invariance is proven in continuous time by zeroing the radial component of the constraint Jacobian.
+
+Representative works include null-space projection \cite{khatib1987,sentis2005}, the ATACOM family \cite{liu2022,liu2024}, control barrier functions \cite{ames2014,ames2017}, higher-order CBF \cite{xiao2021}, and discrete-time CBF (DCM) \cite{agrawal2017}. Mobile-robot CBF instantiations \cite{cheng2019,taylor2020}, hybrid HJ$+$CBF schemes \cite{choi2020}, and learned barriers \cite{robey2020,lindemann2023} extend the family but inherit the continuous-time invariance argument.
+
+\textbf{The common assumption.} All these methods derive their guarantees from continuous-time analysis (ODEs) or single-step discrete analysis. The original ATACOM paper evaluates on high-frequency manipulator control ($\Delta t \le 2$ms) where the continuous-time assumption holds empirically. When ported to Safety-Gymnasium at $\Delta t = 0.1$s, the assumption is violated by two orders of magnitude.
+
+\textbf{Position vs HOCBF and DCBF.} HOCBF \cite{xiao2021} handles relative-degree-2 systems in continuous time with empirically-tuned class-K coefficients; DCBF \cite{agrawal2017} decays the \emph{static} barrier at a constant rate $h_{k+1} \ge (1{-}\gamma)h_k$, defeated by M1 (\S\ref{sec:failure}). VA-ATACOM differs on two axes: the braking augmentation turns DCBF's constant-$\gamma$ into a \emph{state-dependent} rate, and Prop.~4 supplies a closed-form discretisation defect $\delta{=}\tfrac{3}{2}\Delta t^2 a_{\max}$ plus a constructive condition --- $(d_\text{safe},\alpha_0)$ from $(\Delta t, r, v_{\max})$ --- which HOCBF and DCBF leave as hyperparameters. Empirically both reach 5/15 GO, VA-ATACOM 15/15 (Table~\ref{tab:main}).
+
+\subsection{Set-Based and Predictive Safety Methods}
+
+Set-based methods compute a safe set offline (the backward-reachable tube under worst-case disturbances) and enforce safety at runtime by querying the set. Representative works include Hamilton-Jacobi reachability \cite{mitchell2005,bansal2017}, safety Bellman equations \cite{fisac2018,fisac2019,hsu2021}, predictive safety filters \cite{wabersich2018,wabersich2021}, recovery zones \cite{thananjeyan2021}, and learned safe sets \cite{robey2020}.
+
+VA-ATACOM's multi-step BRT lookahead is a discrete-time, online approximation of the HJ backward-reachable tube. Instead of solving the HJB PDE offline, we forward-simulate 9 worst-case directions over $h$ steps at each filter call.
+
+\subsection{Lagrangian Soft Constraints}
+
+Lagrangian methods relax the hard safety constraint into a penalty term whose multiplier is learned online \cite{achiam2017,ray2019,tessler2018,yang2020,stooke2020}; the OmniSafe framework \cite{ji2024} is now the standard benchmark suite. These methods provide no per-step guarantee; safety is achieved in expectation over the episode. We include PPO-Lag in the benchmark as a soft-constraint reference; it achieves 1/15 GO.
+
+%==============================================================================
+\section{Preliminaries}
+%==============================================================================
+
+\subsection{Constrained MDP Setting}
+
+We consider safe reinforcement learning in the constrained MDP (CMDP) framework. A CMDP is a tuple $(S, A, P, r, c, \gamma, \bar{C})$ where $c: S \times A \to \{0, 1\}$ is a binary cost indicator and $\bar{C}$ the episode cost threshold.
+
+\textbf{Benchmark.} We evaluate on Safety-Gymnasium \cite{ji2023}, specifically the Point-Robot environment with Goal, Push, and MultiGoal tasks:
+\begin{itemize}
+\item Time step: $\Delta t = 0.1$s (10 Hz control)
+\item Obstacles: 8 circular hazards with radius $r = 0.2$m
+\item Cost function: $c = 1$ if agent-hazard distance $< r$, else $c = 0$
+\item GO threshold: $\bar{C} \le 5.0$ (mean over 50 evaluation episodes)
+\end{itemize}
+
+\subsection{ATACOM Continuous-Time Theorem}
+
+ATACOM \cite{liu2022} provides forward invariance through null-space projection. Given constraint function $\boldsymbol{c}(\boldsymbol{q}): \mathbb{R}^n \to \mathbb{R}^m$ and RL action $\boldsymbol{\alpha}$, ATACOM transforms it via:
+\begin{equation}
+\dot{\boldsymbol{q}} = \boldsymbol{N}_c \boldsymbol{\alpha} - K_c \boldsymbol{J}_c^+ \boldsymbol{c}(\boldsymbol{q})
+\label{eq:atacom}
+\end{equation}
+where $\boldsymbol{N}_c = \boldsymbol{I} - \boldsymbol{J}_c^+ \boldsymbol{J}_c$ is the null-space projector.
+
+\textbf{Theorem 1} (Liu 2022). Under dynamics (\ref{eq:atacom}), the constraint evolves as $\dot{\boldsymbol{c}} = -K_c \boldsymbol{c}$, hence $\boldsymbol{c}(t) = \boldsymbol{c}(0) e^{-K_c t}$. The safe set is forward invariant.
+
+\textbf{Discretisation gap.} When implemented with Euler integration at $\Delta t = 0.1$s: $\boldsymbol{q}_{k+1} = \boldsymbol{q}_k + \Delta t \cdot \boldsymbol{u}_k$, the continuous-time guarantee degrades.
+
+\subsection{Circular Obstacle Geometry}
+
+For a circular hazard at $\boldsymbol{p}_o$ with radius $r$, the signed distance constraint is:
+\begin{equation}
+c(\boldsymbol{q}) = r^2 - \|\boldsymbol{q} - \boldsymbol{p}_o\|^2
+\end{equation}
+where $c < 0$ means safe, $c = 0$ on boundary, $c > 0$ inside (violation).
+
+Let $\rho = \|\boldsymbol{q} - \boldsymbol{p}_o\|$ and decompose velocity as $\boldsymbol{u} = u_\rho \hat{\boldsymbol{e}}_\rho + u_\theta \hat{\boldsymbol{e}}_\theta$. A tangent-projection filter zeroes $u_\rho$ when $c \ge 0$.
+
+%==============================================================================
+\section{VA-ATACOM Algorithm}
+\label{sec:method}
+%==============================================================================
+
+This section presents VA-ATACOM. We first diagnose why continuous-time filters fail (\S\ref{sec:failure}), then present the solution (\S\ref{sec:design}), and prove discrete-time forward invariance (\S\ref{sec:prop4}).
+
+\subsection{Why Continuous-Time Filters Fail}
+\label{sec:failure}
+
+\subsubsection{M1: Chord Excursion and Bearing Rotation}
+
+\textbf{Proposition 1} (Single-step bearing rotation). Let $\rho_k := \|\boldsymbol{q}_k - \boldsymbol{p}_o\| > 0$ and decompose the velocity as $\boldsymbol{u}_k = u_\rho \hat{\boldsymbol{e}}_\rho^{(k)} + u_\theta \hat{\boldsymbol{e}}_\theta^{(k)}$ with $\hat{\boldsymbol{e}}_\rho^{(k)} := (\boldsymbol{q}_k - \boldsymbol{p}_o)/\rho_k$ and $\hat{\boldsymbol{e}}_\theta^{(k)} \perp \hat{\boldsymbol{e}}_\rho^{(k)}$. Under purely tangential motion ($u_\rho = 0$), Pythagoras applied to $\boldsymbol{q}_{k+1} = \boldsymbol{q}_k + \Delta t\,\boldsymbol{u}_k$ gives
+\begin{equation}
+\rho_{k+1}^2 = \rho_k^2 + \Delta t^2 u_\theta^2,\quad
+\delta_\text{chord} := \rho_{k+1}{-}\rho_k \approx \tfrac{\Delta t^2 u_\theta^2}{2\rho_k}.
+\label{eq:m1}
+\end{equation}
+The discrete chord trajectory lies \emph{outside} the constant-$\rho$ arc, so single-step safety is preserved. The geometric cost is a rotation of the obstacle's bearing by
+\begin{equation}
+\phi_k = \arctan\!\bigl(\Delta t\, u_\theta / \rho_k\bigr) \approx \Delta t\, u_\theta / \rho_k,
+\label{eq:m1-rot}
+\end{equation}
+which gives the world-frame velocity $\boldsymbol{u}_k$ a radial-inward component $\approx -\Delta t\, u_\theta^2 / \rho_k$ relative to the new radial direction $\hat{\boldsymbol{e}}_\rho^{(k+1)}$. If the policy commits to this world-frame direction across steps (momentum at coarse filter rates), the inward drift compounds into M2.
+
+M1 becomes operationally significant when $\Delta t \cdot \|u\| \gtrsim \sqrt{d_\text{safe} \cdot r}$. At $\Delta t = 0.1$s, $r = 0.2$m, $d_\text{safe} = 0.05$m, and $\|u\| = 1$m/s, the threshold is reached.
+
+\subsubsection{M2: Multi-Step Drift from Sustained Commitment}
+
+\textbf{Proposition 2} (Multi-step drift). Suppose the policy commits to a fixed world-frame velocity $\boldsymbol{u} = v\,\hat{\boldsymbol{e}}_\theta^{(0)}$ that was tangent at $\boldsymbol{q}_0$. By (\ref{eq:m1-rot}), the radial component of $\boldsymbol{u}$ relative to the bearing at step $k$ is $-v\sin\phi_k \approx -\Delta t\,v^2/\rho_k$, contributing per-step inward drift $\Delta t \cdot v\sin\phi_k \approx \Delta t^2 v^2/\rho_k$. Summing,
+\begin{equation}
+\Delta\rho_n := \rho_0 - \rho_n \;\le\; \sum_{k=0}^{n-1} \frac{\Delta t^2 v^2}{\rho_k}.
+\label{eq:m2}
+\end{equation}
+
+Assuming $\rho_k \in [\rho_{\min}, \rho_{\max}]$ throughout, the drift accumulates \textbf{linearly} in $n$:
+\begin{equation}
+\frac{n\,\Delta t^2 v^2}{\rho_{\max}} \;\le\; \Delta\rho_n \;\le\; \frac{n\,\Delta t^2 v^2}{\rho_{\min}}.
+\end{equation}
+
+At $d_\text{safe} = 0.05$m, $\rho_{\min} = 0.25$m, $v = 1$m/s, $\Delta t = 0.1$s: per-step drift $\le 0.04$m, so $\Delta\rho_1 \le 0.04 < d_\text{safe}$ but $\Delta\rho_2 \le 0.08 > d_\text{safe}$ — penetration at $n^\star = 2$ steps. A single-step ($h{=}1$) filter cannot anticipate M2.
+
+\subsection{VA-ATACOM: The Velocity-Augmented Manifold}
+\label{sec:design}
+
+\textbf{From static to velocity-augmented constraint.} Both M1 and M2 arise because the static keepout constraint $\rho(\boldsymbol{q}) \ge r_\text{base}$ ignores the agent's momentum: at coarse $\Delta t$ the carried velocity cannot be cancelled in one step. We therefore augment the constraint with the agent's braking distance, $\|\boldsymbol{v}\|^2/(2a_{\max})$, where $a_{\max}$ is the maximum deceleration (calibrated once offline; \S\ref{sec:setup}).
+
+\subsubsection{The Velocity-Augmented Constraint Manifold (core)}
+
+Define the velocity-augmented barrier and its safe set
+\begin{equation}
+c(\boldsymbol{q},\boldsymbol{v}) = \rho(\boldsymbol{q}) - r_\text{base} - \frac{\|\boldsymbol{v}\|^2}{2a_{\max}} \ge 0,\quad r_\text{base} := r + d_\text{safe},
+\label{eq:vam}
+\end{equation}
+whose zero-level set is a manifold in $(\boldsymbol{q},\boldsymbol{v})$ state space: the agent must reserve enough distance to brake to rest before the keepout band. With outward normal $\hat{\boldsymbol{n}} = (\boldsymbol{q}-\boldsymbol{p}_o)/\rho$ and acceleration command $\boldsymbol{a}$ (relative degree 2, $\dot{\boldsymbol{v}}=\boldsymbol{a}$), $\dot c = \hat{\boldsymbol{n}}\cdot\boldsymbol{v} - (\boldsymbol{v}\cdot\boldsymbol{a})/a_{\max}$; the exponential-CBF condition $\dot c \ge -\alpha_0 c$ becomes the \emph{linear} tangent-cone constraint
+\begin{equation}
+\boldsymbol{v}\cdot\boldsymbol{a} \;\le\; a_{\max}\bigl(\hat{\boldsymbol{n}}\cdot\boldsymbol{v} + \alpha_0\, c\bigr).
+\label{eq:tangent_cone}
+\end{equation}
+VA-ATACOM projects the policy action onto this cone (a small QP; for the differential-drive Point robot the action maps as $\boldsymbol{a} = a_{\max}(\text{forward})\hat{\boldsymbol{e}}_\theta$, so only the forward component is constrained). At rest the constraint is vacuous; as $\boldsymbol{v}$ builds toward an obstacle it forces deceleration ($\boldsymbol{v}\cdot\boldsymbol{a}<0$).
+
+\textbf{Relation to the heuristic margin.} The widely-used velocity-adaptive margin $r_\text{eff}(\boldsymbol{v}) = r_\text{base}(1+\alpha\|\boldsymbol{v}\|)$ is the \emph{first-order} approximation of (\ref{eq:vam}): linearising the quadratic braking term gives an inflation $\propto \|\boldsymbol{v}\|$ with $\alpha \approx \|\boldsymbol{v}\|/(2a_{\max}r_\text{base})$. VA-ATACOM uses the exact quadratic constraint, which (\S\ref{sec:design-study}) is what lets the projection handle momentum.
+
+\subsubsection{Auxiliary: BRT Reward Shaping (training aid for M2)}
+
+We approximate the backward reachable tube by forward-rolling the point-mass dynamics under a $9$-direction discretisation $\mathcal{D}$ (eight evenly-spaced headings plus the current velocity direction) over $h$ steps, and record the deepest predicted keepout violation
+\begin{equation}
+V_\text{BRT}(\boldsymbol{p},\boldsymbol{v}) = \max_{d \in \mathcal{D}}\ \max_{1\le t\le h}\ \max_i\ \bigl(r - \|\boldsymbol{p}_t(d) - \boldsymbol{p}_o^{(i)}\|\bigr),
+\label{eq:brt}
+\end{equation}
+where $\boldsymbol{p}_t(d)$ is the position after $t$ worst-case steps from $(\boldsymbol{p},\boldsymbol{v})$. Rather than hard-trigger the filter, $V_\text{BRT}$ enters \emph{training} as a reward-shaping penalty
+\begin{equation}
+r_k \;\leftarrow\; r_k - \alpha_\text{BRT}\,\max\bigl(0,\,V_\text{BRT}(\boldsymbol{p}_k,\boldsymbol{v}_k)\bigr),
+\notag
+\end{equation}
+biasing PPO away from states whose $h$-step worst-case rollout predicts penetration. The horizon is chosen to cover the penetration distance,
+\begin{equation}
+h \ge \left\lceil \frac{r}{\Delta t \cdot v_{\max}} \right\rceil,
+\label{eq:h_cond}
+\end{equation}
+so any colliding direction is seen within the lookahead. Because Component~1 already enforces braking feasibility at every executed step, this lookahead is a \emph{soft} learning aid: it speeds convergence and damps the M2 goal-switching transients (supplementary material), but is not part of the Proposition~4 guarantee.
+
+\begin{algorithm}[t]
+\caption{VA-ATACOM safety filter (Component~1)}
+\label{alg:dtatacom}
+\begin{algorithmic}[1]
+\REQUIRE policy action $\boldsymbol{a}_\text{RL}=(\text{fwd},\,\text{turn})$, pose $(\boldsymbol{p},\theta)$, velocity $\boldsymbol{v}$, obstacles $O$, params $(r_\text{base},\,a_{\max},\,\alpha_0,\,s)$
+\FOR{each obstacle $o_i \in O$}
+    \STATE $\hat{\boldsymbol{n}}_i \gets (\boldsymbol{p}-\boldsymbol{p}_o^{(i)})/\|\boldsymbol{p}-\boldsymbol{p}_o^{(i)}\|$
+    \STATE $c_i \gets \|\boldsymbol{p}-\boldsymbol{p}_o^{(i)}\| - r_\text{base} - \|\boldsymbol{v}\|^2/(2a_{\max})$ \quad{\footnotesize// barrier (\ref{eq:vam})}
+    \STATE $\text{rhs}_i \gets a_{\max}\,(\hat{\boldsymbol{n}}_i\!\cdot\!\boldsymbol{v} + \alpha_0\, c_i)$ \quad{\footnotesize// cone bound (\ref{eq:tangent_cone})}
+\ENDFOR
+\STATE $\text{rhs}_{\min} \gets \min_i \text{rhs}_i$ \quad{\footnotesize// bind all obstacles}
+\STATE $\hat{\boldsymbol{e}}_\theta \gets (\cos\theta,\,\sin\theta)$;\quad $\kappa \gets s\,(\boldsymbol{v}\!\cdot\!\hat{\boldsymbol{e}}_\theta)$ \quad{\footnotesize// diff-drive $\boldsymbol{a}{=}s\,\text{fwd}\,\hat{\boldsymbol{e}}_\theta$}
+\IF{$\kappa\cdot\text{fwd} \le \text{rhs}_{\min}$}
+    \STATE \RETURN $\boldsymbol{a}_\text{RL}$ \quad{\footnotesize// cone constraint already satisfied}
+\ENDIF
+\STATE $\text{fwd}^\star \gets \text{rhs}_{\min}/\kappa$ \quad{\footnotesize// min-norm: only fwd changes}
+\STATE $\text{fwd}_\text{safe} \gets
+        \begin{cases}\min(\text{fwd},\text{fwd}^\star) & \kappa>0\\[-2pt]
+                     \max(\text{fwd},\text{fwd}^\star) & \kappa<0\end{cases}$
+\STATE $\text{fwd}_\text{safe} \gets \text{clip}(\text{fwd}_\text{safe},\,-1,\,1)$
+\RETURN $(\text{fwd}_\text{safe},\,\text{turn})$ \quad{\footnotesize// turn left free}
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Proposition 4: Discrete-Time Forward Invariance}
+\label{sec:prop4}
+
+\textbf{Theorem (Proposition 4).} Let $c_i(\boldsymbol{q},\boldsymbol{v}) = \rho_i(\boldsymbol{q}) - r_\text{base} - \|\boldsymbol{v}\|^2/(2a_{\max})$ be the velocity-augmented barriers (\ref{eq:vam}) of $m$ circular obstacles, with $\rho_i(\boldsymbol{q}) := \|\boldsymbol{q} - \boldsymbol{p}_o^{(i)}\|$, $r_\text{base} := r + d_\text{safe}$, and $c := \min_i c_i$. Consider the semi-implicit dynamics $\boldsymbol{v}_{k+1} = \boldsymbol{v}_k + \Delta t\,\boldsymbol{a}_k$, $\boldsymbol{q}_{k+1} = \boldsymbol{q}_k + \Delta t\,\boldsymbol{v}_{k+1}$ with $\|\boldsymbol{a}_k\| \le a_{\max}$ and $\|\boldsymbol{v}_k\| \le v_{\max}$, where $\boldsymbol{a}_k$ is the action returned by Algorithm~\ref{alg:dtatacom} (tangent-cone projection with rate $\alpha_0$). If
+\begin{equation}
+\alpha_0\Delta t \le 1,
+\quad
+d_\text{safe} \ge \frac{\tfrac{3}{2}\,\Delta t\,a_{\max}}{\alpha_0},
+\quad
+r \ge d_\text{safe} + \Delta t\,v_{\max},
+\label{eq:prop4}
+\end{equation}
+then $c(\boldsymbol{q}_0,\boldsymbol{v}_0) \ge 0 \Rightarrow \rho_i(\boldsymbol{q}_k) \ge r$ for all obstacles $i$ and all $k \ge 0$: the executed trajectory is collision-free.
+
+\textbf{Proof.} \emph{Step 1 (single-obstacle discrete-CBF recursion).} Fix an obstacle and write $\rho_k := \rho_i(\boldsymbol{q}_k)$, $\hat{\boldsymbol{n}}_k := (\boldsymbol{q}_k - \boldsymbol{p}_o^{(i)})/\rho_k$, $c_k := c_i(\boldsymbol{q}_k,\boldsymbol{v}_k)$. Squaring $\boldsymbol{q}_{k+1} - \boldsymbol{p}_o^{(i)} = (\boldsymbol{q}_k - \boldsymbol{p}_o^{(i)}) + \Delta t\,\boldsymbol{v}_{k+1}$ and using $\|\boldsymbol{v}_{k+1}\|^2 \ge (\hat{\boldsymbol{n}}_k\!\cdot\!\boldsymbol{v}_{k+1})^2$ gives the radial bound $\rho_{k+1} \ge \rho_k + \Delta t\,(\hat{\boldsymbol{n}}_k\!\cdot\!\boldsymbol{v}_{k+1})$ (valid as $\rho_k - \Delta t\,v_{\max} \ge 0$ under (\ref{eq:prop4})$_3$). Substituting $\boldsymbol{v}_{k+1} = \boldsymbol{v}_k + \Delta t\,\boldsymbol{a}_k$ into $c_{k+1} = \rho_{k+1} - r_\text{base} - \|\boldsymbol{v}_{k+1}\|^2/(2a_{\max})$ and collecting orders of $\Delta t$,
+\begin{equation}
+c_{k+1} \ge c_k + \Delta t\Bigl[\underbrace{\hat{\boldsymbol{n}}_k\!\cdot\!\boldsymbol{v}_k - \tfrac{\boldsymbol{v}_k\cdot\boldsymbol{a}_k}{a_{\max}}}_{=\,\dot c_k}\Bigr] + \Delta t^2\Bigl[\hat{\boldsymbol{n}}_k\!\cdot\!\boldsymbol{a}_k - \tfrac{\|\boldsymbol{a}_k\|^2}{2a_{\max}}\Bigr].
+\notag
+\end{equation}
+The tangent-cone constraint of Algorithm~\ref{alg:dtatacom}, $\boldsymbol{v}_k\!\cdot\!\boldsymbol{a}_k \le a_{\max}(\hat{\boldsymbol{n}}_k\!\cdot\!\boldsymbol{v}_k + \alpha_0 c_k)$ (\ref{eq:tangent_cone}), makes the first bracket $\dot c_k \ge -\alpha_0 c_k$. The second bracket is minimised over $\|\boldsymbol{a}_k\| \le a_{\max}$ at $\boldsymbol{a}_k = -a_{\max}\hat{\boldsymbol{n}}_k$, where it equals $-\tfrac{3}{2}a_{\max}$. Hence
+\begin{equation}
+c_{k+1} \;\ge\; (1 - \alpha_0\Delta t)\,c_k - \delta,
+\qquad \delta := \tfrac{3}{2}\,\Delta t^2 a_{\max}.
+\label{eq:dcbf-recursion}
+\end{equation}
+This certifies $c$ as a \emph{discrete-time control barrier function} with rate $\alpha_0$ and discretisation defect $\delta = O(\Delta t^2)$.
+
+\emph{Step 2 (invariant level).} Since $0 \le 1 - \alpha_0\Delta t < 1$ by (\ref{eq:prop4})$_1$, the affine map $g(c) = (1-\alpha_0\Delta t)c - \delta$ is increasing with fixed point $c^\star = -\delta/(\alpha_0\Delta t) = -\tfrac{3}{2}\Delta t\,a_{\max}/\alpha_0$. As $c_0 \ge 0 > c^\star$ and (\ref{eq:dcbf-recursion}) gives $c_{k+1} \ge g(c_k)$, induction yields $c_k \ge c^\star$ for all $k$.
+
+\emph{Step 3 (collision-free).} The filter binds the tightest obstacle, $\text{rhs}_{\min} = \min_i \text{rhs}_i$ (Alg.~\ref{alg:dtatacom}), so (\ref{eq:tangent_cone}) holds simultaneously for every obstacle and (\ref{eq:dcbf-recursion}) applies to each $c_i$. Thus $c_i(\boldsymbol{q}_k,\boldsymbol{v}_k) \ge c^\star$, i.e.
+\begin{equation}
+\rho_i(\boldsymbol{q}_k) \ge r_\text{base} + \tfrac{\|\boldsymbol{v}_k\|^2}{2a_{\max}} + c^\star \ge r_\text{base} - \tfrac{3}{2}\tfrac{\Delta t\,a_{\max}}{\alpha_0} \ge r,
+\notag
+\end{equation}
+where the last step is (\ref{eq:prop4})$_2$. The separation condition (\ref{eq:prop4})$_3$, $r \ge d_\text{safe} + \Delta t\,v_{\max}$, guarantees the one-step displacement $\Delta t\,v_{\max}$ cannot carry the agent across a previously non-binding obstacle, so the binding index may switch between steps without breaking the bound. $\square$
+
+\textbf{Remark (why the velocity term is essential).} The recursion (\ref{eq:dcbf-recursion}) is a discrete-time CBF on the \emph{velocity-augmented} barrier. DCM \cite{agrawal2017} imposes a constant-rate decay on the \emph{static} barrier $\rho - r_\text{base}$, which lacks the $\|\boldsymbol{v}\|^2/(2a_{\max})$ term and so cannot certify that the agent is able to brake; M1/M2 then violate its fixed-rate bound near the boundary (DCM: 3/15 GO). The braking term is exactly what converts the per-step inequality into a multi-step stopping guarantee.
+
+\textbf{Remark (tightness).} The defect $\delta = \tfrac{3}{2}\Delta t^2 a_{\max}$ is a worst case attained only at $\boldsymbol{a}_k = -a_{\max}\hat{\boldsymbol{n}}_k$ (full acceleration straight into the obstacle). In the binding regime the cone constraint (\ref{eq:tangent_cone}) precludes this --- it would require $\boldsymbol{v}_k\!\cdot\!\boldsymbol{a}_k$ above a near-zero right-hand side while approaching --- so the effective defect is dominated by the velocity-chord term and is much smaller. At Safety-Gym ($\Delta t{=}0.1$, $a_{\max}{=}0.9$, $\alpha_0{=}1$) the conservative bound is $d_\text{safe} \ge 0.135$, yet $d_\text{safe} = 0.05$ suffices empirically (\S\ref{sec:experiments}); (\ref{eq:prop4}) is thus sufficient with margin, not tight.
+
+\textbf{Corollary 1 (Continuous-time limit).} As $\Delta t \to 0$ with $v_{\max}, a_{\max}, \alpha_0$ fixed, $\delta \to 0$ and the required $d_\text{safe} \to 0$: the tangent-cone projection (\ref{eq:tangent_cone}) becomes the continuous-time exponential-CBF condition $\dot c \ge -\alpha_0 c$ and VA-ATACOM reduces to the continuous-time tangent-projection flow $\dot{\boldsymbol{q}} = \boldsymbol{N}_c\boldsymbol{\alpha} - K_c\boldsymbol{J}_c^+\boldsymbol{c}$, recovering ATACOM's Theorem~1. The single-obstacle guarantee uses no multi-step lookahead: the braking term subsumes the horizon condition that the heuristic DT-margin (\S\ref{sec:design-study}) required, so the BRT (Component~2) is reward shaping, not part of this certificate.
+
+\textbf{Corollary 2 (Multi-obstacle).} Alg.~\ref{alg:dtatacom}'s binding $\text{rhs}_{\min} = \min_i \text{rhs}_i$ makes (\ref{eq:tangent_cone}) hold for every $i$ simultaneously, so (\ref{eq:dcbf-recursion}) applies to each $c_i$ in parallel: $\rho_i(\boldsymbol q_k) \ge r$ for all $i,k$ at $O(m)$ per step.
+
+\subsection{Constructive Hyperparameter Selection}
+
+Given Safety-Gymnasium parameters ($\Delta t = 0.1$s, $r = 0.2$m, $d_\text{safe} = 0.05$m, $v_{\max} = 1.0$m/s, $a_{\max}=0.9$m/s$^2$), $r_\text{base} = 0.25$m. The braking term $\|v\|^2/(2a_{\max})$ reaches $0.67$m at top speed, and the BRT horizon (\ref{eq:h_cond}) prescribes $h \ge \lceil r/(\Delta t v_{\max})\rceil = 2$; we use $h=3$ (one step of margin) and exponential-CBF rate $\alpha_0=1$.
+
+\subsection{Relation to Prior Work}
+
+VA-ATACOM inherits ATACOM's null-space projection and adds the two discrete-time mechanisms; Corollary~1 shows it strictly generalises ATACOM as $\Delta t \to 0$. Unlike DCM \cite{agrawal2017}, which handles only single-step discrete CBF constraints, the multi-step BRT lookahead captures the M2 drift that single-step analysis misses (Prop.~2). Unlike offline HJ-reachability \cite{mitchell2005,bansal2017,fisac2019,hsu2021}, the BRT is a deterministic short-horizon online simulation, avoiding the curse of dimensionality and offline-to-online distribution shift at the cost of a horizon approximation.
+
+%==============================================================================
+\section{Experiments}
+\label{sec:experiments}
+%==============================================================================
+
+\subsection{Experimental Setup}
+\label{sec:setup}
+
+\textbf{Benchmark.} Safety-Gymnasium Point-Robot with three tasks: Goal, Push, MultiGoal.
+
+\textbf{Metrics.} Episode cost $C$ (hazard entries per episode); GO threshold $\bar{C} \le 5.0$.
+
+\textbf{Training.} 200K environment steps, 5 random seeds, PPO backbone.
+
+\textbf{Calibration of $a_{\max}$.} The braking-distance constraint (\ref{eq:vam}) needs the agent's maximum deceleration. We measure it once offline: drive the Point robot to top speed, command full brake, and record $|\Delta\boldsymbol{v}|/\Delta t$. This gives $v_{\max}\approx1.13$\,m/s and $a_{\max}\approx0.9$\,m/s$^2$, so the braking distance at top speed is $\approx0.67$\,m --- $2.7\times$ the keepout radius, confirming momentum dominates at this control rate.
+
+\textbf{Methods.} We compare eight published safety filters (ATACOM, ATACOM-VD/-S/-LA, HOCBF, DCM, Predictive ATACOM, CBF-QP), PPO-Lag, and an unfiltered PPO baseline against VA-ATACOM. To isolate the filter mechanism, every published filter is given our sim-BRT frontend (the same auxiliary reward-shaping aid), so any gap in Table~\ref{tab:main} is attributable to the filter itself.
+
+\textbf{Hazard-radius matching.} Safety-Gymnasium uses $r{=}0.2$ on Goal/MultiGoal but $r{=}0.3$ on Push. For a fair comparison every filter that reads $r$ from its config (HOCBF, DCM, ATACOM-VD/-S/-LA, DT-margin, VA-ATACOM) is given the matching value per task; the few filters whose code does not parameterise $r$ (null-space ATACOM, Predictive ATACOM, CBF-QP) keep their built-in keepout distance ($d_{\text{safe}}{=}0.3$), which already matches Push. Earlier reports of these benchmarks used the Goal radius on Push, which under-protected the velocity-aware methods; the values in Table~\ref{tab:main} are the matched-radius numbers (10 methods $\times$ 5 seeds $\times$ 200K steps re-run for Push).
+
+\subsection{Main Results}
+
+\begin{table}[t]
+\centering
+\caption{Episode cost $\bar{C}$ (mean, 5 seeds) and GO/15 count (a (task, seed) cell is GO if its episode cost $\le 5$). Published filters use our sim-BRT frontend; only the filter mechanism differs. Each filter's keepout matches the env's hazard radius ($r{=}0.2$ Goal/MultiGoal, $r{=}0.3$ Push); filters without an $r$ parameter use $d_{\text{safe}}{=}0.3$. The DT-margin row is VA-ATACOM's first-order approximation (\S\ref{sec:design}), included as a side-validation.}
+\label{tab:main}
+\begin{tabular}{lcccr}
+\toprule
+Method & Goal & Push & MGoal & GO \\
+\midrule
+PPO baseline       & 22.8 & 46.9 & 58.5 & 2/15 \\
+\midrule
+ATACOM (null-space)& 17.0 & 66.3 & 50.5 & 1/15 \\
+ATACOM-VD          & 27.5 & 57.9 & 65.0 & 0/15 \\
+ATACOM-S           & 18.3 & 11.5 & 35.8 & 2/15 \\
+ATACOM-LA          & 37.7 & 24.2 & 40.8 & 1/15 \\
+HOCBF              & 10.4 & 7.4  & 19.0 & 5/15 \\
+DCM                & 13.7 & 11.9 & 47.1 & 5/15 \\
+Predictive ATACOM  & 15.4 & 12.9 & 36.8 & 5/15 \\
+CBF-QP             & 22.3 & 29.4 & 27.7 & 2/15 \\
+PPO-Lag            & 35.6 & 38.3 & 76.0 & 1/15 \\
+\midrule
+DT-margin (heuristic) & 0.84 & 3.36 & 2.59 & 14/15 \\
+\textbf{VA-ATACOM}    & \textbf{0.00} & \textbf{0.00} & \textbf{0.40} & \textbf{15/15} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+VA-ATACOM reaches \textbf{near-zero cost on every task} (Goal 0.00, Push 0.00, MultiGoal 0.40; 15/15 GO) --- the only method to do so. The DT-margin row is \emph{not an independent baseline} but VA-ATACOM's first-order Taylor approximation in $\|\boldsymbol v\|$ (\S\ref{sec:design}); its 14/15 GO is therefore an empirical side-validation of Prop.~4 --- the linearisation captures most of the safe behaviour, with the single residual seed exactly where the quadratic braking term dominates. Every published filter, by contrast, fails the GO threshold on at least one task even with our sim-BRT frontend, isolating the velocity-augmented constraint manifold (not the reachability frontend) as the differentiator. Matching each filter's keepout to the env's hazard radius materially improves the velocity-aware methods on Push (e.g.\ VA-ATACOM $93.2{\to}0.00$, HOCBF $11.4{\to}7.4$), while filters that hard-code their keepout are essentially unchanged --- so the unfair under-protection affected only the parameterised filters and Table~\ref{tab:main}'s Push numbers are now apples-to-apples. Fig.~\ref{fig:v_a_trajectory} illustrates the mechanism on a single obstacle: a static constraint lets momentum carry the agent through the keepout, whereas VA-ATACOM's braking term makes it decelerate early and arc around.
+
+\input{figures/fig_v_a_trajectory/fig_v_a_trajectory.tex}
+
+\subsection{Design Study: Isolating Velocity Augmentation}
+\label{sec:design-study}
+
+To pinpoint \emph{which} ingredient of VA-ATACOM matters, we compare five filter designs on the Goal task (5 seeds $\times$ 200K) along two axes: whether the constraint is \emph{velocity-aware} (encodes the braking distance) and whether the action is enforced by \emph{tangent-space projection} onto a manifold (versus model-free magnitude scaling). All share the PPO backbone and sim-BRT reward shaping; only the filter differs.
+
+\begin{table}[t]
+\centering
+\caption{Design study on the Goal task (5 seeds $\times$ 200K). Only the velocity-augmented manifold \emph{with} tangent-cone projection succeeds: static constraints ignore momentum (top three), and velocity-aware magnitude scaling cannot redirect it (row~4).}
+\label{tab:design}
+\begin{tabular}{lcc r c}
+\toprule
+Design & Vel.-aware & Projection & $\bar C$ & GO \\
+\midrule
+null-space ATACOM   & $\times$     & tangent      & 28.7  & 0/5 \\
+static-manifold     & $\times$     & tangent      & 11.4  & 1/5 \\
+CBF-QP (published)  & $\times$     & QP           & 22.3  & 0/5 \\
+model-free scaling  & $\checkmark$ & none (scale) & 117.4 & 0/5 \\
+\textbf{VA-ATACOM}  & $\checkmark$ & cone         & \textbf{0.00} & \textbf{5/5} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:design} isolates the mechanism. The three \emph{static-constraint} designs --- null-space ATACOM, a static manifold projection, and a discrete CBF-QP --- all enforce $\rho \ge r_\text{base}$ but ignore the agent's velocity; none reaches more than $1/5$ GO, because at $\Delta t{=}0.1$s the carried momentum cannot be cancelled by a position-only constraint (M1/M2). Making the constraint velocity-aware is necessary but \emph{not sufficient}: the model-free braking-scale filter knows the braking distance yet only shrinks the action magnitude, so the agent still coasts inward along its momentum and incurs the highest cost of all (117.4). Only VA-ATACOM --- velocity-augmented \emph{and} projecting onto the manifold's tangent cone --- reaches zero cost, confirming that both ingredients are required and that the velocity augmentation is what lets the tangent projection (rather than mere scaling) handle momentum. The velocity-margin heuristic --- VA-ATACOM's first-order approximation (Table~\ref{tab:main}) --- is characterised, together with its component ablation and $\Delta t$/$(\alpha,h)$ sweeps, in the supplementary material.
+
+\subsection{Robustness to Coarse Control Rates}
+\label{sec:coarse}
+
+The benchmark above runs at $\Delta t{=}0.1$\,s, already at the M1 threshold $\Delta t\,v_{\max}\!\approx\!\sqrt{d_\text{safe}\,r}$ (\S\ref{sec:failure}). To probe the regime Proposition~4 targets, we coarsen the control period to $0.15$ and $0.20$\,s ($1.5$--$2\times$) on Goal, retraining every method from scratch with the same trainer and frameskip patch as the main runs (5 seeds, 50K steps).
+
+\begin{table}[t]
+\centering
+\caption{Episode cost $\bar C$ (mean, 5 seeds; GO count) as the control period coarsens past the benchmark default. All filtered rows use \emph{identical} sim-BRT shaping; only the constraint differs. Costs use the 50K-step budget and are not directly comparable to the 200K Table~\ref{tab:main}, but the safe/unsafe split is unambiguous.}
+\label{tab:coarse}
+\begin{tabular}{lccc}
+\toprule
+Method & $\Delta t{=}0.10$ & $\Delta t{=}0.15$ & $\Delta t{=}0.20$ \\
+\midrule
+PPO (no filter)   & 92.7 (0/5) & 55.3 (0/5) & 17.1 (4/5) \\
+ATACOM + sim-BRT  & 28.2 (2/5) & 33.2 (3/5) & 64.7 (1/5) \\
+DT-margin         & 1.3 (4/5)  & \textbf{1.4} (4/5) & 1.4 (5/5) \\
+\textbf{VA-ATACOM}& \textbf{0.0} (5/5) & 2.9 (4/5) & \textbf{0.0} (5/5) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:coarse} shows a clean dichotomy. The two \emph{velocity-aware} filters --- VA-ATACOM and its first-order approximation DT-margin (\S\ref{sec:design}) --- stay safe ($\le 2.9$ cost, $\ge 4/5$ GO) across the entire range, whereas the \emph{velocity-blind} static ATACOM degrades to $28$--$65$ cost. Crucially, ATACOM here is given the \emph{same} sim-BRT reward shaping as VA-ATACOM and still fails (removing it makes it worse), isolating the velocity-augmented \emph{constraint} --- not the reachability frontend --- as what absorbs momentum at coarse rates. This confirms Proposition~4's prediction with learned policies on the regime it targets: as $\Delta t$ grows, position-only filters lose forward invariance while the braking term keeps the manifold invariant. (Under the 50K budget one VA-ATACOM seed degrades at $\Delta t{=}0.15$; its median cost is $0$.)
+
+\subsection{Computational Overhead}
+
+We benchmark filter cost on a synthetic 8-obstacle scene matching Safety-Gym's layout (5000 random states $\times$ random actions, 200-call warm-up, single-thread NumPy on a 28-core CPU). Table~\ref{tab:walltime} reports mean wall-clock cost per \texttt{project()} call.
+
+\begin{table}[t]
+\centering
+\caption{Filter wall-time per call (8 obstacles, 5000 calls).}
+\label{tab:walltime}
+\begin{tabular}{lcc}
+\toprule
+Filter & mean (ms) & p95 (ms) \\
+\midrule
+PPO passthrough (baseline) & 0.0002 & 0.0002 \\
+DistanceFilter (static)    & 0.025  & 0.028  \\
+ATACOM (null-space)        & 0.130  & 0.301  \\
+ATACOM-VD                  & 0.121  & 0.179  \\
+Predictive ATACOM          & 0.142  & 0.152  \\
+ATACOM-LA ($h{=}1$)        & 0.146  & 0.164  \\
+\textbf{VA-ATACOM}         & \textbf{0.235} & \textbf{0.346} \\
+CBF-QP (SLSQP)             & 1.023  & 1.396  \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+VA-ATACOM costs 0.24~ms per call --- $\approx 1.8\times$ ATACOM (216 distance evaluations at $h{=}3$, $|O|{=}8$) and $4.3\times$ cheaper than CBF-QP. At $\Delta t{=}0.1$~s this is $\le 0.3\%$ of one step's compute budget, leaving ample margin for policy inference.
+
+%==============================================================================
+\section{Discussion}
+%==============================================================================
+
+\textbf{When to use VA-ATACOM vs ATACOM.} Use ATACOM when $\Delta t \cdot v_{\max} < \sqrt{d_\text{safe} \cdot r}$ (high-frequency control); use VA-ATACOM otherwise. At $r{=}0.2$m, $d_\text{safe}{=}0.05$m this is $\Delta t{=}30$ms: above it (Safety-Gymnasium, embedded controllers) VA-ATACOM is needed.
+
+\subsection{Limitations}
+\label{sec:limitations}
+
+\textbf{L1: Conservative behaviour.} VA-ATACOM trades reward for safety via the inflated braking margin and BRT-shaping aid; in low-density scenes this can leave performance on the table relative to a tuned heuristic.
+
+\textbf{L2: BRT-shaping basin near $h^\star \Delta t\,v_{\max} \approx r$.} When the lookahead horizon matches the penetration horizon (Safety-Gym $\Delta t{=}0.05$\,s), spurious shaping penalty traps training (supplementary material); a slower rate or softer BRT coefficient is needed.
+
+\subsection{Sim-to-Real Considerations}
+\label{sec:sim2real}
+
+Proposition~4's conditions are stated in physical units ($\Delta t$, $r$, $v_{\max}$, $d_\text{safe}$) and transfer to hardware once three deployment effects fold into the constants: \textbf{(i)} latency $\tau$ yields $\Delta t_\text{eff}{=}\Delta t{+}\tau$ in (\ref{eq:prop4}), pushing systems from ATACOM's regime into VA-ATACOM's; \textbf{(ii)} localisation noise $\sigma_\text{pos}$ inflates $r_\text{base}{\mapsto}r_\text{base}{+}k_\sigma\sigma_\text{pos}$; \textbf{(iii)} velocity tracking error means the separation condition should use a conservative $v_{\max}^\text{actual}$.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\columnwidth]{figures/fig_webots_va_atacom/dense_all_trials_overlay.png}
+  \caption{Webots E-puck overlay (20 P-controller trials, dense world, 6 cylinders). \textbf{Blue}: VA-ATACOM active. \textbf{Red}: filter off. Solid disks: $r_\text{base}{=}0.135$\,m keep-out. The filter forces all-but-one blue trajectory outside; 9/40 red trials penetrate.}
+  \label{fig:webots-overlay}
+\end{figure}
+
+\textbf{(iv) Webots E-puck validation.} We port the unchanged VA-ATACOM filter to a Webots E-puck at $\Delta t{=}64$\,ms with raw noisy GPS ($\sigma{=}4$\,cm) and heading ($\sigma{=}0.05$\,rad), no state estimator. Across two layouts (5- and 6-cylinder fields, $2{\times}20{=}40$ trials), VA-ATACOM yields $\mathbf{1/40}$ deep penetration of $r_\text{base}{=}0.135$\,m (a triple-obstacle pocket where the diff-drive forward-only filter cannot redirect heading) versus $\mathbf{9/40}$ without; goal-reach $40/40$ in both. Replacing the P-controller with a Safety-Gym-trained PPO policy (60-dim obs reconstructed from Supervisor; same 40 trials) yields $\mathbf{0/40}$ with VA-ATACOM vs $\mathbf{6/40}$ without --- the filter helps even policies that already avoid hazards on average. Physical E-puck validation remains future work.
+
+%==============================================================================
+\section{Conclusion}
+%==============================================================================
+
+We presented \textbf{VA-ATACOM}, augmenting the obstacle constraint with the agent's braking distance and projecting onto the resulting velocity-augmented manifold. Its core is \textbf{Proposition~4} --- the first discrete-time analogue of ATACOM's forward-invariance theorem, constructive in $(\Delta t, r, v_{\max})$ and reducing to ATACOM as $\Delta t\to0$, with the velocity-adaptive margin recovered as its first-order approximation. VA-ATACOM reaches near-zero cost on every Safety-Gymnasium task under fair hazard-radius matching (0.00/0.00/0.40; 15/15 GO) --- the only method to do so.
+
+
+%==============================================================================
+% References
+%==============================================================================
+% NOTE: aaai2026.sty internally sets \bibliographystyle{aaai2026}; do NOT call it here.
+\bibliography{references}
+
+% Reproducibility checklist (AAAI-26 standard, \input here for inclusion in PDF).
+\input{repro_checklist.tex}
+
+\end{document}

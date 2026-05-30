@@ -13,30 +13,18 @@
 %
 % Cross-references: Prop. 1-2 (M1/M2), §IV-B Component 1, Table 2.
 % =====================================================================
-\begin{figure*}[t]
+\begin{figure}[t]
   \centering
-  \includegraphics[width=0.95\textwidth]%
+  \includegraphics[width=\columnwidth]%
     {figures/fig_v_a_trajectory/fig_v_a_trajectory.pdf}
   \caption{%
-    \textbf{Why velocity augmentation matters (double-integrator
-    simulation, $\Delta t{=}0.1$\,s, $v_{\max}{=}1$\,m/s,
-    $a_{\max}{=}0.9$\,m/s$^2$).} Agent starts at $(-1,0)$ with goal
-    $(1,0)$ and an obstacle of radius $r{=}0.2$\,m just off the
-    start--goal line; a velocity-setpoint policy seeks the goal and the
-    executed velocity is rate-limited at $a_{\max}$ (momentum). Both
-    panels use \emph{identical} dynamics and the \emph{same} tangent
-    projection --- the only difference is whether the constraint
-    includes the braking term $\|\boldsymbol{v}\|^2/(2a_{\max})$.
-    \emph{Left, static constraint $\rho \ge r_\mathrm{base}$:} the
-    filter does not engage until the boundary, by which point the
-    committed inward velocity cannot be cancelled in one step; four
-    consecutive steps (red) penetrate to $\rho_{\min}{=}0.076$\,m
-    (collision) --- the M1/M2 momentum regime of Prop.~1--2.
-    \emph{Right, VA-ATACOM:} the braking term caps the inward approach
-    speed at the brakeable value $\sqrt{2a_{\max}(\rho-r_\mathrm{base})}$,
-    so the agent decelerates early and arcs around at
-    $\rho_{\min}{=}0.28$\,m before re-acquiring the goal --- the velocity
-    augmentation isolated in the design study (Table~\ref{tab:design}).%
+    Why velocity augmentation matters (double-integrator,
+    $\Delta t{=}0.1$\,s, $v_{\max}{=}1$, $a_{\max}{=}0.9$). Same tangent
+    projection in both panels; only the constraint differs.
+    \emph{Left}, static $\rho{\ge}r_\text{base}$: momentum carries the
+    agent through to $\rho_\text{min}{=}0.076$\,m (collision, M1/M2).
+    \emph{Right}, VA-ATACOM: the braking term decelerates early,
+    $\rho_\text{min}{=}0.28$\,m (Table~\ref{tab:design}).%
   }
   \label{fig:v_a_trajectory}
-\end{figure*}
+\end{figure}

@@ -27,7 +27,46 @@ Thumbs.db
 config.yaml
 
 # Large folders (manage separately)
-paper/
+paper/*
+# ...except the AAAI 2027 paper, which lives at parent-repo level
+# per the 2026-05-17 move from safe-rl-2027/paper/aaai_2027/.
+!paper/aaai_2027/
 
 # T-RO journal submission (not for public repo)
 TRO/
+
+# Local workspace metadata
+.codex
+texput.log
+workspace.tar.xz
+
+# Nested local repositories
+refRoboticAcademy/
+safe-rl-manifold-suite/
+
+# Local experiment outputs (IROS2026)
+IROS2026/experiments/
+IROS2026/results_*/
+IROS2026/videos/
+IROS2026/*.mp4
+
+# Local generated folders
+benchmarks/
+runs/
+
+# AAAI-26 official author kit (downloaded; not our work)
+paper/aaai_2027/aaai26_kit/
+
+# pdflatex/bibtex build intermediates inside aaai26/ (keep .pdf + source)
+paper/aaai_2027/aaai26/*.aux
+paper/aaai_2027/aaai26/*.bbl
+paper/aaai_2027/aaai26/*.blg
+paper/aaai_2027/aaai26/*.log
+paper/aaai_2027/aaai26/*.out
+paper/aaai_2027/aaai26/p1.log
+paper/aaai_2027/aaai26/p2.log
+paper/aaai_2027/aaai26/p3.log
+paper/aaai_2027/aaai26/b.log
+paper/aaai_2027/aaai26/pdflatex_run1.log
+paper/aaai_2027/aaai26/bib.log
+paper/aaai_2027/aaai26/bibtex.log
