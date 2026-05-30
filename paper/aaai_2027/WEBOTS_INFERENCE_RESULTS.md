@@ -123,25 +123,39 @@ env -u http_proxy -u https_proxy -u HTTP_PROXY -u HTTPS_PROXY \
 env ... VA_ATACOM_WORLD=dense ... \
     /usr/local/bin/webots ... safe-rl-2027/experiments/webots/worlds/epuck_dense_va_atacom.wbt
 
+# lshape 跑实验(2026-05-30 新增 — L 型 barrier,5 cyl,16/20 trials 需跨 L 绕路)
+env ... VA_ATACOM_WORLD=lshape ... \
+    /usr/local/bin/webots ... safe-rl-2027/experiments/webots/worlds/epuck_lshape_va_atacom.wbt
+
 # 渲动画 + 叠图 + 独立验证(per world)
 conda activate iros2026
 VA_ATACOM_WORLD=corridor python safe-rl-2027/experiments/webots/plot_results.py
 VA_ATACOM_WORLD=dense    python safe-rl-2027/experiments/webots/plot_results.py
+VA_ATACOM_WORLD=lshape   python safe-rl-2027/experiments/webots/plot_results.py
 ```
 
 关键 env 变量:
 - **Unset *_proxy + QT_NO_PROXY=1**:绕开 Qt 把 socket listen 走代理
 - **WEBOTS_PYTHON_COMMAND**:iros2026 conda env 的 python(系统 python 没装 safe_rl)
-- **VA_ATACOM_WORLD**:`corridor` 或 `dense`,**切换 obstacle 布局 + 输出子目录**
+- **VA_ATACOM_WORLD**:`corridor` / `dense` / `lshape`,**切换 obstacle 布局 + 输出子目录**
+
+### L 型 barrier 设计要点(`lshape` world)
+
+- 5 cylinder 排成倒 L:vertical limb x=0.10, y∈{−0.40, −0.05, +0.30};
+  horizontal limb y=0.55, x∈{−0.15, −0.50}
+- corner gap(OBS2→OBS3 对角):中心距 354 mm,边距 154 mm,
+  robot 通过余 84 mm clearance
+- 默认 SEED=42 下,trial generator 生成 20 个 (start, goal) 对,**16/20 需跨 L barrier 绕路**(start/goal 分布在 barrier 两侧)
+- 测试卖点:在 corridor 的 S-曲线 + dense 的散乱布局之外,增 1 个**单次 90° 锐转**场景
 
 ---
 
 ## 运行物件位置
 
 - **控制器**:`safe-rl-2027/experiments/webots/controllers/va_atacom_nav/va_atacom_nav.py`(多 world 支持,env var 切换)
-- **世界**:`safe-rl-2027/experiments/webots/worlds/epuck_{corridor,dense}_va_atacom.wbt`
+- **世界**:`safe-rl-2027/experiments/webots/worlds/epuck_{corridor,dense,lshape}_va_atacom.wbt`
 - **绘图脚本**:`safe-rl-2027/experiments/webots/plot_results.py`
-- **per-world 结果**:`safe-rl-2027/runs/webots_va_atacom/{corridor,dense}/{results.json, demo.mp4, verification_report.md}`
+- **per-world 结果**:`safe-rl-2027/runs/webots_va_atacom/{corridor,dense,lshape}/{results.json, demo.mp4, verification_report.md}`
 - **Filter 源**:`safe-rl-2027/safe_rl/filters/brake_manifold.py`(与 Safety-Gym 实验同一份代码)
 - **论文叠图**:`paper/aaai_2027/figures/fig_webots_va_atacom/{corridor,dense}_all_trials_overlay.png`
 - **本记录**:`paper/aaai_2027/WEBOTS_INFERENCE_RESULTS.md`
