@@ -47,14 +47,34 @@
 | **dense** | SAFE | **1/20** ⚠️ | 1/20 | 18/20 | 20/20 | −18.8 mm | 37.6% |
 | dense | UNSAFE | 2/20 | 5/20 | 13/20 | 18/20 | −47.2 mm | — |
 
-### Aggregate(40 trials × 2 modes)
+### Aggregate — P-controller(40 trials × 2 modes)
 
-| Mode | Deep penetration | Outside boundary | Goal reached |
-|---|:---:|:---:|:---:|
-| **SAFE (VA-ATACOM)** | **1/40**(2.5%)| 36/40 | **40/40** |
-| **UNSAFE (no filter)** | **9/40**(22.5%)| 24/40 | 36/40 |
+| Mode | Deep penetration | Outside boundary | Goal reached | Filter rate |
+|---|:---:|:---:|:---:|:---:|
+| **SAFE (VA-ATACOM)** | **1/40**(2.5%)| 36/40 | **40/40** | 35.3% |
+| **UNSAFE (no filter)** | **9/40**(22.5%)| 24/40 | 36/40(4 stuck after collision)| — |
 
 **~9× 深穿入减少**,无 filter 最深 5cm。
+
+### Aggregate — PPO (Safety-Gym transfer, 40 trials × 2 modes)
+
+| Mode | Deep penetration | Outside boundary | Goal reached | Filter rate |
+|---|:---:|:---:|:---:|:---:|
+| **SAFE (VA-ATACOM)** | **0/40**(0.0%)| 40/40 | 16/40 | 22.4% |
+| **UNSAFE (no filter)** | **6/40**(15.0%)| 29/40 | 16/40 | — |
+
+PPO goal-reach 16/40 在两 mode **一样** → **sim-to-Webots obs 分布漂移**(60-dim 观测在 Webots 侧从 Supervisor 重建,与 Safety-Gym 训练分布有 gap),与 filter 是否启用无关;filter **不损失 goal**,只减少深穿入。
+
+### 4-mode 总览(80 trials × 2 modes = 160 trials)
+
+| Controller | Filter | N | **deep ≥1cm** | graze 0–1cm | goal | filter rate |
+|---|---|---:|:---:|:---:|:---:|:---:|
+| P-controller | **VA-ATACOM** | 40 | **1/40** | 3/40 | 40/40 | 35.3% |
+| P-controller | no filter | 40 | **9/40** | 7/40 | 36/40 | — |
+| PPO transfer | **VA-ATACOM** | 40 | **0/40** | 0/40 | 16/40 | 22.4% |
+| PPO transfer | no filter | 40 | **6/40** | 5/40 | 16/40 | — |
+
+权威 audit:`safe-rl-2027/runs/webots_va_atacom/AGGREGATE.md`(由 `plot_results.py` verify 派生独立重算,与本表 100% 一致;runs/ gitignored,需运行 plot_results.py 重生成)。
 
 ### dense world 那唯一 SAFE 深穿入(T6)的诚实分析
 
@@ -64,27 +84,23 @@ T6:start=(0.04, −0.39)→ goal=(−0.61, 0.60),path 4.45m,filter 49% 干预,bm
 
 ---
 
-## 论文嵌入(`main_v2.tex` §VI Sim-to-Real (iv))
+## 论文嵌入(`aaai26/main_v2_aaai26.tex` §VI Sim-to-Real (iv))
 
-现稿(经今天 aggregate 改写):
+现稿(2026-05-30 audit 后精修 — 反映 PPO transfer 的 goal 16/40 + P-ctrl no-filter 36/40 而非 40/40):
 
-> *To probe Prop.~4's physical-units claim on a different platform and a true
-> rigid-body simulator, we port the unchanged VA-ATACOM filter to a Webots
-> E-puck running at Δt=64ms with raw noisy GPS (σ=4cm) and heading (σ=0.05rad)
-> feeding the controller — no state estimator, so the filter is challenged on
-> raw sensor noise. A goal-seeking P-controller drives the robot through two
-> layouts (a 5-obstacle corridor and a 6-obstacle dense field) over 2×20=40
-> random (start, goal) pairs; the only varied knob is whether the filter is
-> active. With VA-ATACOM, **1/40** trials deeply penetrates the geometric
-> boundary r_base=0.135m (the single failure, in dense, sits in a
-> triple-obstacle pocket where the diff-drive filter — which constrains only
-> the forward action (§sec:design) — cannot redirect heading), 36/40 remain
-> entirely outside, and the robot reaches goal 40/40. Without the filter,
-> **9/40** trials penetrate ≥1cm (worst case 5cm into the obstacle centre).
-> The filter intervenes on ~35% of steps on average and requires no tuning
-> beyond the platform-measured (r, d_safe, a_max) — confirming the
-> physical-units transfer with diff-drive kinematics, sensor noise, and no
-> state estimation. Hardware validation on a physical E-puck remains future work.*
+> **(iv) Webots E-puck validation.** We port the unchanged VA-ATACOM filter to
+> a Webots E-puck at Δt=64 ms with raw noisy GPS (σ=4 cm) and heading
+> (σ=0.05 rad), no state estimator. Across two layouts (5- and 6-cylinder
+> fields, 2×20=40 trials), VA-ATACOM yields **1/40** deep penetration of
+> r_base=0.135 m versus **9/40** without; goal-reach **40/40** with the
+> filter vs 36/40 without (4 trials stuck after collision), so the filter
+> does not trade goal-reach for safety. The single VA-ATACOM penetration
+> sits in a dense triple-obstacle pocket where the diff-drive forward-only
+> filter cannot redirect heading. Replacing the P-controller with a
+> Safety-Gym-trained PPO policy (same 40 trials) yields **0/40** deep with
+> VA-ATACOM vs **6/40** without; PPO goal-reach is 16/40 in both modes ---
+> a sim-to-Webots obs distribution shift unaffected by the filter,
+> confirming the filter never trades safety for performance.
 
 ---
 
