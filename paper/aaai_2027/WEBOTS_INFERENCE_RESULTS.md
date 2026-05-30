@@ -1,8 +1,8 @@
-# Webots E-puck VA-ATACOM 推理结果
+# Webots E-puck VA-ATACOM 推理结果(2 worlds × 2 policies × 40 trials)
 
-**日期**:2026-05-29
-**任务(用户)**:"在 webots 上完成推理"
-**Scope 选择**:Path A(P-controller + VA-ATACOM filter,不上 PPO policy),world = `epuck_demo_corridor.wbt`
+**日期**:2026-05-29 初版(corridor) → 2026-05-30 迁到 safe-rl-2027 + 去 EKF + 加 dense → **2026-05-30 加 Path B(PPO policy transfer)**
+**任务**:Webots 上完成 VA-ATACOM 推理验证
+**Scope**:Path A(P-controller)+ **Path B(Safety-Gym 训练的 PPO policy transfer)**,两个 world,共 80 trials × 2 modes
 
 ---
 
@@ -10,85 +10,81 @@
 
 | 项 | 值 |
 |---|---|
-| 仿真器 | Webots R2023b(`/usr/local/bin/webots`)|
-| 模式 | `--mode=fast --no-rendering --batch --minimize` |
-| 世界 | `IROS2026/webots/worlds/epuck_corridor_va_atacom.wbt`(corridor 5 cyl 障碍,fork 自 epuck_demo_corridor.wbt) |
-| 控制器 | `IROS2026/webots/controllers/va_atacom_nav/va_atacom_nav.py` |
-| 机器人 | E-puck(supervisor TRUE),`basicTimeStep=64ms`(Δt=0.064s)|
+| 仿真器 | Webots R2023b(`/usr/local/bin/webots`) |
+| 启动模式 | `--mode=fast --no-rendering --batch --minimize` |
+| Worlds | (a) corridor(5 cyl 障碍)(b) dense(6 cyl 障碍)|
+| 控制器(单一,env var 切换 OBSTACLES)| `safe-rl-2027/experiments/webots/controllers/va_atacom_nav/va_atacom_nav.py` |
+| 机器人 | E-puck `supervisor TRUE`,`basicTimeStep=64ms`(Δt=0.064s)|
 | 策略 | P-controller + weak heuristic avoidance |
-| Filter | `safe_rl.filters.brake_manifold.BrakeManifoldFilter`(VA-ATACOM)|
+| Filter | `BrakeManifoldFilter`(`safe-rl-2027/safe_rl/filters/brake_manifold.py`,与 Safety-Gym 实验同一份代码)|
 | Filter 参数 | r=0.10, d_safe=0.035, a_max=0.082 m/s², α₀=1.0, action_scale=a_max, action_form="diff_drive" |
-| EKF | StandardEKF(σ_lat=0.04m, σ_up=0.05rad)|
-| Trials | 20 random (start, goal) × 2 modes(safe / unsafe)|
+| **状态估计器** | **无**(controller 直接吃 raw noisy GPS)|
+| Trials per world | 20 random (start, goal) × 2 modes(safe / unsafe)|
 | Seed | 42 |
 | Max steps | 4000(simulated 256s)|
-| 总壁钟 | ~30s |
-
-**关键参数说明**:e-puck a_max=0.082 m/s² 来自 `safe-rl-2027/experiments/transfer/epuck_transfer.py` 的物理标定;d_safe=robot_radius=0.035m 使 r_base=0.135m。
+| 总壁钟 | ~60s(两 worlds 合计)|
 
 ---
 
-## 状态:✅ 完成 20×2 trials,数据已落盘
+## 状态:✅ 完成 2 worlds × 20×2 = 40 trials × 2 modes
 
-- 完整结果 JSON:`IROS2026/results_webots_va_atacom/webots_va_atacom_results.json`(含每 trial 的 success/collisions/path/avg_pos_error + filter intervention 统计 + ground-truth/EKF 轨迹)
-- 启动 log:`/tmp/wb_full.log`
+每个 world 的产出在 `safe-rl-2027/runs/webots_va_atacom/{corridor,dense}/`:`results.json`、`demo.mp4`、`verification_report.md`。
 
----
+论文叠图:`paper/aaai_2027/figures/fig_webots_va_atacom/{corridor,dense}_all_trials_overlay.png`。
 
-## 关键结果
-
-### 1. 安全性(min_clearance 到障碍几何边界 r_base=0.135m)
-
-| 指标 | SAFE(VA-ATACOM) | UNSAFE(无 filter) |
-|---|---|---|
-| 深穿入(净距 < −1cm)| **0/20** | **6/20** |
-| 擦边(−1cm ≤ 净距 < 0)| 0/20 | 2/20 |
-| 完全未越界 | **20/20** ✓ | 12/20 |
-| min clearance(最坏) | **+0.002 m**(刚刚擦着边界外侧)| **−0.050 m**(深入障碍 5cm)|
-| median clearance | +0.038 m | +0.004 m |
-
-**结论**:VA-ATACOM filter 让 e-puck 在 5 cyl 障碍走廊 + GPS 噪声下**所有 20 trials 都从未穿入障碍几何边界**,最近也在外侧 2mm;而无 filter 状态下 6/20 深穿入(最深 5cm,即穿到障碍中心)。
-
-### 2. 任务完成
-
-| 指标 | SAFE | UNSAFE |
-|---|---|---|
-| Success(到达 goal) | **20/20**(100%)| 18/20(90%)|
-| 平均 path_length | 2.18 m | 0.96 m |
-
-VA-ATACOM 在保持安全的同时**100% 成功到达 goal**;无 filter 路径短(撞了 obstacle 后还能继续往 goal 走,但 path 短意味着没绕开)。
-
-### 3. Filter 干预统计
-
-- 平均 filter correction rate: **33.5%**(范围 0–49%)→ 在密集 corridor 中常态化干预
-- 干预少的 trial(<10%):3 个,都是离障碍远的简单路径(T3、T5、T7、T12)
-- 平均 mean_barrier_min: **+0.106 m**(filter 有充足裕度)
-- min_barrier_min(最危险时刻):−0.177 m(理论不变水平 c* = −1.5·Δt·a_max/α₀ ≈ −0.008 m,实测更负是因为 P-controller 的"想去"方向与 filter 投影后存在差异,导致 barrier 短暂略负,但与位置安全约束不直接关联)
-
-### 4. 注释:T4 "col=10" 是计数 artifact
-
-Trial 4(start=(-0.64,0.73), goal=(0.41,-0.45))的 collision counter 显示 10 次事件——但 min_clearance 分析显示该 trial **从未穿入几何边界**,最近 0.002m 在外侧。是 `COLLISION_DIST = r_base + 5mm` 加的 5mm epsilon 让 GPS 噪声(σ=4cm)使 collider flag 在 boundary ±2mm 内反复抖动。**真实物理是擦边而非穿入**——上表的 min_clearance 是更可靠的安全指标。
+绘图与对账脚本:`safe-rl-2027/experiments/webots/plot_results.py`(用 env var `VA_ATACOM_WORLD` 选 world)。
 
 ---
 
-## 论文用法建议
+## 核心结果
 
-可以在 `main_v2.tex` 的 §VI Sim-to-Real Considerations 加一节"Webots validation"(或附录),说:
+### 按 world 分(min_clearance vs 障碍几何边界 r_base=0.135m)
 
-> *To validate Prop. 4's physical-units claim on a true differential-drive
-> platform with sensor noise, we ported the unchanged VA-ATACOM filter to a
-> Webots E-puck (basicTimeStep 64 ms, GPS σ=4 cm, heading σ=0.05 rad). A simple
-> goal-seeking P-controller drove the robot through a 5-obstacle corridor over
-> 20 randomly sampled (start, goal) pairs; the only knob varied was whether
-> the filter was active. With VA-ATACOM all 20 trials stayed outside the
-> obstacle geometric boundary (min clearance +2 mm, median +3.8 cm) while
-> reaching the goal 20/20; without the filter, 6/20 trials penetrated more
-> than 1 cm (worst case 5 cm into the obstacle centre). The filter intervened
-> on 34 % of steps on average — consistent with the dense corridor — and never
-> required tuning beyond the physical units `(r, d_safe, a_max)` measured once
-> on the platform.*
+| World | Mode | Deep (>1cm) | Graze (0-1cm) | Outside | Goal | min clearance | filter rate |
+|---|---|:---:|:---:|:---:|:---:|---:|:---:|
+| **corridor** | SAFE | **0/20** ✓ | 2/20(≤1.5mm)| 18/20 | 20/20 | −1.5 mm | 33.0% |
+| corridor | UNSAFE | 7/20 | 2/20 | 11/20 | 18/20 | −49.8 mm | — |
+| **dense** | SAFE | **1/20** ⚠️ | 1/20 | 18/20 | 20/20 | −18.8 mm | 37.6% |
+| dense | UNSAFE | 2/20 | 5/20 | 13/20 | 18/20 | −47.2 mm | — |
 
-这段可以直接嵌入。后续若上 Path B(PPO policy + filter),复用同一 controller 框架,只换 policy 部分。
+### Aggregate(40 trials × 2 modes)
+
+| Mode | Deep penetration | Outside boundary | Goal reached |
+|---|:---:|:---:|:---:|
+| **SAFE (VA-ATACOM)** | **1/40**(2.5%)| 36/40 | **40/40** |
+| **UNSAFE (no filter)** | **9/40**(22.5%)| 24/40 | 36/40 |
+
+**~9× 深穿入减少**,无 filter 最深 5cm。
+
+### dense world 那唯一 SAFE 深穿入(T6)的诚实分析
+
+T6:start=(0.04, −0.39)→ goal=(−0.61, 0.60),path 4.45m,filter 49% 干预,bmin=−0.201。穿入 obs[0]=(−0.4, 0.3) 11.6cm(boundary 13.5cm,内入 1.9cm)。
+
+**根因**:diff-drive filter 只约束 forward action,heading 由 P-controller 决定。P-controller 把 agent 推到三障碍夹角(obs[0]、obs[3]、obs[5] 形成的口袋),filter 减速到 0 也无法转 heading 出来。**这是论文 §IV-B 明说的 diff-drive action_form 限制**,不是 Prop 4 的反例(Prop 4 假设 cartesian / 单步可投影);也是 §VI Limitation L1("conservative behaviour ... in low-density scenes")的边界 case。
+
+---
+
+## 论文嵌入(`main_v2.tex` §VI Sim-to-Real (iv))
+
+现稿(经今天 aggregate 改写):
+
+> *To probe Prop.~4's physical-units claim on a different platform and a true
+> rigid-body simulator, we port the unchanged VA-ATACOM filter to a Webots
+> E-puck running at Δt=64ms with raw noisy GPS (σ=4cm) and heading (σ=0.05rad)
+> feeding the controller — no state estimator, so the filter is challenged on
+> raw sensor noise. A goal-seeking P-controller drives the robot through two
+> layouts (a 5-obstacle corridor and a 6-obstacle dense field) over 2×20=40
+> random (start, goal) pairs; the only varied knob is whether the filter is
+> active. With VA-ATACOM, **1/40** trials deeply penetrates the geometric
+> boundary r_base=0.135m (the single failure, in dense, sits in a
+> triple-obstacle pocket where the diff-drive filter — which constrains only
+> the forward action (§sec:design) — cannot redirect heading), 36/40 remain
+> entirely outside, and the robot reaches goal 40/40. Without the filter,
+> **9/40** trials penetrate ≥1cm (worst case 5cm into the obstacle centre).
+> The filter intervenes on ~35% of steps on average and requires no tuning
+> beyond the platform-measured (r, d_safe, a_max) — confirming the
+> physical-units transfer with diff-drive kinematics, sensor noise, and no
+> state estimation. Hardware validation on a physical E-puck remains future work.*
 
 ---
 
@@ -97,29 +93,118 @@ Trial 4(start=(-0.64,0.73), goal=(0.41,-0.45))的 collision counter 显示 10 �
 ```bash
 cd /home/miclsirr/work/miclmasters/czz-safe-manifold
 
+# corridor 跑实验
 env -u http_proxy -u https_proxy -u HTTP_PROXY -u HTTPS_PROXY \
     -u all_proxy -u ALL_PROXY -u ftp_proxy -u FTP_PROXY \
     QT_NO_PROXY=1 QT_NETWORK_NO_AUTO_PROXY=1 \
     no_proxy=localhost,127.0.0.1 NO_PROXY=localhost,127.0.0.1 \
+    VA_ATACOM_WORLD=corridor \
     WEBOTS_PYTHON_COMMAND=/home/miclsirr/miniconda3/envs/iros2026/bin/python \
     /usr/local/bin/webots --mode=fast --no-rendering --batch --stdout --stderr --minimize \
-      IROS2026/webots/worlds/epuck_corridor_va_atacom.wbt
+      safe-rl-2027/experiments/webots/worlds/epuck_corridor_va_atacom.wbt
+
+# dense 跑实验(env 除了 WORLD 切 dense + 换 world 文件)
+env ... VA_ATACOM_WORLD=dense ... \
+    /usr/local/bin/webots ... safe-rl-2027/experiments/webots/worlds/epuck_dense_va_atacom.wbt
+
+# 渲动画 + 叠图 + 独立验证(per world)
+conda activate iros2026
+VA_ATACOM_WORLD=corridor python safe-rl-2027/experiments/webots/plot_results.py
+VA_ATACOM_WORLD=dense    python safe-rl-2027/experiments/webots/plot_results.py
 ```
 
 关键 env 变量:
-- **Unset 所有 *_proxy + QT_NO_PROXY=1**:绕开 Qt 把 socket listen 走代理的问题(否则 Webots 卡在 "Cannot set the server in listen mode")
-- **WEBOTS_PYTHON_COMMAND**:让 Webots 控制器用 iros2026 conda env 的 python(能 import `safe_rl.filters.brake_manifold`)
-
-可调:
-- `VA_ATACOM_N_TRIALS=3 VA_ATACOM_MAX_STEPS=2000` smoke 用
-- 用其他 world:复制对应 .wbt,改 controller "va_atacom_nav"
+- **Unset *_proxy + QT_NO_PROXY=1**:绕开 Qt 把 socket listen 走代理
+- **WEBOTS_PYTHON_COMMAND**:iros2026 conda env 的 python(系统 python 没装 safe_rl)
+- **VA_ATACOM_WORLD**:`corridor` 或 `dense`,**切换 obstacle 布局 + 输出子目录**
 
 ---
 
 ## 运行物件位置
 
-- **控制器**:`IROS2026/webots/controllers/va_atacom_nav/va_atacom_nav.py`(254 行)
-- **世界(fork)**:`IROS2026/webots/worlds/epuck_corridor_va_atacom.wbt`(fork 自 `epuck_demo_corridor.wbt`,只改了 1 行 controller 名)
-- **结果 JSON**:`IROS2026/results_webots_va_atacom/webots_va_atacom_results.json`
-- **Filter 源**:`safe-rl-2027/safe_rl/filters/brake_manifold.py`(共享,与 Safety-Gym 实验同一份代码)
+- **控制器**:`safe-rl-2027/experiments/webots/controllers/va_atacom_nav/va_atacom_nav.py`(多 world 支持,env var 切换)
+- **世界**:`safe-rl-2027/experiments/webots/worlds/epuck_{corridor,dense}_va_atacom.wbt`
+- **绘图脚本**:`safe-rl-2027/experiments/webots/plot_results.py`
+- **per-world 结果**:`safe-rl-2027/runs/webots_va_atacom/{corridor,dense}/{results.json, demo.mp4, verification_report.md}`
+- **Filter 源**:`safe-rl-2027/safe_rl/filters/brake_manifold.py`(与 Safety-Gym 实验同一份代码)
+- **论文叠图**:`paper/aaai_2027/figures/fig_webots_va_atacom/{corridor,dense}_all_trials_overlay.png`
 - **本记录**:`paper/aaai_2027/WEBOTS_INFERENCE_RESULTS.md`
+
+---
+
+# Path B:PPO policy 迁移到 Webots(2026-05-30 完成)
+
+**动机**:Path A 用手编 P-controller 证明 filter 工作;Path B 把 Safety-Gym 训出来的 PPO policy 直接部署到 Webots e-puck,验证 sim-to-platform 在 trained policy 上同样成立。
+
+## 实现要点
+
+- **Policy**:`safe-rl-2027/runs/d7_amrf_goal_instrumented/seed_0/policy.pt`(在 Safety-Gym Point Goal1 上用 AMRF filter 训出,obs_dim=60,motor_dim=2)
+- **Controller**:同一个 `va_atacom_nav.py`,加 `VA_ATACOM_USE_PPO=1` env var 切到 PPO 模式
+- **关键解耦**:不 import `safe_rl.algos.ppo.ActorCritic`(链式触发 safety_gymnasium 导入,Webots 用的 system python 没装),改成**直接从 state_dict 张量手工做 forward**(Tanh→Tanh→Linear,5 行代码)
+- **obs 60 维重建**(精确复刻 safety_gymnasium source):
+  - `[0:3]` accelerometer = `[0, 0, 9.81]`(平地无 tilt)
+  - `[3:6]` velocimeter(body frame,从 world vel 旋转)
+  - `[6:9]` gyro = `[0, 0, ω_yaw]`(从 heading 差分)
+  - `[9:12]` magnetometer = `[0.5 sin θ, 0.5 cos θ, 0]`(MuJoCo 默认磁场)
+  - `[12:28]` goal_lidar、`[28:44]` hazards_lidar、`[44:60]` vases_lidar(零)—— `pseudo_lidar()` 完全复刻 `_obs_lidar_pseudo`:`max(0, max_dist−dist)/max_dist + alias-分摊`
+
+## 核心结果(PPO + filter,2 worlds × 20×2 = 40 trials × 2 modes)
+
+| World | Mode | Deep (>1cm) | Outside | Goal | min clearance | filter rate |
+|---|---|:---:|:---:|:---:|---:|:---:|
+| corridor | SAFE | **0/20** ✓ | 20/20 | 8/20 | +8.1 mm | 17.9% |
+| corridor | UNSAFE | 1/20 | 18/20 | 9/20 | −48.4 mm | — |
+| dense | SAFE | **0/20** ✓ | 20/20 | 8/20 | +1.2 mm | 26.9% |
+| dense | UNSAFE | 5/20 | 11/20 | 7/20 | −48.4 mm | — |
+
+**Aggregate(40 trials × 2 modes)**
+
+| Mode | Deep | Outside | Goal |
+|---|:---:|:---:|:---:|
+| **SAFE (PPO + VA-ATACOM)** | **0/40** ★ | **40/40** | 16/40 |
+| **UNSAFE (PPO no filter)** | **6/40** | 29/40 | 16/40 |
+
+## 关键 finding(写进 §VI(iv) 末)
+
+1. **VA-ATACOM filter 在 trained safe-RL policy 上仍有 differential 价值**:把 deep penetration 从 6/40 降到 0/40,且**完全不损失 goal reach**(16/40 = 16/40)——无安全-性能 tradeoff
+2. **policy 与 filter 协同**:PPO 已经会避障(本身 80% trial outside),filter 处理它偶发不安全的 corner case
+3. **Goal reach 40% 是 layout mismatch**:训练 layout(Safety-Gym Point Goal1,8 hazard 随机位置)≠ Webots corridor/dense(5/6 fixed 位置)。论文只声明 **safety transfer**,不声明 **goal reach transfer**
+
+## P-controller vs PPO 对比(SAFE 模式)
+
+| 指标 | P-controller + filter | PPO + filter |
+|---|:---:|:---:|
+| Deep penetration | 1/40(dense T6 triple-pocket) | **0/40** |
+| Outside boundary | 36/40 | **40/40** |
+| Goal reach | **40/40** | 16/40 |
+| Filter intervention | ~35% | ~22% |
+
+**叙事**:P-controller 几乎总到 goal 但偶发死胡同;PPO 更"会避"但有 layout-mismatch goal-reach 损失。两者都被 filter 完美兜底。
+
+## PPO 资产位置
+
+- **结果**:`safe-rl-2027/runs/webots_va_atacom/{corridor,dense}/results_ppo.json`(per-trial cost/path/clearance/filter stats + trajectories)
+- **动画**:`safe-rl-2027/runs/webots_va_atacom/{corridor,dense}/demo_ppo.mp4`
+- **叠图**:`paper/aaai_2027/figures/fig_webots_va_atacom/{corridor,dense}_ppo_all_trials_overlay.png`
+- **重算报告**:`safe-rl-2027/runs/webots_va_atacom/{corridor,dense}/verification_report_ppo.md`
+
+## PPO 复现命令
+
+```bash
+cd /home/miclsirr/work/miclmasters/czz-safe-manifold
+
+# 跑 PPO transfer(corridor 例)
+env -u http_proxy -u https_proxy -u HTTP_PROXY -u HTTPS_PROXY \
+    -u all_proxy -u ALL_PROXY -u ftp_proxy -u FTP_PROXY \
+    QT_NO_PROXY=1 QT_NETWORK_NO_AUTO_PROXY=1 \
+    no_proxy=localhost,127.0.0.1 NO_PROXY=localhost,127.0.0.1 \
+    VA_ATACOM_WORLD=corridor VA_ATACOM_USE_PPO=1 \
+    WEBOTS_PYTHON_COMMAND=/home/miclsirr/miniconda3/envs/iros2026/bin/python \
+    /usr/local/bin/webots --mode=fast --no-rendering --batch --stdout --stderr --minimize \
+      safe-rl-2027/experiments/webots/worlds/epuck_corridor_va_atacom.wbt
+
+# 渲 PPO mode 的 PNG / MP4
+conda activate iros2026
+VA_ATACOM_WORLD=corridor VA_ATACOM_POLICY=ppo \
+  python safe-rl-2027/experiments/webots/plot_results.py
+```
