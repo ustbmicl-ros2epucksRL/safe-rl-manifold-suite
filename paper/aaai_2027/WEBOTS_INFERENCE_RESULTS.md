@@ -47,32 +47,42 @@
 | **dense** | SAFE | **1/20** ⚠️ | 1/20 | 18/20 | 20/20 | −18.8 mm | 37.6% |
 | dense | UNSAFE | 2/20 | 5/20 | 13/20 | 18/20 | −47.2 mm | — |
 
-### Aggregate — P-controller(40 trials × 2 modes)
+### Aggregate — P-controller(60 trials × 2 modes;3 worlds)
 
 | Mode | Deep penetration | Outside boundary | Goal reached | Filter rate |
 |---|:---:|:---:|:---:|:---:|
-| **SAFE (VA-ATACOM)** | **1/40**(2.5%)| 36/40 | **40/40** | 35.3% |
-| **UNSAFE (no filter)** | **9/40**(22.5%)| 24/40 | 36/40(4 stuck after collision)| — |
+| **SAFE (VA-ATACOM)** | **1/60**(1.7%)| 54/60 | **60/60** | 35.8% |
+| **UNSAFE (no filter)** | **14/60**(23.3%)| 35/60 | 54/60(6 stuck after collision)| — |
 
-**~9× 深穿入减少**,无 filter 最深 5cm。
+**~14× 深穿入减少**,无 filter 最深 5cm。
 
-### Aggregate — PPO (Safety-Gym transfer, 40 trials × 2 modes)
+### Aggregate — PPO (Safety-Gym transfer, 60 trials × 2 modes)
 
 | Mode | Deep penetration | Outside boundary | Goal reached | Filter rate |
 |---|:---:|:---:|:---:|:---:|
-| **SAFE (VA-ATACOM)** | **0/40**(0.0%)| 40/40 | 16/40 | 22.4% |
-| **UNSAFE (no filter)** | **6/40**(15.0%)| 29/40 | 16/40 | — |
+| **SAFE (VA-ATACOM)** | **0/60**(0.0%)| 60/60 | 27/60 | 23.6% |
+| **UNSAFE (no filter)** | **10/60**(16.7%)| 45/60 | 27/60 | — |
 
-PPO goal-reach 16/40 在两 mode **一样** → **sim-to-Webots obs 分布漂移**(60-dim 观测在 Webots 侧从 Supervisor 重建,与 Safety-Gym 训练分布有 gap),与 filter 是否启用无关;filter **不损失 goal**,只减少深穿入。
+PPO goal-reach 27/60 在两 mode **一样** → **sim-to-Webots obs 分布漂移**(60-dim 观测在 Webots 侧从 Supervisor 重建,与 Safety-Gym 训练分布有 gap),与 filter 是否启用无关;filter **不损失 goal**,只减少深穿入。
 
-### 4-mode 总览(80 trials × 2 modes = 160 trials)
+### 4-mode 总览(120 trials × 2 modes = 240 trials,3 worlds)
 
 | Controller | Filter | N | **deep ≥1cm** | graze 0–1cm | goal | filter rate |
 |---|---|---:|:---:|:---:|:---:|:---:|
-| P-controller | **VA-ATACOM** | 40 | **1/40** | 3/40 | 40/40 | 35.3% |
-| P-controller | no filter | 40 | **9/40** | 7/40 | 36/40 | — |
-| PPO transfer | **VA-ATACOM** | 40 | **0/40** | 0/40 | 16/40 | 22.4% |
-| PPO transfer | no filter | 40 | **6/40** | 5/40 | 16/40 | — |
+| P-controller | **VA-ATACOM** | 60 | **1/60** | 5/60 | 60/60 | 35.8% |
+| P-controller | no filter | 60 | **14/60** | 11/60 | 54/60 | — |
+| PPO transfer | **VA-ATACOM** | 60 | **0/60** | 0/60 | 27/60 | 23.6% |
+| PPO transfer | no filter | 60 | **10/60** | 5/60 | 27/60 | — |
+
+### Per-world 拆分(VA-ATACOM filter on)
+
+| world | obstacles | P-ctrl deep | P-ctrl goal | PPO deep | PPO goal | filter rate |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|
+| corridor | 5 (S-curve gates)    | 0/20 | 20/20 | 0/20 | 8/20 | 33.0% (P) / 17.9% (PPO) |
+| dense    | 6 (scattered)        | 1/20 | 20/20 | 0/20 | 8/20 | 37.6% / 26.9% |
+| lshape   | 5 (L-barrier, 90°)   | 0/20 | 20/20 | 0/20 | 11/20 | 36.8% / 26.1% |
+
+lshape 是最紧的 corner gap (154 mm edge / 84 mm robot-pass),filter 仍 **0 deep penetration in both controllers**。
 
 权威 audit:`safe-rl-2027/runs/webots_va_atacom/AGGREGATE.md`(由 `plot_results.py` verify 派生独立重算,与本表 100% 一致;runs/ gitignored,需运行 plot_results.py 重生成)。
 
