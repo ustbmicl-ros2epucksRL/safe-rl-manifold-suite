@@ -1,9 +1,9 @@
-% AAAI 2026 Paper: VA-ATACOM (Anonymous Submission)
+% AAAI 2027 Paper: VA-ATACOM (Anonymous Submission)
 \documentclass[letterpaper]{article}
-\usepackage[submission]{aaai2026}  % submission = double-blind; hides authors; disables \pdfinfo
-\usepackage{times}
-\usepackage{helvet}
-\usepackage{courier}
+\usepackage[submission]{aaai2027}  % submission = anonymized review notice in copyright slot
+% NOTE: aaai2027.sty already loads serif (newtxtext), helvet, courier, booktabs,
+% and sets pdfpagewidth/pdfpageheight — do NOT add \usepackage{times}/helvet/courier
+% or \setlength{\pdfpage...} manually (would conflict).
 \usepackage[hyphens]{url}
 \usepackage{graphicx}
 \urlstyle{rm}
@@ -13,19 +13,17 @@
 \usepackage{amsmath,amssymb,amsfonts}
 \usepackage{algorithm}
 \usepackage{algorithmic}
-\usepackage{booktabs}
+\usepackage{booktabs}   % for \toprule/\midrule/\bottomrule in Tables 1-4 (sty doesn't load this)
 \usepackage{multirow}
 \usepackage{xcolor}
-% NOTE: hyperref is DISALLOWED by aaai2026 — removed.
+% NOTE: hyperref is DISALLOWED by aaai2027 — removed.
 \frenchspacing
-\setlength{\pdfpagewidth}{8.5in}
-\setlength{\pdfpageheight}{11in}
 
 \pdfinfo{
-/TemplateVersion (2026.1)
+/TemplateVersion (2027.1)
 }
 
-\setcounter{secnumdepth}{0}  % aaai2026 default: no section numbering
+\setcounter{secnumdepth}{0}  % aaai2027 default: no section numbering
 
 \title{VA-ATACOM: Velocity-Augmented Constraint Manifolds\\for Safe Reinforcement Learning at Coarse Control Rates}
 
@@ -335,6 +333,7 @@ VA-ATACOM inherits ATACOM's null-space projection and adds the two discrete-time
 \centering
 \caption{Episode cost $\bar{C}$ (mean, 5 seeds) and GO/15 count (a (task, seed) cell is GO if its episode cost $\le 5$). Published filters use our sim-BRT frontend; only the filter mechanism differs. Each filter's keepout matches the env's hazard radius ($r{=}0.2$ Goal/MultiGoal, $r{=}0.3$ Push); filters without an $r$ parameter use $d_{\text{safe}}{=}0.3$. The DT-margin row is VA-ATACOM's first-order approximation (\S\ref{sec:design}), included as a side-validation.}
 \label{tab:main}
+\setlength{\tabcolsep}{4pt}
 \begin{tabular}{lcccr}
 \toprule
 Method & Goal & Push & MGoal & GO \\
@@ -370,7 +369,9 @@ To pinpoint \emph{which} ingredient of VA-ATACOM matters, we compare five filter
 \centering
 \caption{Design study on the Goal task (5 seeds $\times$ 200K). Only the velocity-augmented manifold \emph{with} tangent-cone projection succeeds: static constraints ignore momentum (top three), and velocity-aware magnitude scaling cannot redirect it (row~4).}
 \label{tab:design}
-\begin{tabular}{lcc r c}
+\setlength{\tabcolsep}{3pt}
+\small
+\begin{tabular}{lccrc}
 \toprule
 Design & Vel.-aware & Projection & $\bar C$ & GO \\
 \midrule
@@ -394,6 +395,7 @@ The benchmark above runs at $\Delta t{=}0.1$\,s, already at the M1 threshold $\D
 \centering
 \caption{Episode cost $\bar C$ (mean, 5 seeds; GO count) as the control period coarsens past the benchmark default. All filtered rows use \emph{identical} sim-BRT shaping; only the constraint differs. Costs use the 50K-step budget and are not directly comparable to the 200K Table~\ref{tab:main}, but the safe/unsafe split is unambiguous.}
 \label{tab:coarse}
+\setlength{\tabcolsep}{4pt}
 \begin{tabular}{lccc}
 \toprule
 Method & $\Delta t{=}0.10$ & $\Delta t{=}0.15$ & $\Delta t{=}0.20$ \\

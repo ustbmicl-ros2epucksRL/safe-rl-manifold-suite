@@ -94,7 +94,7 @@ T6:start=(0.04, −0.39)→ goal=(−0.61, 0.60),path 4.45m,filter 49% 干预,bm
 
 ---
 
-## 论文嵌入(`aaai26/main_v2_aaai26.tex` §VI Sim-to-Real (iv))
+## 论文嵌入(`aaai27/main_v2_aaai27.tex` §VI Sim-to-Real (iv))
 
 现稿(2026-05-30 audit 后精修 — 反映 PPO transfer 的 goal 16/40 + P-ctrl no-filter 36/40 而非 40/40):
 

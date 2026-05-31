@@ -54,19 +54,18 @@ IROS2026/*.mp4
 benchmarks/
 runs/
 
-# AAAI-26 official author kit (downloaded; not our work)
+# AAAI official author kits (downloaded; not our work)
 paper/aaai_2027/aaai26_kit/
+paper/aaai_2027/aaai27_kit/
 
-# pdflatex/bibtex build intermediates inside aaai26/ (keep .pdf + source)
-paper/aaai_2027/aaai26/*.aux
-paper/aaai_2027/aaai26/*.bbl
-paper/aaai_2027/aaai26/*.blg
-paper/aaai_2027/aaai26/*.log
-paper/aaai_2027/aaai26/*.out
-paper/aaai_2027/aaai26/p1.log
-paper/aaai_2027/aaai26/p2.log
-paper/aaai_2027/aaai26/p3.log
-paper/aaai_2027/aaai26/b.log
-paper/aaai_2027/aaai26/pdflatex_run1.log
-paper/aaai_2027/aaai26/bib.log
-paper/aaai_2027/aaai26/bibtex.log
+# Archived AAAI-26 build (kept locally for history, not committed)
+paper/aaai_2027/_archived_aaai26/
+
+# pdflatex/bibtex build intermediates inside aaai27/ (keep .pdf + source)
+paper/aaai_2027/aaai27/*.aux
+paper/aaai_2027/aaai27/*.bbl
+paper/aaai_2027/aaai27/*.blg
+paper/aaai_2027/aaai27/*.log
+paper/aaai_2027/aaai27/*.out
+paper/aaai_2027/aaai27/p[1-9].log
+paper/aaai_2027/aaai27/b.log
