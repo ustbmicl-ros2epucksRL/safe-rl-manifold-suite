@@ -167,7 +167,10 @@ VA_ATACOM_WORLD=lshape   python safe-rl-2027/experiments/webots/plot_results.py
 - **绘图脚本**:`safe-rl-2027/experiments/webots/plot_results.py`
 - **per-world 结果**:`safe-rl-2027/runs/webots_va_atacom/{corridor,dense,lshape}/{results.json, demo.mp4, verification_report.md}`
 - **Filter 源**:`safe-rl-2027/safe_rl/filters/brake_manifold.py`(与 Safety-Gym 实验同一份代码)
-- **论文叠图**:`paper/aaai_2027/figures/fig_webots_va_atacom/{corridor,dense}_all_trials_overlay.png`
+- **论文叠图**:`paper/aaai_2027/figures/fig_webots_va_atacom/{corridor,dense,lshape}_all_trials_overlay.png` + 同名 `_ppo_` 4 张
+- **Supplementary demo video**(2026-06-01 加):
+  - `paper/aaai_2027/figures/fig_webots_va_atacom/supplementary_demo.mp4`(155 s / 1.6 MB,**完整** 6 demo 串联,每段 7–40 s,带 world/mode text overlay)
+  - `paper/aaai_2027/figures/fig_webots_va_atacom/supplementary_demo_30s.mp4`(31 s / 573 KB,**5× 加速 overview**)
 - **本记录**:`paper/aaai_2027/WEBOTS_INFERENCE_RESULTS.md`
 
 ---
