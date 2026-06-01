@@ -118,6 +118,57 @@ over-provisioned     & 0.5  & 5 & 3.00$\pm$3.38 & 4/5 \\
 
 Only configurations at least one step above the minimum on \emph{both} axes ($\alpha{\ge}0.1$, $h{\ge}2$) reach 5/5 GO; setting $\alpha{=}0$ drops to 4/5 with a seed at $\bar C{=}8.46$. The over-provisioned config ($\alpha{=}0.5$, $h{=}5$) \emph{regresses} to 4/5 ($\bar C{=}9.26$ outlier) --- large-$h$ BRT shaping can integrate spurious penalty (see the $\Delta t$ sensitivity above) and destabilise training. The DT-margin recipe is thus robust only with margin on both knobs; VA-ATACOM eliminates $\alpha$ entirely, replacing it with the calibrated $a_{\max}$.
 
+\section{Statistical Significance}
+\label{sec:stats}
+
+\paragraph{Safety-Gymnasium (Table~1 of the main paper).}
+We pair every (task, seed) of each baseline against the same (task, seed) of VA-ATACOM (15 paired episode-cost samples per baseline; 11 baselines $\times$ 15 = 165 paired tests in total). One-sided Wilcoxon signed-rank tests (alternative: baseline cost $>$ VA-ATACOM cost) give:
+
+\begin{table}[h]
+\centering
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrc}
+\toprule
+Baseline & $p$-value & sig.\\
+\midrule
+PPO baseline       & $3.1\!\times\!10^{-5}$ & $\dag\dag$\\
+ATACOM (null)      & $3.1\!\times\!10^{-5}$ & $\dag\dag$\\
+ATACOM-VD          & $3.1\!\times\!10^{-5}$ & $\dag\dag$\\
+ATACOM-S           & $3.1\!\times\!10^{-5}$ & $\dag\dag$\\
+ATACOM-LA          & $3.1\!\times\!10^{-5}$ & $\dag\dag$\\
+HOCBF              & $3.1\!\times\!10^{-5}$ & $\dag\dag$\\
+DCM                & $3.1\!\times\!10^{-5}$ & $\dag\dag$\\
+Predictive ATACOM  & $4.9\!\times\!10^{-4}$ & $\dag\dag$\\
+CBF-QP             & $3.1\!\times\!10^{-5}$ & $\dag\dag$\\
+PPO-Lag            & $3.1\!\times\!10^{-5}$ & $\dag\dag$\\
+DT-margin (1st-order approx.) & $2.9\!\times\!10^{-3}$ & $\dag$\\
+\bottomrule
+\end{tabular}
+\\[2pt]
+\small{$\dag$: $p<0.05$, $\dag\dag$: $p<0.001$}
+\end{table}
+
+All 11 baselines are significantly worse than VA-ATACOM ($p<0.05$); 10 are extremely significant ($p<0.001$). DT-margin, the first-order Taylor approximation of VA-ATACOM, has the smallest gap ($p{=}0.003$) --- consistent with the main paper's claim that the linearisation captures most of the safe behaviour but leaves a residual gap that only the exact quadratic constraint closes (10/15 paired cells where DT-margin $>$ VA-ATACOM, 4/15 ties at 0). A Friedman omnibus test across all 12 methods rejects equality with $\chi^2{=}97.05$, $p{=}6.8\!\times\!10^{-16}$ (df${=}11$).
+
+\paragraph{Webots transfer (120 paired trials).}
+For the Webots E-puck study (§\,Sim-to-Real of main paper) we apply the McNemar test for paired binary outcomes (deep penetration $\ge 1$\,cm yes/no) on the same (start, goal, world, controller) configuration with the filter on vs.\ off:
+
+\begin{table}[h]
+\centering
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrrrr}
+\toprule
+Setting & N & on-deep & off-deep & saves & $p$\\
+\midrule
+P-controller (3 worlds) & 60 & 1  & 14 & 13 & $1.2\!\times\!10^{-4}$\\
+PPO transfer (3 worlds) & 60 & 0  & 10 & 10 & $9.8\!\times\!10^{-4}$\\
+\textbf{All 120 trials}  & 120 & 1 & 24 & 23 & $\boldsymbol{1.2\!\times\!10^{-7}}$\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The filter \emph{saves} 23 paired trials (filter on safe, filter off deep) and \emph{hurts} 0 paired trials (filter on deep, filter off safe). The number-needed-to-filter is $\textrm{N}/\textrm{saves}=120/23\approx 5.2$: on average one in every five trajectories needs the filter to avoid deep penetration. The one VA-ATACOM deep case (dense, P-controller, triple-obstacle pocket) is \emph{also} deep without the filter, so the filter never makes things worse.
+
 \section{Computing Infrastructure}
 \label{sec:infra}
 
