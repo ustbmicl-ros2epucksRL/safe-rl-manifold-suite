@@ -118,4 +118,29 @@ over-provisioned     & 0.5  & 5 & 3.00$\pm$3.38 & 4/5 \\
 
 Only configurations at least one step above the minimum on \emph{both} axes ($\alpha{\ge}0.1$, $h{\ge}2$) reach 5/5 GO; setting $\alpha{=}0$ drops to 4/5 with a seed at $\bar C{=}8.46$. The over-provisioned config ($\alpha{=}0.5$, $h{=}5$) \emph{regresses} to 4/5 ($\bar C{=}9.26$ outlier) --- large-$h$ BRT shaping can integrate spurious penalty (see the $\Delta t$ sensitivity above) and destabilise training. The DT-margin recipe is thus robust only with margin on both knobs; VA-ATACOM eliminates $\alpha$ entirely, replacing it with the calibrated $a_{\max}$.
 
+\section{Computing Infrastructure}
+\label{sec:infra}
+
+All experiments reported in the main paper and this supplementary were run on a single workstation:
+
+\begin{itemize}\setlength{\itemsep}{0pt}
+\item \textbf{CPU}: Intel Core i7-13850HX (20 cores, 28 threads).
+\item \textbf{RAM}: 31\,GiB DDR5.
+\item \textbf{OS}: Ubuntu 24.04 LTS, Linux kernel 6.17.
+\item \textbf{GPU}: not used --- all training and evaluation run \emph{single-threaded on CPU} (\texttt{OMP\_NUM\_THREADS=1}, \texttt{MKL\_NUM\_THREADS=1}). Each Safety-Gymnasium 200K-step run takes $\approx$\,15--20\,min wall-clock; we parallelise up to 20 such single-threaded runs at once.
+\end{itemize}
+
+Software stack (versions used at experiment time):
+
+\begin{itemize}\setlength{\itemsep}{0pt}
+\item Python 3.10
+\item PyTorch 2.x (CPU build)
+\item NumPy 1.23 / matplotlib 3.x
+\item \texttt{safety-gymnasium} 1.0 (the Safety-Gym successor; we ran with \texttt{SafetyPointGoal1-v0}, \texttt{SafetyPointPush1-v0}, \texttt{SafetyPointMultiGoal0-v0})
+\item \texttt{gymnasium} 0.28 / \texttt{mujoco} 2.3
+\item Webots R2023b (for the rigid-body validation in main \S\,Sim-to-Real)
+\end{itemize}
+
+Random seeds 0, 1, 2, 3, 4 are used for every (method, task) cell in Table~1 of the main paper. Total compute for the full Table~1 + Webots study is approximately \textbf{200 CPU-hours} on the workstation above ($\sim$\,10\,h wall-clock with 20-way parallelism); the L-shape audit re-run added a further $\sim$\,5 CPU-hours.
+
 \end{document}
