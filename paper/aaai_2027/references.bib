@@ -1,4 +1,4 @@
-% DT-ATACOM Paper References
+% VA-ATACOM (AAAI 2027) References
 
 % ATACOM family
 @inproceedings{liu2022,
@@ -18,10 +18,10 @@
 }
 
 % Control Barrier Functions
-@article{ames2014,
+@inproceedings{ames2014,
   title={Control barrier function based quadratic programs with application to adaptive cruise control},
   author={Ames, Aaron D and Grizzle, Jessy W and Tabuada, Paulo},
-  journal={IEEE Conference on Decision and Control},
+  booktitle={IEEE Conference on Decision and Control},
   pages={6271--6278},
   year={2014}
 }
@@ -33,7 +33,8 @@
   volume={62},
   number={8},
   pages={3861--3876},
-  year={2017}
+  year={2017},
+  publisher={IEEE}
 }
 
 % Higher-order CBF
@@ -44,7 +45,8 @@
   volume={67},
   number={7},
   pages={3655--3662},
-  year={2021}
+  year={2021},
+  publisher={IEEE}
 }
 
 % Discrete-time CBF
@@ -63,7 +65,8 @@
   volume={3},
   number={1},
   pages={43--53},
-  year={1987}
+  year={1987},
+  publisher={IEEE}
 }
 
 @article{sentis2005,
@@ -73,25 +76,27 @@
   volume={2},
   number={4},
   pages={505--518},
-  year={2005}
+  year={2005},
+  publisher={World Scientific}
 }
 
 % Hamilton-Jacobi Reachability
 @article{mitchell2005,
-  title={A time-dependent Hamilton-Jacobi formulation of reachable sets for continuous dynamic games},
+  title={A time-dependent {Hamilton-Jacobi} formulation of reachable sets for continuous dynamic games},
   author={Mitchell, Ian M and Bayen, Alexandre M and Tomlin, Claire J},
   journal={IEEE Transactions on Automatic Control},
   volume={50},
   number={7},
   pages={947--957},
-  year={2005}
+  year={2005},
+  publisher={IEEE}
 }
 
-@article{bansal2017,
-  title={Hamilton-Jacobi reachability: A brief overview},
+@inproceedings{bansal2017,
+  title={{Hamilton-Jacobi} reachability: A brief overview and recent advances},
   author={Bansal, Somil and Chen, Mo and Herbert, Sylvia and Tomlin, Claire J},
-  journal={IEEE Conference on Decision and Control},
-  pages={5788--5794},
+  booktitle={IEEE Conference on Decision and Control},
+  pages={2242--2253},
   year={2017}
 }
 
@@ -103,7 +108,8 @@
   volume={64},
   number={7},
   pages={2737--2752},
-  year={2018}
+  year={2018},
+  publisher={IEEE}
 }
 
 % Neural CBF
@@ -125,16 +131,17 @@
   organization={PMLR}
 }
 
-% Safety Gymnasium
-@inproceedings{ray2019,
+% Safety benchmark (OpenAI technical report, arXiv-only)
+@misc{ray2019,
   title={Benchmarking safe exploration in deep reinforcement learning},
   author={Ray, Alex and Achiam, Joshua and Amodei, Dario},
-  booktitle={arXiv preprint arXiv:1910.01708},
-  year={2019}
+  year={2019},
+  howpublished={arXiv:1910.01708},
+  note={OpenAI technical report}
 }
 
 @inproceedings{ji2023,
-  title={Safety-Gymnasium: A Unified Safe Reinforcement Learning Benchmark},
+  title={Safety-Gymnasium: A unified safe reinforcement learning benchmark},
   author={Ji, Jiaming and Zhang, Borong and Zhou, Jiayi and Pan, Xuehai and Huang, Weidong and Sun, Ruiyang and Geng, Yiran and Zhong, Yifan and Dai, Juntao and Yang, Yaodong},
   booktitle={Advances in Neural Information Processing Systems},
   year={2023}
@@ -150,17 +157,17 @@
 }
 
 @inproceedings{choi2020,
-  title={Reinforcement learning for safety-critical control under model uncertainty, using control Lyapunov functions and control barrier functions},
+  title={Reinforcement learning for safety-critical control under model uncertainty, using control {Lyapunov} functions and control barrier functions},
   author={Choi, Jason and Castaneda, Fernando and Tomlin, Claire J and Sreenath, Koushil},
   booktitle={Robotics: Science and Systems},
   year={2020}
 }
 
 % Predictive safety filters
-@article{wabersich2018,
+@inproceedings{wabersich2018,
   title={Linear model predictive safety certification for learning-based control},
   author={Wabersich, Kim P and Zeilinger, Melanie N},
-  journal={IEEE Conference on Decision and Control},
+  booktitle={IEEE Conference on Decision and Control},
   pages={7130--7135},
   year={2018}
 }
@@ -171,7 +178,8 @@
   journal={Automatica},
   volume={129},
   pages={109597},
-  year={2021}
+  year={2021},
+  publisher={Elsevier}
 }
 
 % Safety-value learning (HJ + RL)
@@ -189,17 +197,8 @@
   journal={Annual Review of Control, Robotics, and Autonomous Systems},
   volume={5},
   pages={411--444},
-  year={2022}
-}
-
-% Safe RL for driving
-@article{schwarting2018,
-  title={Planning and decision-making for autonomous vehicles},
-  author={Schwarting, Wilko and Alonso-Mora, Javier and Rus, Daniela},
-  journal={Annual Review of Control, Robotics, and Autonomous Systems},
-  volume={1},
-  pages={187--210},
-  year={2018}
+  year={2022},
+  publisher={Annual Reviews}
 }
 
 % Constrained Policy Optimization variants
@@ -222,14 +221,18 @@
   author={Stooke, Adam and Achiam, Joshua and Abbeel, Pieter},
   booktitle={International Conference on Machine Learning},
   pages={9133--9143},
-  year={2020}
+  year={2020},
+  organization={PMLR}
 }
 
 % Omnisafe (benchmark suite for constrained RL)
-@inproceedings{ji2024,
+@article{ji2024,
   title={{OmniSafe}: An infrastructure for accelerating safe reinforcement learning research},
   author={Ji, Jiaming and Pan, Xuehai and Zhang, Borong and Zhou, Jiayi and Tang, Tianyi and Dai, Juntao and Yang, Yaodong},
-  booktitle={Journal of Machine Learning Research},
+  journal={Journal of Machine Learning Research},
+  volume={25},
+  number={285},
+  pages={1--6},
   year={2024}
 }
 
@@ -239,42 +242,16 @@
   author={Lindemann, Lars and Hu, Haimin and Robey, Alexander and Zhang, Hanwen and Dimarogonas, Dimos V and Tu, Stephen and Matni, Nikolai},
   booktitle={Conference on Robot Learning},
   pages={1351--1370},
-  year={2023}
-}
-
-% Safe RL in robotics (recent)
-@article{gronauer2022,
-  title={Multi-agent deep reinforcement learning: A survey},
-  author={Gronauer, Sven and Diepold, Klaus},
-  journal={Artificial Intelligence Review},
-  volume={55},
-  pages={895--943},
-  year={2022}
-}
-
-% Original ATACOM follow-ups
-@inproceedings{liu2023atacom,
-  title={ATACOM: Action transformation for constrained MDPs},
-  author={Liu, Puze and Tateo, Davide and Bou-Ammar, Haitham and Peters, Jan},
-  booktitle={Workshop on Safe and Robust Robot Learning, ICRA},
-  year={2023}
+  year={2023},
+  organization={PMLR}
 }
 
 % Reach-avoid Bellman backup
 @inproceedings{fisac2019,
-  title={Bridging Hamilton-Jacobi safety analysis and reinforcement learning},
+  title={Bridging {Hamilton-Jacobi} safety analysis and reinforcement learning},
   author={Fisac, Jaime F and Lugovoy, Neil F and Rubies-Royo, Vicen{\c{c}} and Ghosh, Shromona and Tomlin, Claire J},
   booktitle={IEEE International Conference on Robotics and Automation},
   pages={8550--8556},
-  year={2019}
-}
-
-% Discrete-time CBF generalisation
-@inproceedings{ahmadi2019,
-  title={Safe controller synthesis for data-driven differential inclusions},
-  author={Ahmadi, Mohamadreza and Singletary, Andrew and Burdick, Joel W and Ames, Aaron D},
-  booktitle={IEEE Conference on Decision and Control},
-  pages={4793--4798},
   year={2019}
 }
 
@@ -286,7 +263,8 @@
   volume={6},
   number={3},
   pages={4915--4922},
-  year={2021}
+  year={2021},
+  publisher={IEEE}
 }
 
 % Safety filters in mobile robotics
@@ -295,5 +273,6 @@
   author={Taylor, Andrew J and Singletary, Andrew and Yue, Yisong and Ames, Aaron D},
   booktitle={Learning for Dynamics and Control},
   pages={708--717},
-  year={2020}
+  year={2020},
+  organization={PMLR}
 }
