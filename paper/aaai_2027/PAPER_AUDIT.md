@@ -118,7 +118,14 @@
 | Reviewer 误读 "only sim" 不看 Webots transfer | -5% | |
 | **Final** | | **~55-65%** |
 
-对比基线:AAAI 主 track 历年 acceptance rate 24-28%(2024-2026)。本 paper 经过 audit + Wilcoxon + Webots transfer + reproduce script,**显著高于平均录用率**(估 2-3 倍 baseline)。
+**Update 2026-06-02**(P0-续 3 项完成后):
+- Conclusion 段加 specific numbers(15/15 GO + Wilcoxon p<0.001 + Webots 1/120 vs 24/120 + McNemar p=1.2e-7)
+- Limitations 加 L3(circular/convex/non-convex geometry extension sketch)
+- §IV-A Prop 2 末加 Fig.~1 forward-reference(M1/M2 visual anchor)
+
+→ Conclusion 现在自带 punch、theoretical purity 批评被 preempt、reviewer 读 §IV-A 时就有 visual。**估 +5-8% → ~60-72%**
+
+对比基线:AAAI 主 track 历年 acceptance rate 24-28%(2024-2026)。本 paper 经过 audit + Wilcoxon + Webots transfer + reproduce script + P0-续 三项,**显著高于平均录用率**(估 2.5-3 倍 baseline)。
 
 ### 4.4 主要不确定性
 
