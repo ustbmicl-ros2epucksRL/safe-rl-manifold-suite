@@ -185,7 +185,7 @@ Assuming $\rho_k \in [\rho_{\min}, \rho_{\max}]$ throughout, the drift accumulat
 \frac{n\,\Delta t^2 v^2}{\rho_{\max}} \;\le\; \Delta\rho_n \;\le\; \frac{n\,\Delta t^2 v^2}{\rho_{\min}}.
 \end{equation}
 
-At $d_\text{safe} = 0.05$m, $\rho_{\min} = 0.25$m, $v = 1$m/s, $\Delta t = 0.1$s: per-step drift $\le 0.04$m, so $\Delta\rho_1 \le 0.04 < d_\text{safe}$ but $\Delta\rho_2 \le 0.08 > d_\text{safe}$ — penetration at $n^\star = 2$ steps. A single-step ($h{=}1$) filter cannot anticipate M2.
+At $d_\text{safe} = 0.05$m, $\rho_{\min} = 0.25$m, $v = 1$m/s, $\Delta t = 0.1$s: per-step drift $\le 0.04$m, so $\Delta\rho_1 \le 0.04 < d_\text{safe}$ but $\Delta\rho_2 \le 0.08 > d_\text{safe}$ — penetration at $n^\star = 2$ steps. A single-step ($h{=}1$) filter cannot anticipate M2. Fig.~\ref{fig:v_a_trajectory} (left panel) visualises both effects: a static-constraint filter projects tangentially at the boundary but the M1 chord overshoot and M2 multi-step drift carry the agent through to $\rho_{\min}{=}0.076$\,m (collision); the right panel previews how the velocity augmentation (\S\ref{sec:method}) eliminates both.
 
 \subsection{VA-ATACOM: The Velocity-Augmented Manifold}
 \label{sec:design}
