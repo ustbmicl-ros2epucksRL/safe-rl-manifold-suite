@@ -447,6 +447,8 @@ VA-ATACOM costs 0.24~ms per call --- $\approx 1.8\times$ ATACOM (216 distance ev
 
 \textbf{L3: Geometry assumptions.} Prop.~4 is stated for circular hazards and a disk-shaped agent. For convex hazards/agents, $\rho$ generalises to the signed inter-set distance with unchanged chord-defect bound; non-convex hazards need per-piece decomposition (Cor.~2's $O(m)$ then counts pieces).
 
+\textbf{L4: Action-form coupling.} Our \texttt{diff\_drive} tangent-cone projection assumes forward speed and angular rate are independent. On bicycle-like agents (e.g.\ Safety-Gym Car) coupling through the wheelbase makes the brake remove the steerability the agent needs to turn; Cor.~2 still holds, but matching the steering Jacobian (rather than the diff-drive Jacobian) is required at implementation level. Detailed numbers on Car are in the supplementary material.
+
 \subsection{Sim-to-Real Considerations}
 \label{sec:sim2real}
 

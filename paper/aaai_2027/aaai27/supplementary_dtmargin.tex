@@ -169,6 +169,32 @@ PPO transfer (3 worlds) & 60 & 0  & 10 & 10 & $9.8\!\times\!10^{-4}$\\
 
 The filter \emph{saves} 23 paired trials (filter on safe, filter off deep) and \emph{hurts} 0 paired trials (filter on deep, filter off safe). The number-needed-to-filter is $\textrm{N}/\textrm{saves}=120/23\approx 5.2$: on average one in every five trajectories needs the filter to avoid deep penetration. The one VA-ATACOM deep case (dense, P-controller, triple-obstacle pocket) is \emph{also} deep without the filter, so the filter never makes things worse.
 
+\section{Generalisation Beyond Point-Robot Dynamics}
+\label{sec:car-goal}
+
+To probe VA-ATACOM's scope across different mobile-robot dynamics, we evaluate the unchanged filter on \texttt{SafetyCarGoal1-v0}, which replaces the Point agent's holonomic velocity actions with a bicycle-like throttle$+$steering. All other env parameters (8 hazards of radius 0.2, BRT frontend, 5 seeds, 200K steps) match the main Table~1.
+
+\begin{table}[h]
+\centering
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrc}
+\toprule
+Method & mean $\bar C$ & GO/5\\
+\midrule
+PPO (no filter)        & 23.20 & 1/5\\
+ATACOM (null-space)    & \textbf{9.20}  & 1/5\\
+DT-margin (heuristic)  & 13.02 & 1/5\\
+\textbf{VA-ATACOM}     & 23.92 & 1/5\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Every method is NO-GO under the 200K budget, but the relative ordering \emph{inverts} compared with the Point-robot Table~1: on Car, the null-space ATACOM (9.20) and DT-margin (13.02) beat VA-ATACOM (23.92).
+
+The cause is structural and identified in our main paper: VA-ATACOM's tangent-cone projection is currently implemented with the \texttt{action\_form='diff\_drive'} constraint (\S\,VA-ATACOM Algorithm), which assumes \emph{forward speed and angular rate are independent actuators}. Car's bicycle model couples them through the wheelbase, so reducing forward command also reduces steerability --- the filter's safety brake removes the very degree of freedom the agent needs to turn away from the obstacle. The null-space ATACOM projection, by contrast, projects onto the Jacobian null-space of the position constraint, which is independent of the actuation parameterisation and degrades gracefully on Car.
+
+This is a clear scope clarification for VA-ATACOM, not a refutation of Prop.~4 itself: the manifold and its discrete-time invariance theorem hold; the bicycle-Car case requires a different action-form projection (matching steering Jacobian) for the implementation. Designing a bicycle-aware action form is an obvious follow-up and is listed in the main paper's Limitations~L4.
+
 \section{Computing Infrastructure}
 \label{sec:infra}
 
