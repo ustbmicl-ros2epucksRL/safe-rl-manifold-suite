@@ -4,11 +4,12 @@
 **Deadline**: 2026-07-28 (UTC-12),还有 **~8 周**
 **Target**: AAAI-27,第 41 届,2027 年 2 月 16-23 日 Montréal
 **当前中稿估计**: **65-78%**(AAAI baseline 24-28% 的 ~2.5-3.5×;详见 `PAPER_AUDIT.md`)
+**AAAI compliance**: **14 / 14 hard requirements pass**;**论文可直接投稿**(详见 `AAAI_COMPLIANCE_AUDIT.md`)
 
 **优先级原则**(see [[feedback_aaai_priority]]):
 1. ⭐ **仿真主线** — Safety-Gym + Webots 是核心证据,这条线打磨到 reviewer-proof
 2. **论文 polish** — body 7 页内 framing / typesetting / 数字一致性 / supplementary
-3. **硬件 (Path C)** — 补充,**等硬件到手再做**,不影响投稿是否成立
+3. **硬件 (Path C)** — 补充,**不是 contribution focus**;不影响投稿成立(2026-06-03 user 重申)
 
 ---
 
@@ -163,11 +164,37 @@
    ↓                      ↓                ↓
 [paper ready]            [final           [final PDF +
 [12 task done]            proof-read]      supplementary +
-[supp ready]                              demo video]
+[compliance ✓]                            demo video]
+[supp ready]
 [FAQ ready]
 [reproduce ready]
 ```
 
-**当前状态**:论文 polishing 已 saturate。剩余唯一可做 = **Path C 实机**(等硬件),否则 idle 到 deadline。
+**当前状态**:论文 polishing 已 saturate。AAAI compliance audit 14/14 通过。剩余唯一可做 = **Path C 实机**(等硬件,不是 contribution focus,不影响投稿)。
+
+---
+
+## ✅ AAAI compliance audit summary(详见 `AAAI_COMPLIANCE_AUDIT.md`)
+
+| 类 | 通过率 | 备注 |
+|---|:---:|---|
+| Hard requirements(reject 风险) | **14/14 ✅** | page limit / sty / 双盲 / forbidden pkg+cmd / fonts / checklist |
+| Soft quality | 9 ✓ / 1 ⚠ | abstract 201w(超 1,marginal) |
+| Supplementary | 5/5 ✅ | supp PDF / demo video / repro scripts |
+| 双盲 anonymity | 9/9 ✅ | author / affiliations / no self-cite / no funding leak |
+| PDF metadata | ✅ no leak | Creator=TeX,Producer=pdfTeX,无 Author/Title/username |
+
+---
+
+## 📦 投稿提交清单(2026-07-28 直接上传)
+
+| # | 文件 | 大小 | 必/可选 |
+|:---:|---|:---:|:---:|
+| 1 | `paper/aaai_2027/aaai27/main_v2_aaai27.pdf` | 556 KB | **必** |
+| 2 | `paper/aaai_2027/aaai27/supplementary_dtmargin.pdf` | 277 KB | **必** |
+| 3 | `paper/aaai_2027/figures/fig_webots_va_atacom/supplementary_demo_30s.mp4` | 573 KB | 可选 supp video |
+| 4 | Source bundle:`aaai27/` 整目录 + figures + bib zipped | ~1 MB | 若 portal 要求 |
+| 5 | Reproducibility Checklist | — | 已 `\input` 进 main page 9-10,无需单独 |
+| 6 | Conflicts / authorship form | — | portal 上传时填 |
 
 每次 progress 改这一个 STATUS.md 即可。
