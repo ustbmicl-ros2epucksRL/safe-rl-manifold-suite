@@ -125,7 +125,17 @@
 
 → Conclusion 现在自带 punch、theoretical purity 批评被 preempt、reviewer 读 §IV-A 时就有 visual。**估 +5-8% → ~60-72%**
 
-对比基线:AAAI 主 track 历年 acceptance rate 24-28%(2024-2026)。本 paper 经过 audit + Wilcoxon + Webots transfer + reproduce script + P0-续 三项,**显著高于平均录用率**(估 2.5-3 倍 baseline)。
+**Update 2026-06-03**(P1-续-4 Car Goal 验证完成 — **negative finding,诚实写入**):
+- SafetyCarGoal1-v0(bicycle non-holonomic,5 seed × 200K × 4 method):
+  - VA-ATACOM **23.92** mean,**1/5 GO** (反而输给 ATACOM 9.20!)
+  - DT-margin 13.02 / ATACOM 9.20 / PPO 23.20,全 1/5 GO
+- 根因:VA-ATACOM `diff_drive` action form 假设 forward + omega 独立,Car wheelbase 耦合让 brake 移除转弯能力;ATACOM null-space projection 更 dynamics-agnostic
+- 处理:supp 新增 §"Generalisation Beyond Point-Robot Dynamics" 完整 honest report;main §VI.Limitations 加 **L4 action-form coupling** preemption
+- 净效果:**+2-3%(诚实 scope-aware 反而比假装无问题更 reviewer-trust)**;比原估 +5-10% 弱(因 negative finding),但仍是 net positive
+
+**最终中稿估计 ~62-75%**(P0-续 + P1-续-4 全计)。
+
+对比基线:AAAI 主 track 历年 acceptance rate 24-28%(2024-2026)。本 paper 经过 audit + Wilcoxon + Webots transfer + reproduce script + P0-续 三项 + Car generalisation **honest** report,**显著高于平均录用率**(估 2.5-3 倍 baseline)。
 
 ### 4.4 主要不确定性
 
