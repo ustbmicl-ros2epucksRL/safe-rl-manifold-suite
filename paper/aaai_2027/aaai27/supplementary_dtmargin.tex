@@ -195,6 +195,26 @@ The cause is structural and identified in our main paper: VA-ATACOM's tangent-co
 
 This is a clear scope clarification for VA-ATACOM, not a refutation of Prop.~4 itself: the manifold and its discrete-time invariance theorem hold; the bicycle-Car case requires a different action-form projection (matching steering Jacobian) for the implementation. Designing a bicycle-aware action form is an obvious follow-up and is listed in the main paper's Limitations~L4.
 
+\section{Anticipated Questions}
+\label{sec:faq}
+
+We pre-emptively address questions reviewers commonly raise on safety-filter papers.
+
+\paragraph{Q1.\ Webots is not real hardware --- why claim "sim-to-real transfer"?}
+We use the phrase narrowly. Safety-Gymnasium is a 2D point-mass abstraction; Webots is a 3D rigid-body simulator (Cyberbotics) with full ODE contact dynamics, a physical E-puck mesh (54.0\,mm diameter, 53.0\,mm wheel-base, accurate inertia and motor torque), and \emph{raw noisy GPS}/heading feeding the controller --- no state estimator. The transfer claim is therefore: from a holonomic point mass at 10\,Hz to a differential-drive rigid body at 16\,Hz with sensor noise, \emph{the unchanged filter} reduces deep penetrations 24$\rightarrow$1 in 120 paired trials. Physical-E-puck experiments using UWB localisation are listed as on-going work; the protocol is in our public repository.
+
+\paragraph{Q2.\ Is VA-ATACOM just ATACOM + a velocity term?}
+No. (i) The velocity augmentation alone is insufficient (Design row \emph{model-free braking scaling}, cost 117.4, 0/5 GO --- highest in Table~2); the tangent-cone projection onto the velocity-augmented manifold is what handles momentum. (ii) Proposition~4 is, to our knowledge, the first \emph{discrete-time} forward-invariance theorem for the ATACOM-style tangent projection, with an explicit chord-defect $\delta{=}\tfrac{3}{2}\Delta t^2 a_{\max}$ and constructive conditions on $(d_\text{safe}, \alpha_0)$ from $(\Delta t, r, v_{\max})$. (iii) Both ATACOM and the velocity-adaptive margin are recovered as limits/approximations (Cor.\,1, $\Delta t{\to}0$; first-order Taylor in $\|\boldsymbol v\|$).
+
+\paragraph{Q3.\ DT-margin reaches 13/15 GO; VA-ATACOM 15/15. Is the 2-cell gain meaningful?}
+Three arguments. (a) DT-margin requires hand-tuning $\alpha$ and a BRT horizon $h$ (see DT-margin sensitivity tables above); VA-ATACOM has zero hyperparameters once $a_{\max}$ is calibrated. (b) The Wilcoxon paired test rejects equality with $p{=}2.9{\times}10^{-3}$, and the 4 pairs that tie are exactly where both methods reach $\bar C{=}0$ --- in non-trivial cells DT-margin is strictly worse 10/11 times. (c) Theoretically, DT-margin is the first-order Taylor of VA-ATACOM in $\|\boldsymbol v\|$, so the residual gap is structural, not noise.
+
+\paragraph{Q4.\ Are the Prop.~4 assumptions ($\alpha_0\Delta t{\le}1$, $d_\text{safe}{\ge}\tfrac{3}{2}\Delta t a_{\max}/\alpha_0$, $r{\ge}d_\text{safe}{+}\Delta t v_{\max}$) restrictive?}
+They are constructive, not restrictive. At Safety-Gym defaults ($\Delta t{=}0.1$\,s, $v_{\max}{=}1$\,m/s, $a_{\max}{=}0.9$\,m/s$^2$, $\alpha_0{=}1$), the bounds give $d_\text{safe}{\ge}0.135$\,m and $r{\ge}0.235$\,m, both met by the env defaults ($r{=}0.2$/$0.3$). The first two come from the discretisation defect $\delta$ in Step~2 of the proof; the third is a steady-state distance budget. All three are checked at run-time and printed in our logs.
+
+\paragraph{Q5.\ Why no GPU? Would a larger PPO net change the picture?}
+The bottleneck is environment simulation, not the policy (60-dim obs, 64-64 MLP). On a 28-thread CPU we run 20 parallel 200K trainings in 10\,h wall-clock; a GPU yields a small speed-up but the failure modes (M1/M2) are about the constraint, not the model class. We trained PPO-Lag (the only filter-free safe-RL method in our sweep) on the same 64-64 MLP for fair comparison; it reaches 1/15 GO.
+
 \section{Computing Infrastructure}
 \label{sec:infra}
 
