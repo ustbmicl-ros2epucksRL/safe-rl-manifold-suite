@@ -135,7 +135,13 @@
 
 **最终中稿估计 ~62-75%**(P0-续 + P1-续-4 全计)。
 
-对比基线:AAAI 主 track 历年 acceptance rate 24-28%(2024-2026)。本 paper 经过 audit + Wilcoxon + Webots transfer + reproduce script + P0-续 三项 + Car generalisation **honest** report,**显著高于平均录用率**(估 2.5-3 倍 baseline)。
+**Update 2026-06-03**(P2-续-6 Reviewer FAQ supp section 完成):
+- 5 anticipated questions(Webots-vs-real / novelty over ATACOM / DT-margin marginal / Prop 4 assumptions / no GPU)preempt 在 supp
+- reviewer 看到 self-aware answer 比看到 unaddressed concerns trust 高
+
+→ **估 +2-3% → ~65-78%**
+
+对比基线:AAAI 主 track 历年 acceptance rate 24-28%(2024-2026)。本 paper 经过 audit + Wilcoxon + Webots transfer + reproduce script + P0-续 三项 + Car generalisation honest report + P2-续 reviewer FAQ,**显著高于平均录用率**(估 2.5-3.5 倍 baseline)。
 
 ### 4.4 主要不确定性
 
