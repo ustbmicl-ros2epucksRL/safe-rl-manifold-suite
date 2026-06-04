@@ -140,3 +140,45 @@ Final:  PASS=16  FAIL=0  WARN=0   ✅ fully compliant
 
 After 4 commits since first audit(`ee9bf8d` contributions / `9db5392` L3 / `4a0ca84` Fig 1 ref / `a507227` L4 / `8228d16` FAQ / `2ed3de4` PATH_C RQ / `2285a28` Liu 2025 / `27e48f5` table captions),**no requirement regressed**。
 
+---
+
+## Re-audit 2026-06-04(after `921ebc2` + `c5fa8f1` Type 3 + body 7 fix)
+
+User catch 2 个 hard 合规 issue:
+1. Body 超页:Page 8 头仍是 Conclusion 续(non Refs)
+2. Type 3 fonts:matplotlib figures 默认 Type 3,AAAI Author Kit 禁
+
+Fix:
+- Conclusion 砍 115 → 50 words + L4 砍 4→2 行 → Conclusion 完整 fit page 7
+- plot_f1.py + plot_f3.py 加 `pdf.fonttype=42` → CID TrueType(AAAI 允)→ figures 重生
+
+Re-audit 19 / 19 PASS:
+
+```
+Hard 1   ✓ body ≤ 7   (Refs 立即 page 8 起,verified P8 first line = "References")
+Hard 2   ✓ 10 pages letter
+Hard 3   ✓ aaai2027.sty [submission]
+Hard 4   ✓ TemplateVersion 2027.1 (main + supp)
+Hard 5   ✓ all fonts embedded (27 main + 26 supp)
+Hard 5b  ✓ NEW: NO Type 3 fonts (main + supp 都 0)
+Hard 6   ✓ anonymous author + affil
+Hard 7   ✓ no PDF Author metadata leak
+Hard 8   ✓ 0/14 forbidden packages
+Hard 9   ✓ 0 forbidden commands
+Hard 10  ✓ no manual bibstyle
+Hard 11  ✓ bibtex clean
+Hard 12  ✓ pdflatex 0 errors / 0 overfull
+Hard 13  ✓ Checklist 32 answers
+Hard 14  ✓ no 1st-person self-cite
+─────────────────────────────────────
+PASS=19  FAIL=0  WARN=0   ✅ fully compliant
+```
+
+字体细节(both PDF):
+- Type 1 builtin(LaTeX 默认):25 main / 19 supp
+- Type 1 custom:5 main / 5 supp
+- CID TrueType / Identity-H(matplotlib Type 42):2 main / 2 supp ← AAAI 允
+- **Type 3:0 / 0** ← AAAI 禁,fix 后清零
+
+Body 严格 1-7:Conclusion 末句 "...reduces Webots E-puck deep penetrations 24→1 in 120 paired trials (p=1.2×10⁻⁷)." 完整在 page 7;**Page 8 first line = "References"**。
+
