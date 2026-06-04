@@ -327,7 +327,7 @@ VA-ATACOM inherits ATACOM's null-space projection and adds the two discrete-time
 
 \begin{table}[t]
 \centering
-\caption{Episode cost $\bar{C}$ (mean, 5 seeds) and GO/15 count (a (task, seed) cell is GO if its episode cost $\le 5$). Published filters use our sim-BRT frontend; only the filter mechanism differs. Each filter's keepout matches the env's hazard radius ($r{=}0.2$ Goal/MultiGoal, $r{=}0.3$ Push); filters without an $r$ parameter use $d_{\text{safe}}{=}0.3$. The DT-margin row is VA-ATACOM's first-order approximation (\S\ref{sec:design}), included as a side-validation.}
+\caption{Episode cost $\bar{C}$ (mean, 5 seeds) and GO/15 count (a (task, seed) cell is GO if its episode cost $\le 5$). Published filters use our sim-BRT frontend; only the filter mechanism differs. Each filter's keepout matches the env's hazard radius ($r{=}0.2$ Goal/MultiGoal, $r{=}0.3$ Push); filters without an $r$ parameter use $d_{\text{safe}}{=}0.3$. The DT-margin row is VA-ATACOM's first-order approximation (\S\ref{sec:design}), included as a side-validation. Per-cell standard deviations and paired Wilcoxon $p$-values vs.\ VA-ATACOM (all $p\!<\!0.001$ except DT-margin $p\!=\!0.003$) are in the supplementary material.}
 \label{tab:main}
 \setlength{\tabcolsep}{4pt}
 \begin{tabular}{lcccr}
@@ -389,7 +389,7 @@ The benchmark above runs at $\Delta t{=}0.1$\,s, already at the M1 threshold $\D
 
 \begin{table}[t]
 \centering
-\caption{Episode cost $\bar C$ (mean, 5 seeds; GO count) as the control period coarsens past the benchmark default. All filtered rows use \emph{identical} sim-BRT shaping; only the constraint differs. Costs use the 50K-step budget and are not directly comparable to the 200K Table~\ref{tab:main}, but the safe/unsafe split is unambiguous.}
+\caption{Episode cost $\bar C$ (mean, 5 seeds) and GO/5 count as the control period coarsens past the benchmark default. All filtered rows use \emph{identical} sim-BRT shaping; only the constraint differs. Costs use the 50K-step budget and are not directly comparable to the 200K Table~\ref{tab:main}, but the safe/unsafe split is unambiguous. Per-seed individual costs are in the supplementary material.}
 \label{tab:coarse}
 \setlength{\tabcolsep}{4pt}
 \begin{tabular}{lccc}
