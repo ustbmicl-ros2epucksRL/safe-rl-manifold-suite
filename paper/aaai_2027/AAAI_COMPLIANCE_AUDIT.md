@@ -113,3 +113,30 @@ ModDate:         Wed Jun  3 08:45:07 2026 CST
 5. **Reproducibility Checklist** 已 `\input` 进 main paper page 9-10,无需单独上传
 6. **Conflicts / authorship form** — 上传时填(投稿 portal 系统问)
 
+---
+
+## Re-audit 2026-06-04(after `2285a28` Liu 2025 + `27e48f5` caption fixes)
+
+Re-ran 全 14 hard checks 后 paper 状态:
+
+```
+[Hard 1]  body ≤ 7 pages         ✓ Conclusion p=7, Refs 起 p=8
+[Hard 2]  format / page size      ✓ 10 pages, 612x792 letter
+[Hard 3]  aaai2027.sty[submission]✓
+[Hard 4]  TemplateVersion 2027.1  ✓ main + supp 都设
+[Hard 5]  fonts embedded          ✓ 27/27
+[Hard 6]  anonymous author/affil  ✓
+[Hard 7]  PDF metadata no leak    ✓ no Author field
+[Hard 8]  forbidden packages      ✓ 0/14
+[Hard 9]  forbidden commands      ✓ 0
+[Hard 10] no manual bibstyle      ✓
+[Hard 11] bibtex clean            ✓ 0 errors/warnings
+[Hard 12] pdflatex clean          ✓ 0 errors, 0 overfull
+[Hard 13] checklist 24 answers    ✓ 32 filled (含 instruction example)
+[Hard 14] no self-citation        ✓
+─────────────────────────────────────────────
+Final:  PASS=16  FAIL=0  WARN=0   ✅ fully compliant
+```
+
+After 4 commits since first audit(`ee9bf8d` contributions / `9db5392` L3 / `4a0ca84` Fig 1 ref / `a507227` L4 / `8228d16` FAQ / `2ed3de4` PATH_C RQ / `2285a28` Liu 2025 / `27e48f5` table captions),**no requirement regressed**。
+
