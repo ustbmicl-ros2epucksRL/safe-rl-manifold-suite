@@ -71,7 +71,7 @@ which we sharpen in \S\ref{sec:prop4} to a rigorous sufficient condition involvi
 \subsection{Contributions}
 
 \begin{enumerate}
-\item \textbf{Velocity-augmented constraint manifold and its discrete-time invariance theorem} (\S\ref{sec:method}, \S\ref{sec:prop4}): we augment the obstacle barrier with the agent's braking distance and prove \textbf{Proposition 4} --- forward invariance of the resulting manifold under explicit, constructive conditions. This is the \emph{first discrete-time analogue} of ATACOM's continuous-time invariance theorem, with \textbf{Corollary~1} (it reduces to ATACOM as $\Delta t\to0$) and \textbf{Corollary~2} (multi-obstacle case at $O(m)$ per step via $\text{rhs}_{\min}{=}\min_i \text{rhs}_i$). It recovers the widely-used velocity-adaptive margin as its first-order approximation, explaining why that heuristic worked.
+\item \textbf{Velocity-augmented manifold + Prop.~4} (\S\ref{sec:method}, \S\ref{sec:prop4}): the \emph{first discrete-time analogue} of ATACOM's invariance theorem, combining a velocity-augmented manifold, tangent-cone projection on $(\boldsymbol q,\boldsymbol v)$, and explicit chord-defect $\delta{=}\tfrac{3}{2}\Delta t^2 a_{\max}$ with constructive $(d_\text{safe},\alpha_0)$ from $(\Delta t,r,v_{\max})$. \textbf{Cor.~1}: $\Delta t\to0$ reduces to ATACOM. \textbf{Cor.~2}: multi-obstacle, $O(m)$/step. Braking margins alone are not new --- the manifold-plus-theorem combination is; \S\ref{sec:design-study} isolates that neither ingredient alone suffices. The velocity-adaptive margin is the first-order Taylor approximation.
 
 \item \textbf{Failure-mode diagnosis} (\S\ref{sec:failure}): Propositions 1--2 (M1 chord excursion, M2 drift) pinpoint \emph{why} every continuous-time tangent-projection filter loses safety at coarse $\Delta t$ --- the carried momentum that a static constraint ignores.
 
@@ -94,7 +94,7 @@ Representative works include null-space projection \cite{khatib1987,sentis2005},
 
 \textbf{The common assumption.} All these methods derive their guarantees from continuous-time analysis (ODEs) or single-step discrete analysis. The original ATACOM paper evaluates on high-frequency manipulator control ($\Delta t \le 2$ms) where the continuous-time assumption holds empirically. When ported to Safety-Gymnasium at $\Delta t = 0.1$s, the assumption is violated by two orders of magnitude.
 
-\textbf{Position vs HOCBF and DCBF.} HOCBF \cite{xiao2021} handles relative-degree-2 systems in continuous time with empirically-tuned class-K coefficients; DCBF \cite{agrawal2017} decays the \emph{static} barrier at a constant rate $h_{k+1} \ge (1{-}\gamma)h_k$, defeated by M1 (\S\ref{sec:failure}). VA-ATACOM differs on two axes: the braking augmentation turns DCBF's constant-$\gamma$ into a \emph{state-dependent} rate, and Prop.~4 supplies a closed-form discretisation defect $\delta{=}\tfrac{3}{2}\Delta t^2 a_{\max}$ plus a constructive condition --- $(d_\text{safe},\alpha_0)$ from $(\Delta t, r, v_{\max})$ --- which HOCBF and DCBF leave as hyperparameters. Empirically HOCBF reaches 4/15 GO and DCBF (DCM) 3/15, VA-ATACOM 15/15 (Table~\ref{tab:main}).
+\textbf{Position vs HOCBF and DCBF.} HOCBF \cite{xiao2021} handles relative-degree-2 systems in continuous time; DCBF \cite{agrawal2017} and DCBF-MPC \cite{zeng2021} decay or MPC-embed a \emph{static} barrier at a constant rate, defeated by M1 (\S\ref{sec:failure}). VA-ATACOM is orthogonal: the braking augmentation makes the decay rate state-dependent, and Prop.~4 supplies a closed-form discretisation defect $\delta{=}\tfrac{3}{2}\Delta t^2 a_{\max}$ plus constructive $(d_\text{safe},\alpha_0)$ from $(\Delta t, r, v_{\max})$, which HOCBF/DCBF leave as hyperparameters. Empirically HOCBF reaches 4/15 GO and DCBF (DCM) 3/15, VA-ATACOM 15/15 (Table~\ref{tab:main}).
 
 \subsection{Set-Based and Predictive Safety Methods}
 
@@ -467,7 +467,7 @@ Proposition~4's conditions are stated in physical units ($\Delta t$, $r$, $v_{\m
 \section{Conclusion}
 %==============================================================================
 
-VA-ATACOM proves \textbf{Proposition~4} --- the first discrete-time analogue of ATACOM's forward-invariance theorem on a velocity-augmented manifold. It reaches \textbf{15/15 GO} on Safety-Gymnasium ($p\!<\!0.001$) and reduces Webots E-puck deep penetrations $24\!\to\!1$ in $120$ paired trials ($p{=}1.2{\times}10^{-7}$).
+VA-ATACOM proves the first discrete-time analogue of ATACOM's invariance theorem on a velocity-augmented manifold (Prop.~4), reaches \textbf{15/15 GO} on Safety-Gymnasium ($p\!<\!0.001$), and reduces Webots deep penetrations $24\!\to\!1$ in $120$ paired trials ($p{=}1.2{\times}10^{-7}$).
 
 
 %==============================================================================
