@@ -215,6 +215,32 @@ They are constructive, not restrictive. At Safety-Gym defaults ($\Delta t{=}0.1$
 \paragraph{Q5.\ Why no GPU? Would a larger PPO net change the picture?}
 The bottleneck is environment simulation, not the policy (60-dim obs, 64-64 MLP). On a 28-thread CPU we run 20 parallel 200K trainings in 10\,h wall-clock; a GPU yields a small speed-up but the failure modes (M1/M2) are about the constraint, not the model class. We trained PPO-Lag (the only filter-free safe-RL method in our sweep) on the same 64-64 MLP for fair comparison; it reaches 1/15 GO.
 
+\section{Detailed Comparison with Related Filters}
+\label{sec:related-detail}
+
+The table below isolates VA-ATACOM from the five closest tangent-projection / barrier filters along six axes. Empirical GO rows are from the main paper's Table~1 (Safety-Gymnasium, $5$ seeds $\times$ $200$K, fair hazard-radius match).
+
+\begin{table}[h]
+\centering
+\setlength{\tabcolsep}{3pt}
+\small
+\begin{tabular}{lccccc}
+\toprule
+Axis & ATACOM & HOCBF & DCBF & DT-marg. & \textbf{VA-ATACOM}\\
+\midrule
+Time domain & cont. & cont. & disc. & disc. & \textbf{disc.}\\
+Constraint  & tangent & class-$\kappa$ & static $\gamma$ & vel.\,inflation & \textbf{vel.-aug.\ manifold}\\
+Defect bound & — & tune & const.\,$\gamma$ & none & $\boldsymbol{\tfrac{3}{2}\Delta t^2 a_{\max}}$\\
+Hyper-params & gains & class-$\kappa$ & $\gamma$ & $\alpha,h$ & \textbf{0 post-$a_{\max}$ calib}\\
+Multi-obs. cost & per-step & per-step & per-step & per-step & $\boldsymbol{O(m)}$ (Cor.~2)\\
+\midrule
+Empirical GO/15 & 0/15 & 4/15 & 3/15 & 13/15 & \textbf{15/15}\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+VA-ATACOM dominates on four axes(discrete-time domain $+$ explicit defect bound $+$ zero post-calibration hyperparameters $+$ multi-obstacle complexity $+$ empirical GO) while strictly subsuming the other four(Cor.~1 recovers ATACOM as $\Delta t{\to}0$;DT-margin is its first-order Taylor in $\|\boldsymbol v\|$). HOCBF and DCBF remain orthogonal extensions(higher relative-degree and discrete-time static barrier respectively),neither of which addresses the velocity-augmented projection nor the explicit discrete-time invariance defect that Prop.~4 supplies.
+
 \section{Computing Infrastructure}
 \label{sec:infra}
 
