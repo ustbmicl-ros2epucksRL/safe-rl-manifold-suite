@@ -5,15 +5,17 @@
 
 ---
 
-## 1. Paper 内 "first" claims 完整列表(5 处,consistent)
+## 1. Paper 内 "first" claims 完整列表(5 处,**narrow audit 2026-06-04**)
 
-| # | 位置 | Claim 原文 | 是否 valid |
+| # | 位置 | Claim 原文(narrow 后)| 是否 valid |
 |:---:|---|---|:---:|
 | 1 | Abstract | "first discrete-time analogue of ATACOM's continuous-time invariance theorem" | ✅ |
-| 2 | §I Intro 开头 | "the first safety filter with explicit discrete-time forward-invariance guarantees for mobile agents at coarse control rates" | ✅ |
+| 2 | §I Intro 开头 | "the first **tangent-projection** safety filter **on a velocity-augmented constraint manifold** with an explicit discrete-time forward-invariance theorem" | ✅ (narrowed 2026-06-04) |
 | 3 | §I Intro 末 | "the first discrete-time analogue of the ATACOM continuous-time forward-invariance theorem" | ✅ |
 | 4 | Contribution #1 | "first discrete-time analogue of ATACOM's continuous-time invariance theorem" | ✅ |
-| 5 | Conclusion | "first discrete-time analogue of ATACOM's forward-invariance theorem" | ✅ |
+| 5 | Conclusion | "first discrete-time analogue of ATACOM's forward-invariance theorem on a velocity-augmented manifold" | ✅ |
+
+**Narrow fix history**:claim #2 旧版"the first safety filter with explicit discrete-time forward-invariance guarantees for mobile agents at coarse control rates" 过宽 — DCBF (Agrawal 2017) 是 discrete-time CBF + mobile robot(bipedal nav),reviewer 可挑 "你不是 first discrete-time"。Narrow 后限定 **tangent-projection** + **velocity-augmented manifold** 两个核心 disambiguating 属性,preempt DCBF / HOCBF reviewer attack。
 
 **Verify "first" 站得住**:
 - DCBF (Agrawal 2017):discrete-time CBF for *static* barrier(`h_{k+1} ≥ (1-γ)h_k`)— different mechanism
