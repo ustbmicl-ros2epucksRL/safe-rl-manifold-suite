@@ -447,7 +447,7 @@ VA-ATACOM costs 0.24~ms per call --- $\approx 1.8\times$ ATACOM (216 distance ev
 
 \textbf{L3: Geometry assumptions.} Prop.~4 is stated for circular hazards and a disk-shaped agent. For convex hazards/agents, $\rho$ generalises to the signed inter-set distance with unchanged chord-defect bound; non-convex hazards need per-piece decomposition (Cor.~2's $O(m)$ then counts pieces).
 
-\textbf{L4: Action-form coupling.} Our \texttt{diff\_drive} tangent-cone projection assumes forward speed and angular rate are independent. On bicycle-like agents (e.g.\ Safety-Gym Car) coupling through the wheelbase makes the brake remove the steerability the agent needs to turn; Cor.~2 still holds, but matching the steering Jacobian (rather than the diff-drive Jacobian) is required at implementation level. Detailed numbers on Car are in the supplementary material.
+\textbf{L4: Action-form coupling.} Our \texttt{diff\_drive} projection assumes forward speed and angular rate are independent; bicycle-like agents (e.g.\ Safety-Gym Car) require a steering-Jacobian variant. Cor.~2 still holds; details in the supplementary.
 
 \subsection{Sim-to-Real Considerations}
 \label{sec:sim2real}
@@ -467,7 +467,7 @@ Proposition~4's conditions are stated in physical units ($\Delta t$, $r$, $v_{\m
 \section{Conclusion}
 %==============================================================================
 
-We presented \textbf{VA-ATACOM}, augmenting the obstacle constraint with the agent's braking distance and projecting onto the tangent cone of the resulting velocity-augmented manifold. Its core, \textbf{Proposition~4}, is the first discrete-time analogue of ATACOM's forward-invariance theorem, constructive in $(\Delta t, r, v_{\max})$ and reducing to ATACOM as $\Delta t\to0$. VA-ATACOM is the only method reaching \textbf{15/15 GO} on Safety-Gymnasium (Wilcoxon $p\!<\!0.001$ vs every baseline), and a 240-trial Webots E-puck transfer yields \textbf{1/120 vs 24/120} deep penetrations with vs without the filter (McNemar $p{=}1.2{\times}10^{-7}$), closing the two-orders-of-magnitude gap between continuous-time theory and discrete-time deployment.
+VA-ATACOM proves \textbf{Proposition~4} --- the first discrete-time analogue of ATACOM's forward-invariance theorem on a velocity-augmented manifold. It reaches \textbf{15/15 GO} on Safety-Gymnasium ($p\!<\!0.001$) and reduces Webots E-puck deep penetrations $24\!\to\!1$ in $120$ paired trials ($p{=}1.2{\times}10^{-7}$).
 
 
 %==============================================================================
