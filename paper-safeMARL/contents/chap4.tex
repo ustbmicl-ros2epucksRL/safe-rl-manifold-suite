@@ -559,9 +559,9 @@ GCPL 根节点解析输出的是机器人世界坐标系下的二维加速度 $a
     统计策略在一个完整 episode 中获得的累计奖励：$R = \sum_t r_t$，反映策略整体行为质量。
     \item \textbf{安全代价（Collision Cost）}
     统计策略在一个完整 episode 中产生的累计安全代价：$C = \sum_t c_t$，用于评估系统安全性。
-    \item \textbf{编队完成度（Formation Completion）}
+    \item \textbf{编队完成度（Formation Completion, Comp.）}
     编队完成度定义为：$FC = \frac{N_{completed}}{N_{total}}$，其中：$N_{completed}$ 为成功完成编队的 episode 数；$N_{total}$ 为总测试 episode 数，该指标反映策略在复杂环境中的编队完成能力。
-    \item \textbf{任务成功率（Success Rate）}
+    \item \textbf{任务成功率（Success Rate, SR）}
     成功率定义为：$SR = \frac{N_{success}}{N_{total}}$，其中：$N_{success}$ 为成功到达目标且未发生碰撞的 episode 数；$N_{total}$ 为总测试 episode 数，该指标反映策略在复杂环境中的任务完成能力。
 \end{itemize}
 
@@ -712,7 +712,7 @@ mini-batch数量 & 1  & 方向叶度量$c_\theta$ & 10.0 \\
 %     \label{fig:train_result}
 % \end{figure}
 通过20轮次的任务评估，实验结果如表~\ref{tab:line_formation_result} 所示。各方法在不同随机种子下重复运行，并报告均值与标准差。
-可以看出，所提出的 GCPL 方法在所有指标上均取得了最优表现.例如在线性编队任务中，其累计回报（$11.51 \pm 7.54$）、成功率（$66.00\% \pm 6.00\%$）以及编队完成度（$71.00\% \pm 2.00\%$）均显著优于其他基线方法，同时具有最低的安全代价（$18.53 \pm 5.57$）。该结果表明，引入几何约束能够有效提升多智能体策略的结构一致性与任务稳定性。
+可以看出，所提出的 GCPL 方法在所有指标上均取得了最优表现。例如在线性编队任务中，其累计回报（$11.51 \pm 7.54$）、成功率（$66.00\% \pm 6.00\%$）以及编队完成度（$71.00\% \pm 2.00\%$）均显著优于其他基线方法，同时具有最低的安全代价（$18.53 \pm 5.57$）。该结果表明，引入几何约束能够有效提升多智能体策略的结构一致性与任务稳定性。
 相比之下，纯强化学习方法 MAPPO 与 MAPPO\_Lag 表现较差，回报较低且安全代价较高，说明在缺乏显式约束的情况下，策略难以兼顾安全性与协同控制目标。MAPPO\_CBF 通过引入控制屏障函数在一定程度上降低了安全代价，但其编队完成度与成功率仍明显落后于 GCPL，表明仅依赖安全约束不足以保证编队结构的有效形成。RMPflow 虽然具有一定的几何一致性，但由于缺乏全局优化机制，其整体性能仍然有限。
 
 \begin{table}[htbp]
@@ -720,9 +720,9 @@ mini-batch数量 & 1  & 方向叶度量$c_\theta$ & 10.0 \\
     \tabcap{线形编队实验结果}{Experimental results for line formation}
     \label{tab:line_formation_result}
     \resizebox{\textwidth}{!}{%
-    \begin{tabular}{lcccc}
+    \begin{tabular}{l@{\hspace{1em}}c@{\hspace{1em}}c@{\hspace{1em}}c@{\hspace{1em}}c}
     \hline
-    Algorithm & Reward & Cost & Formation\_Completion (\%) & Success\_Rate (\%) \\
+    Algorithm & Reward & Cost & Comp. (\%) & SR (\%) \\
     \hline
     MAPPO      & $-38.28 \pm 13.55$ & $105.78 \pm 40.02$ & $10.00 \pm 9.00$ & $2.00 \pm 2.00$ \\
     RMPflow    & $5.71 \pm 6.24$    & $25.17 \pm 2.25$  & $58.00 \pm 5.00$ & $13.00 \pm 11.00$ \\
@@ -739,9 +739,9 @@ mini-batch数量 & 1  & 方向叶度量$c_\theta$ & 10.0 \\
     \tabcap{楔形编队实验结果}{Experimental results for wedge formation}
     \label{tab:wedge_formation_result}
     \resizebox{\textwidth}{!}{%
-    \begin{tabular}{lcccc}
+    \begin{tabular}{l@{\hspace{1em}}c@{\hspace{1em}}c@{\hspace{1em}}c@{\hspace{1em}}c}
     \hline
-    Algorithm & Reward & Cost & Formation\_Completion (\%) & Success\_Rate (\%) \\
+    Algorithm & Reward & Cost & Comp. (\%) & SR (\%) \\
     \hline
     MAPPO      & $-45.12 \pm 15.23$ & $128.45 \pm 45.12$ & $6.00 \pm 5.00$  & $1.00 \pm 1.00$ \\
     RMPflow    & $5.60 \pm 6.10$    & $23.50 \pm 20.10$  & $40.00 \pm 11.00$ & $18.00 \pm 9.00$ \\
@@ -758,9 +758,9 @@ mini-batch数量 & 1  & 方向叶度量$c_\theta$ & 10.0 \\
     \tabcap{圆形编队实验结果}{Experimental results for circular formation}
     \label{tab:circle_formation_result}
     \resizebox{\textwidth}{!}{%
-    \begin{tabular}{lcccc}
+    \begin{tabular}{l@{\hspace{1em}}c@{\hspace{1em}}c@{\hspace{1em}}c@{\hspace{1em}}c}
     \hline
-    Algorithm & Reward & Cost & Formation\_Completion (\%) & Success\_Rate (\%) \\
+    Algorithm & Reward & Cost & Comp. (\%) & SR (\%) \\
     \hline
     MAPPO      & $-52.67 \pm 18.30$ & $145.22 \pm 50.34$ & $3.00 \pm 3.00$  & $0.50 \pm 0.50$ \\
     RMPflow    & $0.50 \pm 5.50$    & $38.20 \pm 23.40$  & $22.00 \pm 10.00$ & $18.00 \pm 6.00$ \\
@@ -806,9 +806,9 @@ mini-batch数量 & 1  & 方向叶度量$c_\theta$ & 10.0 \\
     \tabcap{消融实验结果（线形编队）}{Ablation results on line formation}
     \label{tab:ablation_line}
     \resizebox{\textwidth}{!}{%
-    \begin{tabular}{lcccc}
+    \begin{tabular}{l@{\hspace{1em}}c@{\hspace{1em}}c@{\hspace{1em}}c@{\hspace{1em}}c}
     \hline
-    \textbf{Method} & \textbf{Reward} & \textbf{Cost} & \textbf{Formation\_Completion (\%)} & \textbf{Success\_Rate (\%)} \\
+    \textbf{Method} & \textbf{Reward} & \textbf{Cost} & \textbf{Comp. (\%)} & \textbf{SR (\%)} \\
     \hline
     MAPPO & $-38.28 \pm 13.55$ & $105.78 \pm 40.02$ & $10.00 \pm 9.00$ & $2.00 \pm 2.00$ \\
     
