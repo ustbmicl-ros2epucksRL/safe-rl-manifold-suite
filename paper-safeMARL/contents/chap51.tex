@@ -12,8 +12,7 @@
 基于上述需求，本章设计并实现了一套支持远程访问的容器化仿真验证平台。
 该平台由面向多机器人编队任务的场景层、容器化算法层以及可复现评估管线组成，能够在隔离运行环境中承载不同安全强化学习方法的协同执行与对比评估。
 
-在执行管线层面，平台将前两章方法以
-\[\text{MAPPO} \;\rightarrow\; \text{几何协调层（GCPL）} \;\rightarrow\; \text{硬安全投影层} \;\rightarrow\; \text{差速映射}\]
+在执行管线层面，平台将前两章方法以"$\text{MAPPO} \rightarrow \text{几何协调层（GCPL）} \rightarrow \text{硬安全投影层} \rightarrow \text{差速映射}$"
 的形式串联接入，其中强化学习策略输出任务驱动的控制意图，几何协调层在群体层面进行几何一致性整理，硬安全层对控制输入施加约束投影，差速映射给出可执行控制指令。该串联仅用作 CMPL 与 GCPL 在平台上的统一执行接口，不构成独立的方法贡献。
 
 本章通过轻量级的 \textit{pure-python} MVP 系统对上述执行链路进行功能性验证，并在 \textit{Webots} 高保真仿真环境中开展多场景实验评估，用以检验平台对 CMPL 与 GCPL 的端到端集成、公平比较与可复现评估的支撑能力。
@@ -125,7 +124,7 @@
 上述机制进一步支撑了\ref{sec:chap5_webots_4mode} 中的多配置对比实验（CMPL\_only、GCPL\_only、full、MAPPO\_only）。相关指标统计结果（表~\ref{tab:chap5_webots_metrics}）均由该标准化评估管线自动生成。整体流程实现了实验执行与结果分析的一体化，在提升效率的同时保证了不同算法比较的客观性与一致性。
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.9\linewidth]{figs/chap5_safety_eval.pdf}
+    \includegraphics[width=1.0\linewidth]{figs/chap5_safety_eval.pdf}
     \figcap{安全评估与模型验证机制}{Safety evaluation and model verification mechanism.}
     \label{fig:chap5_safety_eval}
 \end{figure}
@@ -167,11 +166,16 @@ v = \frac{r_w}{2}(\omega_R + \omega_L), \qquad
 在控制执行层面，平台采用集中式调度策略。Supervisor 节点通过 Webots 提供的接口周期性获取所有机器人状态，并在统一控制周期内完成策略计算与控制指令分发。
 从而有效降低多机器人协同控制中的通信复杂度，并保证各机器人动作在时间上的一致性。
 
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.92\linewidth]{images/task(1).png}
+    \figcap{任务管理界面}{Task management interface.}
+    \label{fig:tasks}
+\end{figure}
+
 \section{系统实现}
 \subsection{前端交互模块}
 
-\begingroup
-% 减轻「整页仅含浮动体」：提高纯浮动页占用门槛，并允许单页容纳更多顶/底浮动体
 \renewcommand{\floatpagefraction}{0.88}
 \renewcommand{\topfraction}{0.92}
 \renewcommand{\bottomfraction}{0.92}
@@ -182,12 +186,6 @@ v = \frac{r_w}{2}(\omega_R + \omega_L), \qquad
 前端交互模块采用单页应用（Single Page Application, SPA）架构实现，主要基于 React 与 TypeScript 构建。系统将任务管理、在线实验、运行监控和结果分析等功能拆分为相对独立的组件，并通过统一的状态管理和路由机制完成页面组织。
 
 任务管理界面如图~\ref{fig:tasks}所示，主要用于展示平台中已经配置的机器人实验任务，并提供任务选择入口。
-\begin{figure}[!htbp]
-    \centering
-    \includegraphics[width=0.92\linewidth]{images/task(1).png}
-    \figcap{任务管理界面}{Task management interface.}
-    \label{fig:tasks}
-\end{figure}
 
 实验界面如图~\ref{fig:follow_line}所示，是用户进行算法编写、运行和调试的主要操作页面。该界面集成在线代码编辑器、任务控制面板和仿真可视化窗口，使实验过程能够直接在浏览器中完成。页面左侧为代码编辑区，用于编写或修改机器人控制算法；右侧为仿真可视化区域，用于观察机器人在场景中的运动状态；右上方的任务控制面板则负责实验启动、暂停、停止以及模型上传与选取等操作。
 \begin{figure}[htbp]
@@ -206,18 +204,10 @@ v = \frac{r_w}{2}(\omega_R + \omega_L), \qquad
 \end{figure}
 
 实验结果分析界面如图~\ref{fig:result}所示，用于汇总单次或批量实验的指标，并以图表形式支持对比查看，为后续方法分析和参数调整提供参考。
-\begin{figure}[!htbp]
-    \centering
-    \includegraphics[width=0.92\linewidth]{images/result(1).png}
-    \figcap{实验结果分析界面}{Experiment result analysis interface.}
-    \label{fig:result}
-\end{figure}
-
-\endgroup
 
 \subsection{后端服务模块}
 
-后端服务模块基于 Django 框架实现，主要负责业务逻辑处理、实验资源管理和任务运行调度。系统采用 RESTful 架构向前端提供统一的数据访问接口，使前端页面与后端业务逻辑保持相对独立，便于后续功能扩展和模块维护。
+后端服务模块基于 Django 框架实现，主要负责业务逻辑处理、实验资源管理和任务运行调度。系统采用 RESTful 架构向前端提供统一的数据访问接口，使前端与后端保持相对独立，便于后续功能扩展和模块维护。
 
 从功能划分来看，后端服务主要包括实验任务管理、数据库管理以及系统调度与控制三个部分。
 
@@ -231,7 +221,12 @@ v = \frac{r_w}{2}(\omega_R + \omega_L), \qquad
 
 
 % 例如，用户进入平台后，前端会先调用任务列表接口，从后端获取当前可用的实验任务；当用户进一步选择某个任务时，系统再调用实验配置接口，加载该任务对应的仿真环境、机器人模型和默认算法模板。基于 REST API 的通信方式降低了页面逻辑与后端实现之间的耦合程度，也使后续增加新的任务类型或评估接口更加方便。
-
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.92\linewidth]{images/result(1).png}
+    \figcap{实验结果分析界面}{Experiment result analysis interface.}
+    \label{fig:result}
+\end{figure}
 \subsubsection{（2）数据库管理}
 
 平台采用 PostgreSQL 作为后台数据库，用于存储实验任务、仿真环境配置、机器人模型和辅助工具等核心数据。

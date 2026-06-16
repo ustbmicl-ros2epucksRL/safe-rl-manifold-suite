@@ -43,9 +43,9 @@ MAPPO-Lagrangian 则沿用 PPO 的裁剪目标进行策略优化，同时利用�
 
 领航-跟随方法结构简单，便于实现，但对领航者依赖较强，一旦领航者失效，编队任务容易受到影响。虚拟结构方法将编队视为整体结构进行控制，能够保持较稳定的队形，但在队形调整和复杂环境适应方面灵活性不足。相比之下，基于行为的方法 \cite{xu2014behavior, quan2023robust} 更强调机器人根据局部观测动态调整动作，适合处理目标到达、队形保持和避障等多重要求。随着多智能体强化学习的发展，MARL 已逐渐用于编队控制和多机器人应用，并取得了一定成果 \cite{sui2020formation,yan2022relative,khan2020graph,orr2023marl_multirobot_survey}。
 
-现有强化学习编队方法中，PPO 及其多智能体扩展应用较为广泛。文献 \cite{sadhukhan2022proximal} 将 PPO 与课程学习结合，通过机器人之间的夹角信息维持编队形状；文献 \cite{yan2022relative} 采用 MAPPO，并结合课程学习、参考目标和相对位置信息实现编队控制。针对四旋翼编队，文献 \cite{batra2022decentralized} 基于 PPO 引入注意力机制，对相邻四旋翼状态进行编码，以减少碰撞并提升飞行性能，其思想与文献 \cite{hoshen2017vain, chen2019crowd} 中的注意力建模方法相关。文献 \cite{wang2019pattern} 则在集中训练、分散执行（Centralized Training with Decentralized Execution, CTDE）框架下，利用 PPO 实现移动机器人的静态编队控制。近期还有研究将 MATD3 等连续控制算法用于带障碍环境下的多机器人编队控制~\cite{zhou2023matd3_formation}。
+现有强化学习编队方法中，PPO 及其多智能体扩展应用较为广泛。Sadhukhan 等人\cite{sadhukhan2022proximal}将 PPO 与课程学习相结合，并利用机器人之间的夹角信息维持编队形状；Yan 等人\cite{yan2022relative}采用 MAPPO，并结合课程学习、参考目标和相对位置信息实现编队控制。针对四旋翼编队场景，Batra 等人\cite{batra2022decentralized}基于 PPO 引入注意力机制，对相邻四旋翼状态进行编码，从而减少碰撞并提升飞行性能，其思想与 Hoshen\cite{hoshen2017vain}以及 Chen 等人\cite{chen2019crowd}提出的注意力建模方法具有一定关联。Wang 等人\cite{wang2019pattern}则在集中训练、分散执行（Centralized Training with Decentralized Execution, CTDE）框架下，利用 PPO 实现了移动机器人的静态编队控制。近期，Zhou 等人\cite{zhou2023matd3_formation}进一步将 MATD3 等连续控制算法用于带障碍环境下的多机器人编队控制。
 
-除 PPO 类方法外，其他强化学习框架也被用于编队控制。文献 \cite{sui2020formation} 将模仿学习与强化学习结合，在领航-跟随框架下构建分布式编队控制器。文献 \cite{khan2020graph} 将策略梯度方法与图卷积网络（Graph Convolutional Network, GCN）结合，用于无人机静态编队控制。文献 \cite{xie2021reinforcement} 和文献 \cite{zhou2019learn} 分别基于深度确定性策略梯度（Deep Deterministic Policy Gradient, DDPG）和深度 Q 网络（Deep Q-Network, DQN），实现了海上无人艇的领航--跟随编队控制。
+除 PPO 类方法外，其他强化学习框架也被用于编队控制。Sui 等人\cite{sui2020formation}将模仿学习与强化学习结合，在领航--跟随框架下构建了分布式编队控制器。Khan 等人\cite{khan2020graph}将策略梯度方法与图卷积网络（Graph Convolutional Network, GCN）结合，用于无人机静态编队控制。Xie 等人\cite{xie2021reinforcement}和 Zhou 等人\cite{zhou2019learn}分别基于深度确定性策略梯度（Deep Deterministic Policy Gradient, DDPG）和深度 Q 网络（Deep Q-Network, DQN），实现了海上无人艇的领航--跟随编队控制。
 
 现有研究已证明强化学习方法在多智能体编队控制中的可行性，但多数工作更关注队形形成和任务完成效果，对安全距离、障碍物规避以及训练过程中的约束违背考虑仍不充分。部分安全编队研究已经尝试将 SafeRL 与动态队形调整结合，用于处理部分未知环境和模型不确定性~\cite{golmisheh2023distributed_safe_formation}。在复杂环境下，仅依赖奖励函数引导编队行为，难以保证策略输出始终满足安全要求。因此，将几何约束、安全过滤和动作修正机制引入多智能体策略学习，仍具有进一步研究价值。
 
@@ -53,13 +53,13 @@ MAPPO-Lagrangian 则沿用 PPO 的裁剪目标进行策略优化，同时利用�
 MARL 的核心目标是在多种交互场景（包括协作、竞争及混合环境）中协调多个智能体之间的行为。在编队控制下，安全性意味着在训练与执行过程中避免任何形式的碰撞。
 安全多智能体强化学习（Safe MARL）近年来已成为研究热点之一 \cite{gu2023safe,garg2024learning,li2025coordinating}。与此同时，合作 MARL 的基准评测和实验协议也在不断完善，相关研究指出算法比较需要关注环境随机性、部分可观测性以及多随机种子下的稳定性~\cite{papoudakis2021benchmarking_marl,gorsane2022standardised_marl_eval,ellis2023smacv2}。
 
-文献 \cite{cai2021safe} 将 CBF 与多智能体深度确定性策略梯度（MADDPG）\cite{lowe2017multi} 相结合，实现了两智能体在导航过程中无碰撞运动，其中 CBF 通过构造满足安全约束的控制律来保证系统安全。文献 \cite{zhang2023spatial} 研究了注意力模块与基于 CBF 的分布式安全屏蔽机制在多自动驾驶车辆场景中降低碰撞率的有效性。
+Cai 等人\cite{cai2021safe}将控制障碍函数（Control Barrier Function, CBF）与多智能体深度确定性策略梯度（Multi-Agent Deep Deterministic Policy Gradient, MADDPG）\cite{lowe2017multi}相结合，实现了两智能体在导航过程中的无碰撞运动，其中 CBF 通过构造满足安全约束的控制律来保证系统安全。Zhang 等人\cite{zhang2023spatial}进一步研究了注意力模块与基于 CBF 的分布式安全屏蔽机制在多自动驾驶车辆场景中降低碰撞率的有效性。
 
-不同于上述方法，文献 \cite{sheebaelhamd2021safe} 在 MADDPG 框架中引入训练得到的集中式神经网络作为安全层，并在协作导航任务中显著降低了碰撞发生率。文献 \cite{elsayed2021safe} 则基于确定性有限自动机（Deterministic Finite Automaton, DFA）提出了集中式与分布式相结合的安全屏蔽策略，以确保协作导航任务中的智能体安全，其中 DFA 通过定义有限状态集合来刻画安全约束。
+不同于上述基于控制障碍函数的安全约束方法，Sheebaelhamd 等人\cite{sheebaelhamd2021safe}在 MADDPG 框架中引入训练得到的集中式神经网络作为安全层，并在协作导航任务中显著降低了碰撞发生率。ElSayed-Aly 等人\cite{elsayed2021safe}则基于确定性有限自动机（Deterministic Finite Automaton, DFA）提出了集中式与分布式相结合的安全屏蔽策略，以确保协作导航任务中的智能体安全，其中 DFA 通过定义有限状态集合来刻画安全约束。
 
-文献 \cite{zhang2019mamps} 提出了一种预测式安全屏蔽方法，并与 MADDPG 相结合以保证多智能体协作导航的安全性，并在简化的多智能体粒子环境 \cite{mordatch2018emergence} 中验证了其有效性。
+Zhang 等人\cite{zhang2019mamps}提出了一种模型预测安全屏蔽方法，并将其与 MADDPG 相结合，以提升多智能体协作导航过程中的安全性；该方法在简化的多智能体粒子环境\cite{mordatch2018emergence}中验证了其有效性。
 
-基于行为的编队控制问题中，由于机器人需要在空间上保持紧密相对位置，碰撞风险比传统协作导航场景更高。已有研究多集中于协作导航任务，该类任务通常可通过训练单一策略并部署至多个机器人来实现 \cite{everett2021collision, brito2021go, vinod2022safe}。然而，行为驱动的编队控制需要机器人在训练过程中持续交互，因此更适合采用多智能体强化学习方法。文献 \cite{zhang2022barrier} 利用基于强化学习的模型预测控制方法，在保证安全的前提下实现了移动机器人的领航–跟随编队控制。该方法通过为每个机器人设定目标位置来维持编队结构。
+在基于行为的编队控制问题中，由于机器人需要在空间上保持紧密的相对位置，碰撞风险通常高于传统协作导航场景。已有研究多集中于协作导航任务，该类任务通常可通过训练单一策略并部署至多个机器人来实现\cite{everett2021collision,brito2021go,vinod2022safe}。然而，行为驱动的编队控制要求机器人在训练过程中持续交互，因此更适合采用多智能体强化学习方法。Zhang 等人\cite{zhang2022barrier}利用基于强化学习的模型预测控制方法，在保证安全的前提下实现了移动机器人的领航--跟随编队控制。该方法通过为每个机器人设定目标位置来维持编队结构。
 
 \section{Hamilton–Jacobi 可达性分析}
 

@@ -683,20 +683,21 @@ EKF（学习得到的 $R$） & $\mathbf{0.27 {\pm} 0.05}$ & $-7.87 {\pm} 0.94$ &
 在 Webots 实验中，安全过滤器采用基于距离的速度缩放机制（相比流形过滤器更为简单），同时使用具有固定噪声协方差的标准 EKF。实验结果如图~\ref{fig:ros}，在没有安全过滤的情况下，20 次实验中有 8 次发生碰撞（碰撞率 40\%），其中 4 次由于碰撞导致导航错误而未能到达目标（成功率 80\%）。而本文的方法实现了零碰撞，成功率达到 85\%。其中 3 次失败是由于机器人在密集障碍区域附近发生导航超时，但均在没有碰撞的情况下安全结束。值得注意的是，安全过滤器实际上提高了成功率（85\% 对比 80\%），因为未过滤的碰撞会破坏导航稳定性。EKF 通过融合里程计和 GPS 测量，将位置误差降低了 27.5\%（$0.051 \rightarrow 0.037$m）（见表~\ref{tab:webots}）。
 
 \begin{table}[t]
-\centering
-\tabcap{Webots E-puck 实验验证}{Webots E-puck experimental validation}
-\label{tab:webots}
-\begin{tabular}{l|cc}
-\toprule
-指标 & 无过滤 & \textbf{本文方法（完整系统）} \\
-\midrule
-成功率 (\%) & 80.0 & $\mathbf{85.0}$ \\
-碰撞率 (\%) & 40.0 & $\mathbf{0.0}$ \\
-位置误差 (m) & $0.051 \pm 0.001$ & $\mathbf{0.037 \pm 0.001}$ \\
-路径长度 (m) & $\mathbf{0.94 \pm 0.41}$ & $1.80 \pm 1.49$ \\
-\bottomrule
-\end{tabular}
-\end{table}
+    \centering
+    \small
+    \tabcap{Webots E-puck 实验验证}{Webots E-puck experimental validation}
+    \label{tab:webots}
+    \begin{tabular}{l@{\hspace{1em}}|@{\hspace{1em}}c c}
+    \toprule
+    指标 & 无过滤 & \textbf{本文方法（完整系统）} \\
+    \midrule
+    成功率 (\%) & 80.0 & $\mathbf{85.0}$ \\
+    碰撞率 (\%) & 40.0 & $\mathbf{0.0}$ \\
+    位置误差 (m) & $0.051 \pm 0.001$ & $\mathbf{0.037 \pm 0.001}$ \\
+    路径长度 (m) & $\mathbf{0.94 \pm 0.41}$ & $1.80 \pm 1.49$ \\
+    \bottomrule
+    \end{tabular}
+    \end{table}
 
 \begin{figure*}[t]
 \centering
