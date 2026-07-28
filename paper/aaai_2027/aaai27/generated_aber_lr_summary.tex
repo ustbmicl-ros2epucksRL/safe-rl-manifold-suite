@@ -1,0 +1,18 @@
+\begin{table}[t]
+\centering
+\small
+\setlength{\tabcolsep}{2.6pt}
+\begin{tabular}{lrrrrr}
+\toprule
+Execution & Succ. & Coll. & SCR & Unsafe succ. & Timeout\\
+\midrule
+Filter off & 42.48 & 43.19 & 25.96 & 16.52 & 57.52\\
+Strict ABER & 19.92 & 7.11 & 19.88 & \textbf{0.04} & 80.08\\
+ABER-LR & 29.71 & \textbf{4.21} & \textbf{29.55} & 0.16 & \textbf{70.29}\\
+\bottomrule
+\end{tabular}
+\caption{Equal-weight 30-checkpoint learned-policy summary (\%).  SCR is
+$\Pr(\mathrm{success}\land\neg\mathrm{geometric\ collision})$; unsafe
+success is the complementary successful-but-colliding event.}
+\label{tab:aber-lr-summary}
+\end{table}

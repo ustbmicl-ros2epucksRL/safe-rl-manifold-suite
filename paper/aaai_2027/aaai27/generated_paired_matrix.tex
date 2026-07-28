@@ -1,0 +1,23 @@
+\begin{table}[t]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{2.2pt}
+\begin{tabular}{llrrrr}
+\toprule
+Training & Task & Coll. off & Coll. on & Succ. off & Succ. on\\
+\midrule
+Native & Goal1 & 41.12$\pm$13.60 & 11.12$\pm$14.75 & 78.08$\pm$29.25 & 39.52$\pm$18.65\\
+Native & Push1 & 37.60$\pm$8.22 & 10.88$\pm$3.85 & 5.20$\pm$3.35 & 2.48$\pm$1.04\\
+Native & Goal2 & 54.64$\pm$19.18 & 2.08$\pm$3.78 & 66.88$\pm$27.50 & 20.40$\pm$12.01\\
+\midrule
++sim-BRT & Goal1 & 41.20$\pm$8.30 & 0.88$\pm$1.11 & 59.12$\pm$39.86 & 27.92$\pm$23.00\\
++sim-BRT & Push1 & 43.60$\pm$7.77 & 12.80$\pm$6.72 & 4.72$\pm$2.34 & 2.40$\pm$1.02\\
++sim-BRT & Goal2 & 51.68$\pm$17.77 & 1.36$\pm$1.43 & 33.28$\pm$22.89 & 12.32$\pm$7.87\\
+\bottomrule
+\end{tabular}
+\caption{Strict paired ABER evaluation. Each entry is the mean
+$\pm$ sample standard deviation across five independently trained
+200k-step policies; each policy is evaluated on 250 identical-seed
+filter-off/filter-on pairs. Rates are percentages.}
+\label{tab:pairedmatrix}
+\end{table}

@@ -1,4 +1,5 @@
 # AAAI-27 VA-ATACOM 论文 audit + 中稿评估
+\n> **历史文档（VA-ATACOM 版本）**：不得作为当前 ABER 投稿依据。当前状态见 `AAAI27_MAJOR_REVISION_TRACKER.md` 与 `METHOD_CODE_ALIGNMENT.md`。
 
 **Date**: 2026-06-02 (~8 周距 deadline 2026-07-28)
 **Status**: P0+P1+P2 全 9/9 完成 ✅,paper submission-ready
@@ -163,7 +164,7 @@
 ### P1 后续(若有时间)
 
 5. **加 "Pendulum / Quadrotor" 1 个非 mobile robot env 验证** — preempt "only mobile robot" 批评(估 ~20 h CPU)
-6. **Path C 实机至少 demo 1 个 trial 视频** — 即使 1 个 demo,放进 supp video,把"Physical E-puck validation remains future work" 改成 "preliminary physical demonstration"
+6. **Path C 实机 20/20 已完成** — physical E-puck PPO L-shape：deep 0/20 vs 12/20，McNemar p=4.9e-4；见 `HARDWARE_RESULTS_AUDIT.md`（2026-07-09）。视频在 `results/hardware/epuck_ppo_lshape_20260706/`。
 
 ### P2 后续(锦上添花)
 

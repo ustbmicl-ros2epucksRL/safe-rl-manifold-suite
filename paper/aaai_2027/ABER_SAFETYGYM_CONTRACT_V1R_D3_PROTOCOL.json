@@ -1,0 +1,167 @@
+{
+  "protocol_id": "ABER-SG-CONTRACT-V1R-D3",
+  "frozen_utc": "2026-07-27T00:06:29-07:00",
+  "status": "frozen_before_discovery_execution",
+  "purpose": "Separately named successor to D2 discovery failure: audit the actual forward/turn recovery interface as zero forward with recorded turn, retain the continuous four-coordinate atlas and global development-tail fallback, and restrict the exact-zero macro witness to low-speed non-Push sources.",
+  "parent_result": {
+    "protocol_id": "ABER-SG-CONTRACT-V1R-D2",
+    "protocol_sha256": "9813101da7ffcee0edf8326d668323b07098d07f4f72f3fe99681502e86a3cf1",
+    "result": "discovery-stage integrity failure before atlas/C2; 275xxx seeds unexecuted",
+    "decision": "fail",
+    "use_in_d3": "interface-design motivation only; D2 and its 274xxx data remain diagnostic and immutable"
+  },
+  "scope": {
+    "training_modes": ["none", "sim_brt"],
+    "normal_tasks": ["goal", "push", "multigoal"],
+    "recovery_tasks": ["goal", "multigoal"],
+    "training_seeds": [0, 1, 2, 3, 4],
+    "checkpoint_count": 30,
+    "policy_action": "deterministic",
+    "evaluation_filter": "existing ABER enabled and unmodified",
+    "actor_training": "disabled",
+    "runtime_projection_change": "disabled",
+    "statistical_model_fitting": "disabled",
+    "interpolation": "disabled"
+  },
+  "seeds": {
+    "smoke_reset_seed_base": 271500,
+    "discovery_reset_seed_base": 276000,
+    "discovery_episodes_per_checkpoint": 10,
+    "discovery_seed_range": [276000, 276009],
+    "reserved_confirmation_reset_seed_base": 277000,
+    "reserved_confirmation_episodes_per_checkpoint": 20,
+    "reserved_confirmation_seed_range": [277000, 277019],
+    "disjoint_from_prior_ranges": [
+      [10000, 10249],
+      [271000, 271019],
+      [272000, 272009],
+      [273000, 273019],
+      [274000, 274009],
+      [275000, 275019],
+      [276000, 276009],
+      [277000, 277019]
+    ]
+  },
+  "instrumentation": {
+    "supervisory_hold_seconds": 0.02,
+    "physics_timestep_seconds": 0.002,
+    "substeps_per_hold": 10,
+    "speed_definition": "Euclidean norm of Point planar world-frame velocity",
+    "path_definition": "sum of planar increments over every real mj_step",
+    "normal_trace": "one unmodified environment action with every real mj_step recorded",
+    "recovery_probe": "clone current mjData fields, execute direct MuJoCo zero control, then restore the original mjData before rollout continuation",
+    "probe_schedule": "one target per episode at floor((episode+0.5)*1000/episodes_per_checkpoint)",
+    "probe_trigger": "certified source-contact-free transition minimizing absolute step distance to the target, lower-step tie breaking, source-only selection before outcome",
+    "probe_is_evidentiary": "only recovery-branch physics; no reward, policy-state, episode-counter, or continuing-rollout mutation",
+    "transition_recovery_interface": "a labelled recovery hold must execute forward=0 within 1e-12; turn may be nonzero, must equal the recorded filter action, remain constant over ten substeps, and remain within actuator bounds; the separate macro witness still executes exact [0,0]"
+  },
+  "numeric_contract": {
+    "v_max_mps": 1.5,
+    "diagnostic_a_brake_mps2": 0.9,
+    "expected_substeps_per_hold": 10,
+    "residual_tolerance": 1e-9,
+    "action_tolerance": 1e-12,
+    "time_tolerance_seconds": 1e-12,
+    "static_clearance_tolerance_m": 1e-9
+  },
+  "source_coordinates": {
+    "required_classes": [
+      "existing ABER recovery margin",
+      "relative static-obstacle closing speed",
+      "relative static-obstacle orientation",
+      "previous-issued actuator-mode word"
+    ],
+    "additional_recovery_guard": "source planar speed is a pre-query operating-region guard, not a fitted coordinate"
+  },
+  "continuous_source_atlas": {
+    "distance": "max(abs(delta_margin)/0.10, abs(delta_closing_speed)/0.35, abs(wrapped_delta_orientation)/(pi/2)); actuator modes must match exactly",
+    "coordinate_scales": {
+      "recovery_margin": 0.1,
+      "relative_closing_speed": 0.35,
+      "orientation": 1.5707963267948966
+    },
+    "cover_radius": 1.0,
+    "center_selection": "stable-provenance greedy cover within exact actuator mode",
+    "normal_minimum_development_support": 50,
+    "recovery_minimum_development_support": 2,
+    "query_rule": "select every active same-mode radius-one center; no interpolation and no unsupported fallback",
+    "unsupported_query": "outside the claimed D3 operating region"
+  },
+  "normal_envelope": {
+    "base_speed": "z=max(s_start,1.5*abs(actual_forward))",
+    "development_multiplier": 1.5,
+    "speed_additive_margin_mps": 0.002,
+    "path_additive_margin_m": 0.00002,
+    "global_tail_fallback": "among all eligible D3 development normal records, compute global positive maxima of s_next-z and ell-0.02z; apply the same frozen multiplier and margins; a covered query uses max(local fiber slack, global slack)",
+    "confirmation_gate": "zero positive speed and path residuals above 1e-9 for covered certified-start contact-free normal transitions"
+  },
+  "d3_recovery_operating_region": {
+    "tasks": ["goal", "multigoal"],
+    "excluded_tasks": ["push"],
+    "maximum_source_speed_mps": 0.3,
+    "reason": "C1 showed that static-obstacle clearance cannot certify Push movable-body/internal-contact topology and that higher source speed drives the long recovery-path tail"
+  },
+  "macro_recovery_envelope": {
+    "command": [0.0, 0.0],
+    "holds": 250,
+    "duration_seconds": 5.0,
+    "substeps": 2500,
+    "settled_speed_m_per_s": 0.01,
+    "required_consecutive_settled_holds": 10,
+    "development_multiplier": 1.5,
+    "path_additive_margin_m": 0.01,
+    "clearance_guard_margin_m": 0.01,
+    "global_tail_fallback": "among in-scope D3 recovery development records, use 1.5 times the global maximum 5 s path plus 0.01 m; covered queries use max(local fiber bound, global bound)",
+    "accepted_source": "in-scope, covered, certified/contact-free source with static-obstacle clearance at least the selected bound plus 0.01 m",
+    "confirmation_gates": [
+      "zero path-bound residuals above 1e-9",
+      "settled criterion reached by hold 250",
+      "zero non-ground contact during the macro",
+      "minimum static-obstacle clearance remains nonnegative"
+    ]
+  },
+  "confirmation_support_gates": {
+    "normal_covered_fraction_overall_minimum": 0.8,
+    "normal_covered_fraction_each_training_task_group_minimum": 0.6,
+    "accepted_recovery_probe_fraction_in_scope_minimum": 0.05,
+    "accepted_recovery_probe_support_each_in_scope_group_minimum": 1,
+    "normal_groups": [
+      "none/goal",
+      "none/push",
+      "none/multigoal",
+      "sim_brt/goal",
+      "sim_brt/push",
+      "sim_brt/multigoal"
+    ],
+    "recovery_groups": [
+      "none/goal",
+      "none/multigoal",
+      "sim_brt/goal",
+      "sim_brt/multigoal"
+    ],
+    "all_30_checkpoint_cells_present": true
+  },
+  "source_freeze_sha256": {
+    "aber_contract_trace.py": "ed60b4547df6cfab6da5c6090c154bac327392147d956002317bb36f7d61161d",
+    "aber_contract_v1r_trace.py": "fd3cdb98dd0a8e7284096c7b621586bb4538b846563761901b56e55fdaaaf86f",
+    "aber_contract_v1r_atlas.py": "12c1fc248f9e0eb9f2c61475577bbd5e08fe760ffb1fe951ab491ba81a9745ec",
+    "aber_contract_v1r_audit_common.py": "8d847295bcf276098390a8958060f8ad5463da4947c456236a8c87d4e274bbde",
+    "aber_contract_v1r_d2.py": "00ee45504e0932c5be8d02dd96ed0f6dd7a9a642e30d26cdddd1e2530d3bb603",
+    "aber_contract_v1r_d3.py": "3b3f1041f7dcab09638ebde390ec53db6d002891d92beba61b1ec55a3d8504a3",
+    "collect_aber_safetygym_contract_v1r_d3.py": "ca6ffc0467e78b51aafffe7237a26c4225234a3dbaccd3f4ea4315e6d1ddad57",
+    "run_aber_safetygym_contract_v1r_d3.py": "3333ab9188d4cfa62719d87dc9d75370990122a9a67c716d63605c4fcf808a6c",
+    "derive_aber_safetygym_contract_v1r_d3.py": "a10a2103b06f9afb79620014832e66bc59f72aa2e7841a014cb234805547be81",
+    "audit_aber_safetygym_contract_v1r_d3.py": "6b347851bad60396975bbb02d3602375a4278be9d4cf0715eadca717b6cb7b19",
+    "meaning": "Exact source bytes frozen before any 276xxx discovery seed; any change requires a separately named iteration."
+  },
+  "freeze_sequence": {
+    "discovery": "execute only 276000-276009 after status/source hashes become frozen",
+    "confirmation_freeze": "derive exact atlas and global tails, then write a separately named C3 protocol containing all hashes before any 277xxx execution",
+    "heldout": "execute 277000-277019 once without changing atlas, global tails, guards, support gates, tolerances, or forward/turn semantics"
+  },
+  "decision_rule": {
+    "pass": "finite held-out evidence only for the D3 covered/guarded measured region",
+    "fail": "preserve C3 unchanged and start a separately named successor",
+    "forbidden": "no post-hoc threshold, fitted model, interpolation, atlas modification, runtime projection, actor training, or paper theorem claim"
+  }
+}

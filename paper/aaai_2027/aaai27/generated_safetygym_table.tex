@@ -1,0 +1,23 @@
+\begin{table}[t]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{2.0pt}
+\begin{tabular}{llrrrr}
+\toprule
+Mode & Task & Cost$\downarrow$ & Reward$\uparrow$ & Succ.(\%)$\uparrow$ & min clr.$\uparrow$\\
+\midrule
+Native & Goal1 & 79.24$\pm$93.52 & -6.97$\pm$9.78 & 39.20$\pm$18.14 & -0.075\\
+Native & Push1 & 5.85$\pm$7.91 & 0.28$\pm$0.14 & 1.60$\pm$1.67 & -0.497\\
+Native & Goal2 & 26.73$\pm$40.55 & -1.33$\pm$3.79 & 21.60$\pm$11.26 & -0.039\\
+\midrule
++sim-BRT & Goal1 & 16.86$\pm$20.35 & -1.53$\pm$2.22 & 24.80$\pm$17.81 & -0.017\\
++sim-BRT & Push1 & 36.48$\pm$52.32 & 0.23$\pm$0.05 & 0.80$\pm$1.79 & -0.468\\
++sim-BRT & Goal2 & 21.44$\pm$14.40 & -0.70$\pm$0.82 & 12.00$\pm$11.31 & -0.009\\
+\bottomrule
+\end{tabular}
+\caption{ABER Safety-Gymnasium results over five training seeds and 50
+evaluation episodes per seed. Values are seed mean$\pm$sample standard
+deviation; minimum clearance is the worst episode across all 250 evaluations
+in a cell. Native and sim-BRT reward-shaped training are reported separately.}
+\label{tab:safetygym}
+\end{table}

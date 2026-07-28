@@ -1,4 +1,5 @@
 # AAAI-27 投稿合规 Audit (Compliance Checklist)
+\n> **历史文档（VA-ATACOM 版本）**：不得作为当前 ABER 投稿依据。当前状态见 `AAAI27_MAJOR_REVISION_TRACKER.md` 与 `METHOD_CODE_ALIGNMENT.md`。
 
 **Date**: 2026-06-03
 **Target**: AAAI-27 main technical track,deadline 2026-07-28
@@ -38,7 +39,7 @@
 | 19 | **Math symbols ample notation** | ✅ | `\boldsymbol`,vector/matrix/scalar consistent |
 | 20 | **Numbered references** in numerical order | ✅ | `aaai2027.bst` 默认 alphabetical 排 |
 | 21 | **Algorithm pseudocode**(Reproducibility 1.1) | ✅ | Algorithm 1 VA-ATACOM step |
-| 22 | **Stat tests reported** | ✅ | Wilcoxon (Safety-Gym),McNemar (Webots),Friedman omnibus — 全 supp 含 |
+| 22 | **Stat tests reported** | ✅ | two-sided Wilcoxon (Safety-Gym), two-sided exact McNemar (Webots/hardware), Friedman omnibus |
 | 23 | **Computing infra spec'd** | ✅ | supp Computing Infrastructure section |
 | 24 | **Public code link**(if any) | N/A | 双盲投稿;`README.md` 在 anonymized fork(待 release on acceptance) |
 
@@ -48,7 +49,7 @@
 
 | # | 要求 | 状态 |
 |:---:|---|:---:|
-| 25 | Supplementary 可单独 PDF | ✅ `supplementary_dtmargin.pdf` 3 pages standalone |
+| 25 | Supplementary 可单独 PDF | ✅ `supplementary_dtmargin.pdf` 6 pages standalone |
 | 26 | Supplementary 用同样 sty | ✅ `\usepackage[submission]{aaai2027}` |
 | 27 | Supplementary 无作者 leak | ✅ "Anonymous Submission" |
 | 28 | Demo video(optional) | ✅ `supplementary_demo.mp4` 155s + `_30s.mp4` 31s |
@@ -106,11 +107,11 @@ ModDate:         Wed Jun  3 08:45:07 2026 CST
 
 直接拿这些 6 个 artefact 上传 OpenReview:
 
-1. **`paper/aaai_2027/aaai27/main_v2_aaai27.pdf`**(10 pages,556 KB)
-2. **`paper/aaai_2027/aaai27/supplementary_dtmargin.pdf`**(3 pages,277 KB)
+1. **`paper/aaai_2027/aaai27/main_v2_aaai27.pdf`** (9 pages, about 580 KB)
+2. **`paper/aaai_2027/aaai27/supplementary_dtmargin.pdf`** (6 pages, about 422 KB)
 3. **`paper/aaai_2027/figures/fig_webots_va_atacom/supplementary_demo_30s.mp4`**(31 s,573 KB)— optional supp video
 4. **(若要 source bundle)** `aaai27/` 整目录 + `figures/` + `references.bib` zipped
-5. **Reproducibility Checklist** 已 `\input` 进 main paper page 9-10,无需单独上传
+5. **Reproducibility Checklist** 编译为独立 2-page `repro_checklist.pdf`，在门户对应字段单独上传
 6. **Conflicts / authorship form** — 上传时填(投稿 portal 系统问)
 
 ---
@@ -120,8 +121,8 @@ ModDate:         Wed Jun  3 08:45:07 2026 CST
 Re-ran 全 14 hard checks 后 paper 状态:
 
 ```
-[Hard 1]  body ≤ 7 pages         ✓ Conclusion p=7, Refs 起 p=8
-[Hard 2]  format / page size      ✓ 10 pages, 612x792 letter
+[Hard 1]  body ≤ 7 pages         ✓ technical content ends p=7; references begin thereafter on p=7
+[Hard 2]  format / page size      ✓ 9 pages, 612x792 letter
 [Hard 3]  aaai2027.sty[submission]✓
 [Hard 4]  TemplateVersion 2027.1  ✓ main + supp 都设
 [Hard 5]  fonts embedded          ✓ 27/27
@@ -155,8 +156,8 @@ Fix:
 Re-audit 19 / 19 PASS:
 
 ```
-Hard 1   ✓ body ≤ 7   (Refs 立即 page 8 起,verified P8 first line = "References")
-Hard 2   ✓ 10 pages letter
+Hard 1   ✓ body ≤ 7 (technical content ends p7; references follow)
+Hard 2   ✓ 9 pages letter
 Hard 3   ✓ aaai2027.sty [submission]
 Hard 4   ✓ TemplateVersion 2027.1 (main + supp)
 Hard 5   ✓ all fonts embedded (27 main + 26 supp)

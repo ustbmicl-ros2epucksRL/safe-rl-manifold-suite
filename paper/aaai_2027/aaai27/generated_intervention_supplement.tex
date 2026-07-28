@@ -1,0 +1,32 @@
+\section{Intervention Event Audit}
+
+\renewcommand{\thefigure}{S\arabic{figure}}
+\setcounter{figure}{0}
+
+This separate, earlier strict-ABER audit diagnoses the failure mode that
+motivated ABER-LR; it is not used to estimate the three-arm effect sizes in
+Table~\ref{tab:aber-lr-groups}.  We reconstruct events directly from the
+11,860,270 paired step records and
+use only the 6,485,664 filter-on steps.  An intervention event, recovery
+event, or uncertified run is a maximal contiguous run of the corresponding
+Boolean indicator within one episode.  Runs never cross episode boundaries.
+The six training-mode/task cells retain their original 1,250 filter-on
+episodes each; no episode, action, or threshold is added by this audit.
+
+\input{generated_intervention_audit.tex}
+
+The mutually exclusive step decomposition is 1,753,037 unchanged steps
+(27.03\%), 1,252,911 normal projection steps (19.32\%), 507,625 certified
+recovery steps (7.83\%), and 2,972,091 uncertified recovery steps (45.83\%).
+Only 4.30\% of intervention events ever touch an uncertified state, yet
+uncertified states contribute 62.80\% of all intervention time.  Likewise,
+5.02\% of uncertified runs last at least 100 steps but contribute 95.62\% of
+uncertified time.  These two scales motivate separate remedies: least-change
+directional certification for ordinary clipping, and prevention of entry
+into long uncertified recovery for the dominant tail.
+
+The complete machine-readable output is
+\path{reproduced/aber_intervention_event_audit.json}; the corresponding flat
+cell table is \path{reproduced/aber_intervention_event_audit.csv}.  The audit
+is descriptive: it does not choose a post hoc trigger threshold and it does
+not establish why a particular MuJoCo transition became uncertified.
